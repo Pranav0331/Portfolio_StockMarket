@@ -89,7 +89,15 @@
             </svg>
           </a>
         } @else {
-          <!-- Authenticated Profile Pill -->
+          <!-- Authenticated Profile Pill & Dashboard Link -->
+          <a routerLink="/dashboard" class="btn btn-primary btn-dash-link">
+            <span>Dashboard</span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </a>
+
           <div class="user-profile-badge" id="auth-user-profile">
             <div class="user-avatar-circle">
               {{ authService.currentUser()?.name?.charAt(0)?.toUpperCase() || 'U' }}

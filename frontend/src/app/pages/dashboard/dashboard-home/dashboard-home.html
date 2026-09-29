@@ -1,0 +1,295 @@
+<div class="dashboard-home-view">
+  <!-- Welcome Header Banner -->
+  <div class="dashboard-header-row">
+    <div class="header-text-group">
+      <h1 class="welcome-heading">
+        Welcome back, <span class="gradient-text">{{ authService.currentUser()?.name || 'Investor' }}</span>
+      </h1>
+      <p class="welcome-sub">
+        Here is the current overview of your investment portfolio and market telemetry.
+      </p>
+    </div>
+
+    <div class="header-actions-group">
+      <a routerLink="/dashboard/watchlist" class="btn btn-glass-action">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+        <span>Watchlist</span>
+      </a>
+
+      <a routerLink="/dashboard/orders" class="btn btn-primary btn-action">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>New Order</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- 4 KEY METRIC CARDS -->
+  <div class="metrics-grid">
+    <!-- Card 1: Total Portfolio Value -->
+    <div class="metric-card">
+      <div class="metric-card-header">
+        <span class="metric-label">Total Portfolio Value</span>
+        <div class="metric-icon-box icon-indigo">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="metric-value-row">
+        <span class="metric-value font-mono">$0.00</span>
+      </div>
+      <div class="metric-footer-row">
+        <span class="metric-tag neutral">No active positions</span>
+      </div>
+    </div>
+
+    <!-- Card 2: Today's P&L -->
+    <div class="metric-card">
+      <div class="metric-card-header">
+        <span class="metric-label">Today's P&L</span>
+        <div class="metric-icon-box icon-cyan">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+            <polyline points="17 6 23 6 23 12"></polyline>
+          </svg>
+        </div>
+      </div>
+      <div class="metric-value-row">
+        <span class="metric-value font-mono">$0.00</span>
+        <span class="metric-change neutral font-mono">0.00%</span>
+      </div>
+      <div class="metric-footer-row">
+        <span class="metric-subtext">Daily return</span>
+      </div>
+    </div>
+
+    <!-- Card 3: Total Profit/Loss -->
+    <div class="metric-card">
+      <div class="metric-card-header">
+        <span class="metric-label">Total Profit / Loss</span>
+        <div class="metric-icon-box icon-emerald">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+            <polyline points="16 7 22 7 22 13"></polyline>
+          </svg>
+        </div>
+      </div>
+      <div class="metric-value-row">
+        <span class="metric-value font-mono">$0.00</span>
+        <span class="metric-change neutral font-mono">0.00%</span>
+      </div>
+      <div class="metric-footer-row">
+        <span class="metric-subtext">All-time unrealized P&L</span>
+      </div>
+    </div>
+
+    <!-- Card 4: Available Balance -->
+    <div class="metric-card">
+      <div class="metric-card-header">
+        <span class="metric-label">Available Balance</span>
+        <div class="metric-icon-box icon-rose">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+            <line x1="1" y1="10" x2="23" y2="10"></line>
+          </svg>
+        </div>
+      </div>
+      <div class="metric-value-row">
+        <span class="metric-value font-mono">$0.00</span>
+      </div>
+      <div class="metric-footer-row">
+        <span class="metric-subtext">Liquid cash reserves</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN SECTIONS GRID -->
+  <div class="dashboard-grid">
+    <!-- SECTION: Portfolio Holdings -->
+    <div class="dashboard-card holdings-card">
+      <div class="card-header-clean">
+        <div class="card-title-group">
+          <div class="title-icon-circle icon-indigo">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+            </svg>
+          </div>
+          <div>
+            <h2 class="card-heading">Portfolio Holdings</h2>
+            <span class="card-caption">Current active asset distribution</span>
+          </div>
+        </div>
+        <a routerLink="/dashboard/portfolio" class="card-action-link">View Details →</a>
+      </div>
+
+      @if (holdings().length === 0) {
+        <div class="empty-state-container">
+          <div class="empty-icon-box">
+            <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+            </svg>
+          </div>
+          <h3 class="empty-title">No active holdings in portfolio</h3>
+          <p class="empty-desc">
+            You haven't recorded or executed any equity or asset orders yet. Start trading to build your portfolio.
+          </p>
+          <a routerLink="/dashboard/market" class="btn btn-primary btn-sm">
+            <span>Explore Market</span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </a>
+        </div>
+      }
+    </div>
+
+    <!-- SECTION: Market Overview -->
+    <div class="dashboard-card market-card">
+      <div class="card-header-clean">
+        <div class="card-title-group">
+          <div class="title-icon-circle icon-cyan">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 3v18h18"></path>
+              <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+            </svg>
+          </div>
+          <div>
+            <h2 class="card-heading">Market Overview</h2>
+            <span class="card-caption">Real-time market intelligence</span>
+          </div>
+        </div>
+        <a routerLink="/dashboard/market" class="card-action-link">Market Hub →</a>
+      </div>
+
+      <div class="market-tabs">
+        <button 
+          type="button" 
+          class="tab-btn" 
+          [class.active]="activeTab() === 'indices'"
+          (click)="setActiveTab('indices')"
+        >
+          Indices
+        </button>
+        <button 
+          type="button" 
+          class="tab-btn" 
+          [class.active]="activeTab() === 'gainers'"
+          (click)="setActiveTab('gainers')"
+        >
+          Top Gainers
+        </button>
+        <button 
+          type="button" 
+          class="tab-btn" 
+          [class.active]="activeTab() === 'losers'"
+          (click)="setActiveTab('losers')"
+        >
+          Top Losers
+        </button>
+        <button 
+          type="button" 
+          class="tab-btn" 
+          [class.active]="activeTab() === 'volume'"
+          (click)="setActiveTab('volume')"
+        >
+          Active Volume
+        </button>
+      </div>
+
+      <div class="empty-state-container min-h-200">
+        <div class="empty-icon-box sm">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+            <polyline points="17 6 23 6 23 12"></polyline>
+          </svg>
+        </div>
+        <h4 class="empty-title sm">Market telemetry feed standing by</h4>
+        <p class="empty-desc sm">
+          Connect your live market data provider or brokerage API to stream real-time price quotes.
+        </p>
+      </div>
+    </div>
+
+    <!-- SECTION: Watchlist -->
+    <div class="dashboard-card watchlist-card">
+      <div class="card-header-clean">
+        <div class="card-title-group">
+          <div class="title-icon-circle icon-emerald">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
+          <div>
+            <h2 class="card-heading">Watchlist</h2>
+            <span class="card-caption">Monitored assets and alerts</span>
+          </div>
+        </div>
+        <a routerLink="/dashboard/watchlist" class="card-action-link">Manage →</a>
+      </div>
+
+      @if (watchlist().length === 0) {
+        <div class="empty-state-container min-h-200">
+          <div class="empty-icon-box sm">
+            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </div>
+          <h4 class="empty-title sm">Your watchlist is empty</h4>
+          <p class="empty-desc sm">
+            Search for stocks, indices, or ETFs and click 'Add to Watchlist' to monitor price alerts.
+          </p>
+          <a routerLink="/dashboard/watchlist" class="btn btn-secondary btn-sm">
+            <span>Add Symbol</span>
+          </a>
+        </div>
+      }
+    </div>
+
+    <!-- SECTION: Recent Transactions -->
+    <div class="dashboard-card transactions-card">
+      <div class="card-header-clean">
+        <div class="card-title-group">
+          <div class="title-icon-circle icon-rose">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+              <line x1="1" y1="10" x2="23" y2="10"></line>
+            </svg>
+          </div>
+          <div>
+            <h2 class="card-heading">Recent Transactions</h2>
+            <span class="card-caption">Audit ledger of trades and distributions</span>
+          </div>
+        </div>
+        <a routerLink="/dashboard/transactions" class="card-action-link">View All →</a>
+      </div>
+
+      @if (recentTransactions().length === 0) {
+        <div class="empty-state-container min-h-200">
+          <div class="empty-icon-box sm">
+            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+          </div>
+          <h4 class="empty-title sm">No transactions recorded yet</h4>
+          <p class="empty-desc sm">
+            Completed buy and sell orders, deposits, and dividend records will appear here.
+          </p>
+        </div>
+      }
+    </div>
+  </div>
+</div>

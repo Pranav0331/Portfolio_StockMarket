@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { LoginComponent } from './login';
 import { AuthService } from '../../services/auth.service';
+import { routes } from '../../app.routes';
 
 describe('LoginComponent', () => {
   let authService: AuthService;
@@ -15,7 +16,7 @@ describe('LoginComponent', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        provideRouter([])
+        provideRouter(routes)
       ]
     }).compileComponents();
 

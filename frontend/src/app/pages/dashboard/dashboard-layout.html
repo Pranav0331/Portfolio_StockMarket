@@ -1,0 +1,385 @@
+<div class="dashboard-shell" (click)="closeDropdowns()">
+  <!-- Dynamic Ambient Glows -->
+  <div class="ambient-glow ambient-glow-top"></div>
+  <div class="ambient-glow ambient-glow-bottom"></div>
+
+  <!-- Mobile Sidebar Backdrop -->
+  @if (isMobileSidebarOpen()) {
+    <div class="sidebar-backdrop" (click)="closeMobileSidebar()"></div>
+  }
+
+  <!-- FIXED LEFT SIDEBAR -->
+  <aside 
+    class="dashboard-sidebar" 
+    [class.collapsed]="isSidebarCollapsed()" 
+    [class.mobile-open]="isMobileSidebarOpen()"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="sidebar-header">
+      <a routerLink="/" class="sidebar-brand">
+        <div class="brand-logo-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+            <polyline points="16 7 22 7 22 13"></polyline>
+          </svg>
+        </div>
+        @if (!isSidebarCollapsed()) {
+          <span class="sidebar-brand-name">Portfolio StockMarket</span>
+        }
+      </a>
+      
+      <button 
+        type="button" 
+        class="sidebar-collapse-btn desktop-only" 
+        (click)="toggleSidebar()" 
+        [title]="isSidebarCollapsed() ? 'Expand sidebar' : 'Collapse sidebar'"
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          @if (!isSidebarCollapsed()) {
+            <polyline points="15 18 9 12 15 6"></polyline>
+          } @else {
+            <polyline points="9 18 15 12 9 6"></polyline>
+          }
+        </svg>
+      </button>
+
+      <button 
+        type="button" 
+        class="sidebar-close-btn mobile-only" 
+        (click)="closeMobileSidebar()"
+      >
+        ✕
+      </button>
+    </div>
+
+    <!-- Navigation List -->
+    <nav class="sidebar-nav">
+      <a 
+        routerLink="/dashboard" 
+        routerLinkActive="active" 
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="nav-item" 
+        (click)="closeMobileSidebar()"
+        title="Dashboard"
+      >
+        <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="9"></rect>
+          <rect x="14" y="3" width="7" height="5"></rect>
+          <rect x="14" y="12" width="7" height="9"></rect>
+          <rect x="3" y="16" width="7" height="5"></rect>
+        </svg>
+        @if (!isSidebarCollapsed()) {
+          <span class="nav-label">Dashboard</span>
+        }
+      </a>
+
+      <a 
+        routerLink="/dashboard/market" 
+        routerLinkActive="active" 
+        class="nav-item" 
+        (click)="closeMobileSidebar()"
+        title="Market"
+      >
+        <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3v18h18"></path>
+          <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+        </svg>
+        @if (!isSidebarCollapsed()) {
+          <span class="nav-label">Market</span>
+        }
+      </a>
+
+      <a 
+        routerLink="/dashboard/portfolio" 
+        routerLinkActive="active" 
+        class="nav-item" 
+        (click)="closeMobileSidebar()"
+        title="Portfolio"
+      >
+        <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+        </svg>
+        @if (!isSidebarCollapsed()) {
+          <span class="nav-label">Portfolio</span>
+        }
+      </a>
+
+      <a 
+        routerLink="/dashboard/watchlist" 
+        routerLinkActive="active" 
+        class="nav-item" 
+        (click)="closeMobileSidebar()"
+        title="Watchlist"
+      >
+        <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+        @if (!isSidebarCollapsed()) {
+          <span class="nav-label">Watchlist</span>
+        }
+      </a>
+
+      <a 
+        routerLink="/dashboard/orders" 
+        routerLinkActive="active" 
+        class="nav-item" 
+        (click)="closeMobileSidebar()"
+        title="Orders"
+      >
+        <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="17 1 21 5 17 9"></polyline>
+          <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+          <polyline points="7 23 3 19 7 15"></polyline>
+          <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+        </svg>
+        @if (!isSidebarCollapsed()) {
+          <span class="nav-label">Orders</span>
+        }
+      </a>
+
+      <a 
+        routerLink="/dashboard/transactions" 
+        routerLinkActive="active" 
+        class="nav-item" 
+        (click)="closeMobileSidebar()"
+        title="Transactions"
+      >
+        <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+          <line x1="1" y1="10" x2="23" y2="10"></line>
+        </svg>
+        @if (!isSidebarCollapsed()) {
+          <span class="nav-label">Transactions</span>
+        }
+      </a>
+
+      <a 
+        routerLink="/dashboard/alerts" 
+        routerLinkActive="active" 
+        class="nav-item" 
+        (click)="closeMobileSidebar()"
+        title="Alerts"
+      >
+        <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        @if (!isSidebarCollapsed()) {
+          <span class="nav-label">Alerts</span>
+        }
+      </a>
+
+      <a 
+        routerLink="/dashboard/settings" 
+        routerLinkActive="active" 
+        class="nav-item" 
+        (click)="closeMobileSidebar()"
+        title="Settings"
+      >
+        <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        @if (!isSidebarCollapsed()) {
+          <span class="nav-label">Settings</span>
+        }
+      </a>
+    </nav>
+
+    <!-- Sidebar Bottom Status -->
+    <div class="sidebar-footer">
+      @if (!isSidebarCollapsed()) {
+        <div class="system-status-pill">
+          <span class="status-dot"></span>
+          <span>REST API Connected</span>
+        </div>
+      }
+      <button 
+        type="button" 
+        class="sidebar-logout-btn" 
+        (click)="logout()" 
+        [title]="'Log out ' + (authService.currentUser()?.email || '')"
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+        @if (!isSidebarCollapsed()) {
+          <span>Log Out</span>
+        }
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN APP CONTAINER (Top Navbar + Page Content) -->
+  <div class="dashboard-main" [class.sidebar-collapsed]="isSidebarCollapsed()">
+    <!-- TOP NAVBAR -->
+    <header class="dashboard-topbar">
+      <div class="topbar-left">
+        <!-- Mobile Sidebar Toggle -->
+        <button 
+          type="button" 
+          class="mobile-toggle-btn" 
+          (click)="toggleMobileSidebar(); $event.stopPropagation()"
+          aria-label="Toggle Sidebar Navigation"
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+
+        <!-- Search Input -->
+        <div class="search-bar-wrapper">
+          <span class="search-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </span>
+          <input 
+            type="text" 
+            [(ngModel)]="searchQuery"
+            placeholder="Search stocks, symbols, or assets..." 
+            class="search-input"
+          />
+          <span class="search-shortcut">⌘K</span>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <!-- Theme Toggle -->
+        <button 
+          id="dashboard-theme-toggle"
+          type="button" 
+          class="icon-btn theme-toggle-btn" 
+          (click)="toggleTheme()" 
+          [title]="'Switch to ' + (currentTheme() === 'dark' ? 'light' : 'dark') + ' theme'"
+        >
+          @if (currentTheme() === 'dark') {
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          } @else {
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          }
+        </button>
+
+        <!-- Notifications Dropdown Trigger -->
+        <div class="dropdown-wrapper">
+          <button 
+            type="button" 
+            class="icon-btn notification-btn" 
+            (click)="toggleNotifications(); $event.stopPropagation()"
+            title="Notifications"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span class="notif-badge"></span>
+          </button>
+
+          @if (isNotificationsOpen()) {
+            <div class="dropdown-panel notif-panel" (click)="$event.stopPropagation()">
+              <div class="dropdown-header">
+                <span class="dropdown-title">Notifications</span>
+                <span class="dropdown-badge">0 New</span>
+              </div>
+              <div class="dropdown-body empty-notifs">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
+                <p class="empty-notifs-text">No unread notifications.</p>
+                <span class="empty-notifs-sub">Price triggers and execution alerts will appear here.</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- User Profile Menu -->
+        <div class="dropdown-wrapper">
+          <button 
+            type="button" 
+            class="user-menu-btn" 
+            (click)="toggleProfileMenu(); $event.stopPropagation()"
+            id="dashboard-user-btn"
+          >
+            <div class="user-avatar-circle">
+              {{ authService.currentUser()?.name?.charAt(0)?.toUpperCase() || 'U' }}
+            </div>
+            <div class="user-name-text">
+              <span class="name-val">{{ authService.currentUser()?.name || 'User' }}</span>
+              <span class="role-tag">{{ authService.currentUser()?.role || 'ROLE_USER' }}</span>
+            </div>
+            <svg class="chevron-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+
+          @if (isProfileMenuOpen()) {
+            <div class="dropdown-panel profile-panel" (click)="$event.stopPropagation()">
+              <div class="profile-panel-header">
+                <div class="user-avatar-circle lg">
+                  {{ authService.currentUser()?.name?.charAt(0)?.toUpperCase() || 'U' }}
+                </div>
+                <div class="profile-header-info">
+                  <span class="user-full-name">{{ authService.currentUser()?.name }}</span>
+                  <span class="user-email-text">{{ authService.currentUser()?.email }}</span>
+                </div>
+              </div>
+
+              <div class="dropdown-divider"></div>
+
+              <a routerLink="/dashboard/settings" class="menu-item" (click)="closeDropdowns()">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                <span>Account Settings</span>
+              </a>
+
+              <a routerLink="/" class="menu-item" (click)="closeDropdowns()">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                </svg>
+                <span>Landing Page</span>
+              </a>
+
+              <div class="dropdown-divider"></div>
+
+              <button type="button" class="menu-item logout-item" (click)="logout()">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Log Out</span>
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT OUTLET -->
+    <main class="dashboard-content-area">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
