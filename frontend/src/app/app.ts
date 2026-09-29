@@ -1,26 +1,22 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet } from '@angular/router';
-import { HealthService } from './services/health.service';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from './services/auth.service';
-import { HealthStatus } from './models/health.model';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet],
+  imports: [CommonModule, RouterOutlet, RouterLink],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
 export class App implements OnInit {
-  private readonly healthService = inject(HealthService);
   readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   readonly title = signal('Portfolio StockMarket');
-  readonly healthStatus = signal<HealthStatus | null>(null);
   readonly errorMessage = signal<string | null>(null);
   readonly oauthMessage = signal<string | null>(null);
-  readonly isLoading = signal<boolean>(false);
 
   readonly currentTheme = signal<'dark' | 'light'>('dark');
   readonly isMobileMenuOpen = signal<boolean>(false);
@@ -66,13 +62,26 @@ export class App implements OnInit {
     this.isMobileMenuOpen.set(false);
   }
 
-  scrollToSection(id: string): void {
+  navigateAndScroll(sectionId: string): void {
     this.closeMobileMenu();
-    if (typeof document !== 'undefined') {
-      const element = document.getElementById(id);
-      if (element && typeof element.scrollIntoView === 'function') {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (this.router.url === '/' || this.router.url.startsWith('/#')) {
+      if (typeof document !== 'undefined') {
+        const element = document.getElementById(sectionId);
+        if (element && typeof element.scrollIntoView === 'function') {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       }
+    } else {
+      this.router.navigate(['/']).then(() => {
+        setTimeout(() => {
+          if (typeof document !== 'undefined') {
+            const element = document.getElementById(sectionId);
+            if (element && typeof element.scrollIntoView === 'function') {
+              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }
+        }, 150);
+      });
     }
   }
 
@@ -112,23 +121,5 @@ export class App implements OnInit {
   logout(): void {
     this.authService.logout();
     this.oauthMessage.set(null);
-  }
-
-  checkBackendHealth(): void {
-    this.isLoading.set(true);
-    this.errorMessage.set(null);
-
-    this.healthService.getHealth().subscribe({
-      next: (status) => {
-        this.healthStatus.set(status);
-        this.isLoading.set(false);
-      },
-      error: (err) => {
-        this.errorMessage.set(
-          err.message || 'Unable to connect to Spring Boot backend at configured API URL.'
-        );
-        this.isLoading.set(false);
-      }
-    });
   }
 }

@@ -60,6 +60,47 @@ describe('AuthService', () => {
     expect(service.currentUser()).toBeNull();
   });
 
+  it('should login via api and set session upon success', () => {
+    service.login({ email: 'trader@example.com', password: 'password123' }).subscribe((res) => {
+      expect(res.token).toBe('mock-jwt-token');
+      expect(service.currentUser()?.email).toBe('trader@example.com');
+      expect(localStorage.getItem('token')).toBe('mock-jwt-token');
+    });
+
+    const req = httpTesting.expectOne('http://localhost:8080/api/auth/login');
+    expect(req.request.method).toBe('POST');
+    req.flush({
+      token: 'mock-jwt-token',
+      id: 5,
+      name: 'Trader Joe',
+      email: 'trader@example.com',
+      role: 'ROLE_USER',
+      message: 'Authentication successful'
+    });
+  });
+
+  it('should register via api', () => {
+    service.register({
+      name: 'New User',
+      email: 'new@example.com',
+      password: 'password123',
+      confirmPassword: 'password123'
+    }).subscribe((res) => {
+      expect(res.id).toBe(12);
+      expect(res.name).toBe('New User');
+    });
+
+    const req = httpTesting.expectOne('http://localhost:8080/api/auth/register');
+    expect(req.request.method).toBe('POST');
+    req.flush({
+      id: 12,
+      name: 'New User',
+      email: 'new@example.com',
+      role: 'ROLE_USER',
+      message: 'User registered successfully'
+    });
+  });
+
   it('should clear session on logout', () => {
     const user: AuthUser = {
       email: 'user@google.com',

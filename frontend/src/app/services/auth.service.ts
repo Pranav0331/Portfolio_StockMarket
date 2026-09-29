@@ -2,14 +2,9 @@ import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { AuthUser, LoginRequest, RegisterRequest, AuthResponse } from '../models/auth.model';
 
-export interface AuthUser {
-  id?: number;
-  name?: string;
-  email?: string;
-  role?: string;
-  token?: string;
-}
+export type { AuthUser, LoginRequest, RegisterRequest, AuthResponse };
 
 @Injectable({
   providedIn: 'root'
@@ -25,6 +20,7 @@ export class AuthService {
   }
 
   private loadStoredUser(): void {
+    if (typeof localStorage === 'undefined') return;
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
     if (token && userStr) {
@@ -37,8 +33,31 @@ export class AuthService {
     }
   }
 
+  login(credentials: LoginRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.baseUrl}/auth/login`, credentials).pipe(
+      tap((res) => {
+        if (res.token) {
+          const user: AuthUser = {
+            id: res.id,
+            name: res.name,
+            email: res.email,
+            role: res.role || 'ROLE_USER',
+            token: res.token
+          };
+          this.setSession(user);
+        }
+      })
+    );
+  }
+
+  register(request: RegisterRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.baseUrl}/auth/register`, request);
+  }
+
   loginWithGoogle(): void {
-    window.location.href = `${this.backendUrl}/oauth2/authorization/google`;
+    if (typeof window !== 'undefined') {
+      window.location.href = `${this.backendUrl}/oauth2/authorization/google`;
+    }
   }
 
   handleOAuthCallback(params: { token?: string; id?: string; email?: string; name?: string; role?: string; error?: string }): boolean {
@@ -60,16 +79,20 @@ export class AuthService {
   }
 
   setSession(user: AuthUser): void {
-    if (user.token) {
-      localStorage.setItem('token', user.token);
+    if (typeof localStorage !== 'undefined') {
+      if (user.token) {
+        localStorage.setItem('token', user.token);
+      }
+      localStorage.setItem('user', JSON.stringify(user));
     }
-    localStorage.setItem('user', JSON.stringify(user));
     this.currentUser.set(user);
   }
 
   clearSession(): void {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
     this.currentUser.set(null);
   }
 
