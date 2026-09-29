@@ -85,6 +85,13 @@ export class DashboardLayoutComponent implements OnInit {
     this.isNotificationsOpen.set(false);
   }
 
+  onSearch(): void {
+    const q = this.searchQuery().trim();
+    if (q) {
+      this.router.navigate(['/dashboard/market'], { queryParams: { symbol: q } });
+    }
+  }
+
   logout(): void {
     this.closeDropdowns();
     this.authService.logout();

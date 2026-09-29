@@ -17,6 +17,7 @@ export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
   { path: 'signup', component: SignupComponent },
+  { path: 'market', redirectTo: 'dashboard/market', pathMatch: 'full' },
   {
     path: 'dashboard',
     component: DashboardLayoutComponent,

@@ -1,0 +1,294 @@
+<div class="market-page-view">
+  <!-- Page Header -->
+  <div class="market-header-row">
+    <div>
+      <div class="header-badge">
+        <span class="pulse-dot"></span>
+        <span>Real-Time Market Telemetry</span>
+      </div>
+      <h1 class="market-heading">Market Intelligence</h1>
+      <p class="market-sub">Search global exchanges and inspect real-time live stock quotes powered by Alpha Vantage.</p>
+    </div>
+  </div>
+
+  <!-- Search & Autocomplete Section -->
+  <div class="search-section-card">
+    <form class="search-form" (ngSubmit)="onSearchSubmit()">
+      <div class="search-input-wrapper">
+        <span class="search-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </span>
+        <input
+          id="stock-market-search-input"
+          type="text"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="onSearchInput($event)"
+          name="searchQuery"
+          placeholder="Search ticker symbol or company (e.g. RELIANCE.BSE, IBM, AAPL, MSFT)..."
+          class="market-search-input"
+          autocomplete="off"
+        />
+        @if (isSearching()) {
+          <div class="search-spinner" title="Searching symbols..."></div>
+        } @else if (searchQuery()) {
+          <button type="button" class="clear-btn" (click)="clearSearch()" title="Clear search">
+            ✕
+          </button>
+        }
+      </div>
+      <button type="submit" class="btn btn-primary search-submit-btn" [disabled]="!searchQuery() || isLoadingQuote()">
+        @if (isLoadingQuote()) {
+          <span class="btn-spinner"></span>
+          <span>Fetching...</span>
+        } @else {
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <span>Get Quote</span>
+        }
+      </button>
+    </form>
+
+    <!-- Autocomplete Results Dropdown -->
+    @if (showDropdown() && searchResults().length > 0) {
+      <div class="autocomplete-dropdown">
+        <div class="dropdown-header">Matching Symbols & Exchanges</div>
+        <div class="dropdown-list">
+          @for (item of searchResults(); track item.symbol) {
+            <button type="button" class="dropdown-item" (click)="selectSearchResult(item)">
+              <div class="item-symbol-col">
+                <span class="item-symbol">{{ item.symbol }}</span>
+                <span class="item-type-badge">{{ item.type }}</span>
+              </div>
+              <div class="item-meta-col">
+                <span class="item-name">{{ item.name }}</span>
+                <span class="item-region">{{ item.region }} · {{ item.currency }}</span>
+              </div>
+            </button>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Quick Search Suggestions / Chips -->
+    <div class="quick-chips-row">
+      <span class="chips-label">Popular Symbols:</span>
+      <div class="chips-list">
+        @for (ticker of quickTickers; track ticker.symbol) {
+          <button
+            type="button"
+            class="ticker-chip"
+            [class.active]="searchQuery() === ticker.symbol"
+            (click)="selectQuickTicker(ticker)"
+          >
+            <span class="chip-sym">{{ ticker.symbol }}</span>
+            <span class="chip-name">{{ ticker.name }}</span>
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT AREA -->
+  <div class="market-content-body">
+    <!-- 1. LOADING SKELETON STATE -->
+    @if (isLoadingQuote()) {
+      <div class="quote-card skeleton-card">
+        <div class="skeleton-header">
+          <div class="skeleton-line sym"></div>
+          <div class="skeleton-line price"></div>
+        </div>
+        <div class="skeleton-divider"></div>
+        <div class="skeleton-grid">
+          <div class="skeleton-box" *ngFor="let i of [1, 2, 3, 4, 5, 6]"></div>
+        </div>
+      </div>
+    }
+
+    <!-- 2. ERROR STATE -->
+    @else if (errorMessage()) {
+      <div class="glass-panel error-panel" [class.rate-limit-panel]="isRateLimited()">
+        <div class="error-icon-box">
+          @if (isRateLimited()) {
+            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          } @else {
+            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          }
+        </div>
+        <div class="error-info">
+          <h3 class="error-title">{{ isRateLimited() ? 'Market Rate Limit Notice' : 'Market Query Error' }}</h3>
+          <p class="error-desc">{{ errorMessage() }}</p>
+          <div class="error-actions">
+            @if (searchQuery()) {
+              <button type="button" class="btn btn-primary btn-sm" (click)="fetchQuote(searchQuery())">
+                Retry Query
+              </button>
+            }
+            <button type="button" class="btn btn-outline btn-sm" (click)="clearSearch()">
+              Clear Search
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- 3. REAL STOCK QUOTE CARD -->
+    @else if (currentQuote(); as quote) {
+      <div class="quote-card">
+        <!-- Card Top Bar: Symbol, Name & Trading Day Badge -->
+        <div class="quote-top-bar">
+          <div class="symbol-title-group">
+            <div class="symbol-badge">{{ quote.symbol }}</div>
+            @if (quoteCompanyName()) {
+              <span class="company-name-text">{{ quoteCompanyName() }}</span>
+            }
+          </div>
+          
+          <div class="quote-status-tags">
+            @if (quote.latestTradingDay) {
+              <span class="trading-day-tag">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span>Latest Session: {{ quote.latestTradingDay }}</span>
+              </span>
+            }
+            <span class="live-tag">
+              <span class="live-dot"></span>
+              Live Feed
+            </span>
+          </div>
+        </div>
+
+        <!-- Price Banner -->
+        <div class="price-banner-row">
+          <div class="price-display-box">
+            <span class="currency-symbol">{{ formatCurrencySymbol(quote.symbol) }}</span>
+            <span class="price-value">{{ quote.price | number:'1.2-4' }}</span>
+          </div>
+
+          <div class="change-badge" [class.positive]="quote.change >= 0" [class.negative]="quote.change < 0">
+            @if (quote.change >= 0) {
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+            } @else {
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            }
+            <span class="change-amount">
+              {{ quote.change >= 0 ? '+' : '' }}{{ quote.change | number:'1.2-4' }}
+            </span>
+            <span class="change-percent">({{ quote.changePercent }})</span>
+          </div>
+        </div>
+
+        <!-- Day's Price Range Bar (if high and low exist) -->
+        @if (quote.high && quote.low) {
+          <div class="day-range-wrapper">
+            <div class="range-labels">
+              <span class="range-low">Low: {{ formatCurrencySymbol(quote.symbol) }}{{ quote.low | number:'1.2-2' }}</span>
+              <span class="range-center">Day's Range</span>
+              <span class="range-high">High: {{ formatCurrencySymbol(quote.symbol) }}{{ quote.high | number:'1.2-2' }}</span>
+            </div>
+            <div class="range-track">
+              <div class="range-fill" [style.width.%]="getDayProgressPercent(quote)"></div>
+              <div class="range-thumb" [style.left.%]="getDayProgressPercent(quote)"></div>
+            </div>
+          </div>
+        }
+
+        <!-- 6 Key Statistics Grid -->
+        <div class="quote-stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">Previous Close</span>
+            <span class="stat-value">
+              {{ quote.previousClose != null ? (formatCurrencySymbol(quote.symbol) + (quote.previousClose | number:'1.2-4')) : '—' }}
+            </span>
+          </div>
+
+          <div class="stat-card">
+            <span class="stat-label">Open</span>
+            <span class="stat-value">
+              {{ quote.open != null ? (formatCurrencySymbol(quote.symbol) + (quote.open | number:'1.2-4')) : '—' }}
+            </span>
+          </div>
+
+          <div class="stat-card">
+            <span class="stat-label">Day's High</span>
+            <span class="stat-value highlight-high">
+              {{ quote.high != null ? (formatCurrencySymbol(quote.symbol) + (quote.high | number:'1.2-4')) : '—' }}
+            </span>
+          </div>
+
+          <div class="stat-card">
+            <span class="stat-label">Day's Low</span>
+            <span class="stat-value highlight-low">
+              {{ quote.low != null ? (formatCurrencySymbol(quote.symbol) + (quote.low | number:'1.2-4')) : '—' }}
+            </span>
+          </div>
+
+          <div class="stat-card">
+            <span class="stat-label">Volume</span>
+            <span class="stat-value">
+              {{ quote.volume != null ? (quote.volume | number) : '—' }}
+            </span>
+          </div>
+
+          <div class="stat-card">
+            <span class="stat-label">Data Provider</span>
+            <div class="provider-pill">
+              <span class="provider-dot"></span>
+              <span>Alpha Vantage</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- 4. EMPTY INITIAL STATE -->
+    @else {
+      <div class="glass-panel empty-market-panel">
+        <div class="empty-icon-circle">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M3 3v18h18"></path>
+            <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+          </svg>
+        </div>
+        <h3 class="empty-title">Ready for Live Market Exploration</h3>
+        <p class="empty-desc">
+          Search for any stock symbol above or click one of the popular tickers to query live pricing, session ranges, and trading telemetry from Alpha Vantage.
+        </p>
+        <div class="empty-suggestions">
+          <span class="suggestion-hint">Try searching:</span>
+          <div class="suggestion-buttons">
+            <button type="button" class="btn btn-outline btn-sm" (click)="selectQuickTicker(quickTickers[0])">
+              RELIANCE.BSE
+            </button>
+            <button type="button" class="btn btn-outline btn-sm" (click)="selectQuickTicker(quickTickers[1])">
+              IBM
+            </button>
+            <button type="button" class="btn btn-outline btn-sm" (click)="selectQuickTicker(quickTickers[2])">
+              AAPL
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>

@@ -244,6 +244,7 @@
           <input 
             type="text" 
             [(ngModel)]="searchQuery"
+            (keyup.enter)="onSearch()"
             placeholder="Search stocks, symbols, or assets..." 
             class="search-input"
           />

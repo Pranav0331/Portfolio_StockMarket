@@ -1,55 +1,192 @@
-import { Component } from '@angular/core';
+import { Component, inject, OnInit, signal, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { MarketService } from '../../../services/market.service';
+import { StockQuote, StockSearchItem } from '../../../models/market.model';
 
 @Component({
   selector: 'app-market',
   standalone: true,
-  imports: [CommonModule],
-  template: `
-    <div class="page-container">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">Market Intelligence</h1>
-          <p class="page-sub">Global stock exchanges, indices telemetry, and sector analysis.</p>
-        </div>
-      </div>
-
-      <div class="glass-panel">
-        <div class="empty-state">
-          <div class="empty-icon-box">
-            <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
-              <path d="M3 3v18h18"></path>
-              <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
-            </svg>
-          </div>
-          <h3 class="empty-title">Market Telemetry Ready</h3>
-          <p class="empty-desc">
-            No live data feed connected. Configure your market data provider to stream real-time price feeds and index movements.
-          </p>
-        </div>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .page-container { display: flex; flex-direction: column; gap: 1.5rem; }
-    .page-title { font-size: 1.75rem; font-weight: 800; color: var(--text-primary); }
-    .page-sub { font-size: 0.92rem; color: var(--text-secondary); }
-    .glass-panel {
-      background: var(--bg-glass-card);
-      backdrop-filter: var(--glass-blur);
-      border: 1px solid var(--border-glass);
-      border-radius: var(--radius-lg);
-      padding: 3rem 1.5rem;
-    }
-    .empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.75rem; }
-    .empty-icon-box {
-      width: 64px; height: 64px; border-radius: 50%;
-      background: var(--bg-surface-elevated);
-      display: flex; align-items: center; justify-content: center;
-      border: 1px solid var(--border-subtle);
-    }
-    .empty-title { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); }
-    .empty-desc { font-size: 0.88rem; color: var(--text-secondary); max-width: 420px; line-height: 1.5; }
-  `]
+  imports: [CommonModule, FormsModule],
+  templateUrl: './market.html',
+  styleUrl: './market.css'
 })
-export class MarketComponent {}
+export class MarketComponent implements OnInit, OnDestroy {
+  private readonly marketService = inject(MarketService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
+  readonly searchQuery = signal<string>('');
+  readonly isSearching = signal<boolean>(false);
+  readonly isLoadingQuote = signal<boolean>(false);
+  readonly searchResults = signal<StockSearchItem[]>([]);
+  readonly currentQuote = signal<StockQuote | null>(null);
+  readonly quoteCompanyName = signal<string | null>(null);
+  readonly errorMessage = signal<string | null>(null);
+  readonly isRateLimited = signal<boolean>(false);
+  readonly showDropdown = signal<boolean>(false);
+
+  // Popular tickers to quickly query real data
+  readonly quickTickers = [
+    { symbol: 'RELIANCE.BSE', name: 'Reliance Industries' },
+    { symbol: 'IBM', name: 'IBM Corp.' },
+    { symbol: 'AAPL', name: 'Apple Inc.' },
+    { symbol: 'MSFT', name: 'Microsoft Corp.' },
+    { symbol: 'GOOGL', name: 'Alphabet Inc.' },
+    { symbol: 'TSLA', name: 'Tesla Inc.' },
+    { symbol: 'INFY.BSE', name: 'Infosys Ltd.' },
+    { symbol: 'TCS.BSE', name: 'Tata Consultancy' }
+  ];
+
+  private readonly searchSubject = new Subject<string>();
+  private searchSubscription?: Subscription;
+  private queryParamSub?: Subscription;
+
+  ngOnInit(): void {
+    // Setup debounced search for keyword suggestions
+    this.searchSubscription = this.searchSubject.pipe(
+      debounceTime(350),
+      distinctUntilChanged(),
+      switchMap((keywords) => {
+        if (!keywords || keywords.trim().length < 2) {
+          this.isSearching.set(false);
+          this.searchResults.set([]);
+          this.showDropdown.set(false);
+          return [];
+        }
+        this.isSearching.set(true);
+        return this.marketService.searchSymbols(keywords);
+      })
+    ).subscribe({
+      next: (res) => {
+        this.isSearching.set(false);
+        if (res && res.bestMatches) {
+          this.searchResults.set(res.bestMatches);
+          this.showDropdown.set(res.bestMatches.length > 0);
+        } else {
+          this.searchResults.set([]);
+          this.showDropdown.set(false);
+        }
+      },
+      error: () => {
+        this.isSearching.set(false);
+        this.searchResults.set([]);
+      }
+    });
+
+    // Handle query params e.g. /dashboard/market?symbol=RELIANCE.BSE
+    this.queryParamSub = this.route.queryParams.subscribe((params) => {
+      const symbolParam = params['symbol'] || params['q'];
+      if (symbolParam) {
+        this.searchQuery.set(symbolParam);
+        this.fetchQuote(symbolParam);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.searchSubscription?.unsubscribe();
+    this.queryParamSub?.unsubscribe();
+  }
+
+  onSearchInput(value: string): void {
+    this.searchQuery.set(value);
+    if (!value || value.trim().length === 0) {
+      this.showDropdown.set(false);
+      this.searchResults.set([]);
+      return;
+    }
+    this.searchSubject.next(value);
+  }
+
+  onSearchSubmit(): void {
+    const query = this.searchQuery().trim();
+    if (!query) return;
+    this.showDropdown.set(false);
+    this.fetchQuote(query);
+  }
+
+  selectSearchResult(item: StockSearchItem): void {
+    this.searchQuery.set(item.symbol);
+    this.showDropdown.set(false);
+    this.fetchQuote(item.symbol, item.name);
+  }
+
+  selectQuickTicker(ticker: { symbol: string; name: string }): void {
+    this.searchQuery.set(ticker.symbol);
+    this.showDropdown.set(false);
+    this.fetchQuote(ticker.symbol, ticker.name);
+  }
+
+  fetchQuote(symbol: string, companyName?: string): void {
+    const cleanSymbol = symbol.trim().toUpperCase();
+    if (!cleanSymbol) return;
+
+    this.isLoadingQuote.set(true);
+    this.errorMessage.set(null);
+    this.isRateLimited.set(false);
+    this.quoteCompanyName.set(companyName || null);
+
+    this.marketService.getQuote(cleanSymbol).subscribe({
+      next: (quote) => {
+        this.isLoadingQuote.set(false);
+        this.currentQuote.set(quote);
+        if (quote.name) {
+          this.quoteCompanyName.set(quote.name);
+        }
+      },
+      error: (err) => {
+        this.isLoadingQuote.set(false);
+        this.currentQuote.set(null);
+        if (err.status === 429) {
+          this.isRateLimited.set(true);
+          this.errorMessage.set(
+            'Alpha Vantage API standard rate limit reached (25 requests/day or 5/min). Please try again shortly or configure an upgraded API key.'
+          );
+        } else if (err.status === 404) {
+          this.errorMessage.set(`No market quote found for symbol "${cleanSymbol}". Please verify the ticker symbol.`);
+        } else if (err.status === 504) {
+          this.errorMessage.set('Market data request timed out. Please check your connection and try again.');
+        } else {
+          this.errorMessage.set(
+            err.error?.message || err.message || 'Unable to fetch real-time market data. Please try again.'
+          );
+        }
+      }
+    });
+  }
+
+  clearSearch(): void {
+    this.searchQuery.set('');
+    this.searchResults.set([]);
+    this.showDropdown.set(false);
+    this.currentQuote.set(null);
+    this.errorMessage.set(null);
+    this.isRateLimited.set(false);
+  }
+
+  get isPositiveChange(): boolean {
+    const q = this.currentQuote();
+    if (!q) return false;
+    return q.change >= 0;
+  }
+
+  formatCurrencySymbol(symbol: string): string {
+    if (symbol.endsWith('.BSE') || symbol.endsWith('.NSE')) {
+      return '₹';
+    }
+    return '$';
+  }
+
+  getDayProgressPercent(quote: StockQuote): number {
+    if (!quote.high || !quote.low || quote.high === quote.low || !quote.price) {
+      return 50;
+    }
+    const range = quote.high - quote.low;
+    const progress = ((quote.price - quote.low) / range) * 100;
+    return Math.min(Math.max(progress, 0), 100);
+  }
+}
