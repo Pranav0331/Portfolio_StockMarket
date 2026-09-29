@@ -1,6 +1,7 @@
 package com.portfolio.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.portfolio.entity.enums.AuthProvider;
 import com.portfolio.entity.enums.UserRole;
 import com.portfolio.entity.enums.UserStatus;
 import jakarta.persistence.*;
@@ -41,6 +42,13 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private UserStatus status = UserStatus.ACTIVE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 50)
+    private AuthProvider provider = AuthProvider.LOCAL;
+
+    @Column(name = "provider_id")
+    private String providerId;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -123,6 +131,22 @@ public class User {
 
     public void setStatus(UserStatus status) {
         this.status = status;
+    }
+
+    public AuthProvider getProvider() {
+        return provider;
+    }
+
+    public void setProvider(AuthProvider provider) {
+        this.provider = provider;
+    }
+
+    public String getProviderId() {
+        return providerId;
+    }
+
+    public void setProviderId(String providerId) {
+        this.providerId = providerId;
     }
 
     public Instant getCreatedAt() {

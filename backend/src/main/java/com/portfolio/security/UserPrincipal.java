@@ -5,11 +5,13 @@ import com.portfolio.entity.enums.UserStatus;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 
-public class UserPrincipal implements UserDetails {
+public class UserPrincipal implements UserDetails, OAuth2User {
 
     private final Long id;
     private final String email;
@@ -17,6 +19,7 @@ public class UserPrincipal implements UserDetails {
     private final String password;
     private final Collection<? extends GrantedAuthority> authorities;
     private final boolean active;
+    private Map<String, Object> attributes;
 
     public UserPrincipal(Long id, String email, String fullName, String password,
                          Collection<? extends GrantedAuthority> authorities, boolean active) {
@@ -42,6 +45,12 @@ public class UserPrincipal implements UserDetails {
         );
     }
 
+    public static UserPrincipal create(User user, Map<String, Object> attributes) {
+        UserPrincipal userPrincipal = UserPrincipal.create(user);
+        userPrincipal.setAttributes(attributes);
+        return userPrincipal;
+    }
+
     public Long getId() {
         return id;
     }
@@ -52,6 +61,20 @@ public class UserPrincipal implements UserDetails {
 
     public String getFullName() {
         return fullName;
+    }
+
+    public void setAttributes(Map<String, Object> attributes) {
+        this.attributes = attributes;
+    }
+
+    @Override
+    public Map<String, Object> getAttributes() {
+        return attributes;
+    }
+
+    @Override
+    public String getName() {
+        return fullName != null ? fullName : email;
     }
 
     @Override

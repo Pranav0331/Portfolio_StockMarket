@@ -1,7 +1,8 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { HealthService } from './services/health.service';
+import { AuthService } from './services/auth.service';
 import { HealthStatus } from './models/health.model';
 
 @Component({
@@ -11,13 +12,57 @@ import { HealthStatus } from './models/health.model';
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
-export class App {
+export class App implements OnInit {
   private readonly healthService = inject(HealthService);
+  readonly authService = inject(AuthService);
 
   readonly title = signal('Portfolio StockMarket');
   readonly healthStatus = signal<HealthStatus | null>(null);
   readonly errorMessage = signal<string | null>(null);
+  readonly oauthMessage = signal<string | null>(null);
   readonly isLoading = signal<boolean>(false);
+
+  ngOnInit(): void {
+    this.checkOAuthCallback();
+  }
+
+  private checkOAuthCallback(): void {
+    if (typeof window !== 'undefined' && window.location.search) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      const email = urlParams.get('email');
+      const name = urlParams.get('name');
+      const role = urlParams.get('role');
+      const id = urlParams.get('id');
+      const error = urlParams.get('error');
+
+      if (error) {
+        this.errorMessage.set(`Google Authentication Failed: ${error}`);
+      } else if (token && email) {
+        this.authService.handleOAuthCallback({
+          token,
+          id: id || undefined,
+          email,
+          name: name || undefined,
+          role: role || undefined
+        });
+        this.oauthMessage.set(`Successfully authenticated as ${email} via Google OAuth 2.0`);
+        // Clean URL query params
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }
+
+  loginWithGoogle(): void {
+    this.errorMessage.set(null);
+    this.oauthMessage.set(null);
+    this.authService.loginWithGoogle();
+  }
+
+  logout(): void {
+    this.authService.logout();
+    this.oauthMessage.set(null);
+  }
 
   checkBackendHealth(): void {
     this.isLoading.set(true);
