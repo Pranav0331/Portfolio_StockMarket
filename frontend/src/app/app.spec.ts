@@ -30,11 +30,13 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render title', async () => {
+  it('should render brand title and hero headline', async () => {
     const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Portfolio StockMarket');
+    expect(compiled.querySelector('.brand-title')?.textContent).toContain('Portfolio StockMarket');
+    expect(compiled.querySelector('.hero-title')?.textContent).toContain('Smart Portfolio Management');
   });
 
   it('should render Google OAuth login button when not authenticated', async () => {
@@ -45,6 +47,43 @@ describe('App', () => {
     const googleBtn = compiled.querySelector('#google-login-btn');
     expect(googleBtn).toBeTruthy();
     expect(googleBtn?.textContent).toContain('Continue with Google');
+  });
+
+  it('should toggle theme and persist to localStorage', async () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(app.currentTheme()).toBe('dark');
+    app.toggleTheme();
+    expect(app.currentTheme()).toBe('light');
+    expect(localStorage.getItem('portfolio_theme')).toBe('light');
+
+    app.toggleTheme();
+    expect(app.currentTheme()).toBe('dark');
+    expect(localStorage.getItem('portfolio_theme')).toBe('dark');
+  });
+
+  it('should render all 6 feature cards and 3 how-it-works steps', async () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    const featureCards = compiled.querySelectorAll('.feature-card');
+    expect(featureCards.length).toBe(6);
+
+    const featureNames = Array.from(featureCards).map(c => c.querySelector('.feature-name')?.textContent);
+    expect(featureNames).toContain('Portfolio Tracking');
+    expect(featureNames).toContain('Market Monitoring');
+    expect(featureNames).toContain('Watchlist');
+    expect(featureNames).toContain('Trading & Orders');
+    expect(featureNames).toContain('Transactions');
+    expect(featureNames).toContain('Risk & Analysis');
+
+    const stepCards = compiled.querySelectorAll('.step-card');
+    expect(stepCards.length).toBe(3);
   });
 
   it('should render user profile when authenticated', async () => {
@@ -81,4 +120,3 @@ describe('App', () => {
     expect(authSpy).toHaveBeenCalled();
   });
 });
-

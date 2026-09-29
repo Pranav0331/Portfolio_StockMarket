@@ -1,178 +1,719 @@
-<div class="foundation-container">
-  <header class="app-header">
-    <div class="brand-badge">
-      <span class="status-indicator-dot"></span>
-      <span>System Foundation</span>
-    </div>
-    <h1 class="brand-title">{{ title() }}</h1>
-    <p class="brand-subtitle">Angular Frontend + Spring Boot Backend Foundation</p>
-  </header>
+<div class="app-layout">
+  <!-- Dynamic Ambient Glow Backgrounds -->
+  <div class="ambient-glow ambient-glow-top"></div>
+  <div class="ambient-glow ambient-glow-bottom"></div>
+  <div class="grid-overlay"></div>
 
-  <main class="content-grid">
-    <!-- Google OAuth 2.0 Authentication Card -->
-    <div class="card card-glow" id="auth-card">
-      <div class="card-header">
-        <h2 class="card-title">OAuth 2.0 Authentication</h2>
-        <span class="badge">Google OAuth 2.0</span>
-      </div>
+  <!-- 1. TOP NAVBAR -->
+  <header class="navbar" id="navbar">
+    <div class="navbar-container">
+      <!-- Brand / Logo -->
+      <a href="#hero" class="brand-link" (click)="scrollToSection('hero')">
+        <div class="brand-logo-icon">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+            <polyline points="16 7 22 7 22 13"></polyline>
+          </svg>
+        </div>
+        <div class="brand-text-wrapper">
+          <span class="brand-title">{{ title() }}</span>
+        </div>
+      </a>
 
-      <div class="card-body">
-        <p class="card-desc">
-          Sign in securely using your Google account via Spring Security OAuth2 Client.
-        </p>
+      <!-- Desktop Navigation Links -->
+      <nav class="desktop-nav">
+        <button type="button" class="nav-link" (click)="scrollToSection('hero')">Home</button>
+        <button type="button" class="nav-link" (click)="scrollToSection('features')">Features</button>
+        <button type="button" class="nav-link" (click)="scrollToSection('how-it-works')">How It Works</button>
+        <button type="button" class="nav-link" (click)="scrollToSection('system-health')">System & API</button>
+      </nav>
 
+      <!-- Right Side Controls & Actions -->
+      <div class="nav-actions">
+        <!-- Theme Toggle -->
+        <button 
+          id="theme-toggle-btn"
+          type="button" 
+          class="icon-btn theme-toggle" 
+          (click)="toggleTheme()" 
+          [attr.aria-label]="'Switch to ' + (currentTheme() === 'dark' ? 'light' : 'dark') + ' theme'"
+          [title]="'Switch to ' + (currentTheme() === 'dark' ? 'light' : 'dark') + ' theme'"
+        >
+          @if (currentTheme() === 'dark') {
+            <!-- Sun Icon for switching to Light -->
+            <svg class="theme-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          } @else {
+            <!-- Moon Icon for switching to Dark -->
+            <svg class="theme-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          }
+        </button>
+
+        <!-- Authentication States -->
         @if (!authService.currentUser()) {
-          <div class="actions-row">
-            <button 
-              id="google-login-btn"
-              class="btn btn-google" 
-              (click)="loginWithGoogle()"
-            >
-              <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          <button 
+            id="google-login-btn"
+            type="button"
+            class="btn btn-glass-login" 
+            (click)="loginWithGoogle()"
+          >
+            <svg class="google-svg" viewBox="0 0 24 24" width="16" height="16">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            <span>Continue with Google</span>
+          </button>
+
+          <button 
+            type="button"
+            class="btn btn-primary btn-signup" 
+            (click)="loginWithGoogle()"
+          >
+            <span>Sign Up</span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </button>
+        } @else {
+          <!-- Authenticated Profile Pill -->
+          <div class="user-profile-badge" id="auth-user-profile">
+            <div class="user-avatar-circle">
+              {{ authService.currentUser()?.name?.charAt(0)?.toUpperCase() || 'U' }}
+            </div>
+            <div class="user-info-text">
+              <span class="user-name">{{ authService.currentUser()?.name }}</span>
+              <span class="user-email">{{ authService.currentUser()?.email }}</span>
+            </div>
+            <button id="logout-btn" type="button" class="btn-logout" (click)="logout()" title="Log out">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
               </svg>
-              <span>Continue with Google</span>
             </button>
           </div>
-        } @else {
-          <div class="user-profile-box" id="auth-user-profile">
-            <div class="user-profile-header">
-              <div class="user-avatar">
-                {{ authService.currentUser()?.name?.charAt(0)?.toUpperCase() || 'U' }}
-              </div>
-              <div class="user-info">
-                <span class="user-name">{{ authService.currentUser()?.name }}</span>
-                <span class="user-email">{{ authService.currentUser()?.email }}</span>
-              </div>
-              <span class="badge badge-success">{{ authService.currentUser()?.role }}</span>
-            </div>
-            
-            <div class="actions-row user-actions">
-              <button id="logout-btn" class="btn btn-secondary" (click)="logout()">
-                Log Out
-              </button>
-            </div>
-          </div>
         }
 
-        @if (oauthMessage()) {
-          <div class="status-box status-success" id="oauth-success-msg">
-            <div class="status-row">
-              <span class="status-label">OAuth:</span>
-              <span class="status-val">{{ oauthMessage() }}</span>
-            </div>
-          </div>
-        }
-
-        @if (errorMessage() && errorMessage()?.includes('Google')) {
-          <div class="status-box status-error" id="oauth-error-msg">
-            <div class="status-row">
-              <span class="status-label">OAuth Error:</span>
-              <span class="status-val">{{ errorMessage() }}</span>
-            </div>
-          </div>
-        }
+        <!-- Mobile Hamburger Toggle -->
+        <button 
+          type="button" 
+          class="mobile-menu-btn" 
+          (click)="toggleMobileMenu()" 
+          aria-label="Toggle Navigation Menu"
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            @if (!isMobileMenuOpen()) {
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            } @else {
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            }
+          </svg>
+        </button>
       </div>
     </div>
 
-    <!-- Health Check Card -->
-    <div class="card card-glow">
-      <div class="card-header">
-        <h2 class="card-title">Backend REST Communication</h2>
-        <span class="badge">Endpoint: /api/health</span>
+    <!-- Mobile Drawer Navigation -->
+    @if (isMobileMenuOpen()) {
+      <div class="mobile-nav-drawer">
+        <button type="button" class="mobile-nav-item" (click)="scrollToSection('hero')">Home</button>
+        <button type="button" class="mobile-nav-item" (click)="scrollToSection('features')">Features</button>
+        <button type="button" class="mobile-nav-item" (click)="scrollToSection('how-it-works')">How It Works</button>
+        <button type="button" class="mobile-nav-item" (click)="scrollToSection('system-health')">System & API</button>
+        
+        <div class="mobile-drawer-actions">
+          @if (!authService.currentUser()) {
+            <button type="button" class="btn btn-glass-login w-full" (click)="loginWithGoogle()">
+              Continue with Google
+            </button>
+            <button type="button" class="btn btn-primary w-full" (click)="loginWithGoogle()">
+              Sign Up Free
+            </button>
+          } @else {
+            <button type="button" class="btn btn-secondary w-full" (click)="logout()">
+              Log Out ({{ authService.currentUser()?.email }})
+            </button>
+          }
+        </div>
       </div>
-      
-      <div class="card-body">
-        <p class="card-desc">
-          Verify communication between Angular client and Spring Boot REST API.
+    }
+  </header>
+
+  <!-- Notification Banner (OAuth or errors) -->
+  @if (oauthMessage()) {
+    <div class="notification-banner success" id="oauth-success-msg">
+      <div class="notification-content">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+        <span>{{ oauthMessage() }}</span>
+      </div>
+    </div>
+  }
+
+  @if (errorMessage() && errorMessage()?.includes('Google')) {
+    <div class="notification-banner error" id="oauth-error-msg">
+      <div class="notification-content">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span>{{ errorMessage() }}</span>
+      </div>
+    </div>
+  }
+
+  <main class="main-content">
+    <!-- 2. HERO SECTION -->
+    <section class="hero-section" id="hero">
+      <div class="hero-content">
+        <!-- Status Pill -->
+        <div class="hero-badge">
+          <span class="pulse-dot"></span>
+          <span class="hero-badge-text">Next-Gen Portfolio & Market Intelligence</span>
+        </div>
+
+        <!-- Strong Headline -->
+        <h1 class="hero-title">
+          Smart Portfolio Management for 
+          <span class="gradient-text">Intelligent Investors</span>
+        </h1>
+
+        <!-- Professional Description -->
+        <p class="hero-description">
+          Monitor multi-asset holdings, track real-time market movements, evaluate risk exposure, and streamline investment workflows through a unified, high-performance financial operating system.
         </p>
 
-        <div class="actions-row">
-          <button 
-            id="health-check-btn"
-            class="btn btn-primary" 
-            (click)="checkBackendHealth()" 
-            [disabled]="isLoading()"
-          >
-            @if (isLoading()) {
-              <span class="spinner"></span> Checking...
-            } @else {
-              Check Backend Health
-            }
+        <!-- CTA Buttons -->
+        <div class="hero-cta-group">
+          <button type="button" class="btn btn-primary btn-hero-lg" (click)="loginWithGoogle()">
+            <span>Get Started</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </button>
+          
+          <button type="button" class="btn btn-glass-secondary btn-hero-lg" (click)="scrollToSection('features')">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span>Explore Market</span>
           </button>
         </div>
 
-        @if (healthStatus()) {
-          <div class="status-box status-success" id="health-result-success">
-            <div class="status-row">
-              <span class="status-label">Status:</span>
-              <span class="status-val status-badge-ok">{{ healthStatus()?.status }}</span>
+        <!-- Trust Highlights -->
+        <div class="hero-highlights">
+          <div class="highlight-item">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--accent-emerald)" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Institutional-Grade Architecture</span>
+          </div>
+          <div class="highlight-item">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--accent-emerald)" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Multi-Asset Allocation</span>
+          </div>
+          <div class="highlight-item">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--accent-emerald)" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>OAuth 2.0 Security</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Financial Abstract Visual Treatment (No fake market data/prices) -->
+      <div class="hero-visual-wrapper">
+        <div class="glass-visual-card">
+          <!-- Card Header Decoration -->
+          <div class="visual-card-header">
+            <div class="visual-card-title-group">
+              <div class="system-status-indicator"></div>
+              <span class="visual-header-label">PORTFOLIO INTELLIGENCE ENGINE</span>
             </div>
-            <div class="status-row">
-              <span class="status-label">Service:</span>
-              <span class="status-val">{{ healthStatus()?.service }}</span>
+            <span class="visual-badge">Active Engine</span>
+          </div>
+
+          <!-- Abstract Financial Visualization Structure -->
+          <div class="visual-analytics-grid">
+            <!-- Multi-Tier Asset Allocation Geometry Visual -->
+            <div class="visual-tile asset-allocation-tile">
+              <div class="tile-header">
+                <span class="tile-label">Asset Class Distribution</span>
+                <span class="tile-tag">Equities • ETFs • Fixed Income</span>
+              </div>
+              <div class="allocation-ring-container">
+                <div class="allocation-ring-visual">
+                  <div class="ring-core">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    <span class="ring-core-text">Multi-Asset</span>
+                  </div>
+                </div>
+                <div class="allocation-legend">
+                  <div class="legend-row">
+                    <span class="legend-dot dot-indigo"></span>
+                    <span class="legend-text">Equity Securities</span>
+                  </div>
+                  <div class="legend-row">
+                    <span class="legend-dot dot-cyan"></span>
+                    <span class="legend-text">Index ETFs</span>
+                  </div>
+                  <div class="legend-row">
+                    <span class="legend-dot dot-emerald"></span>
+                    <span class="legend-text">Liquid Reserves</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="status-row">
-              <span class="status-label">Message:</span>
-              <span class="status-val">{{ healthStatus()?.message }}</span>
-            </div>
-            <div class="status-row">
-              <span class="status-label">Timestamp:</span>
-              <span class="status-val">{{ healthStatus()?.timestamp }}</span>
+
+            <!-- Risk & Telemetry Visual Nodes -->
+            <div class="visual-subtiles">
+              <div class="visual-tile mini-tile">
+                <div class="mini-tile-icon icon-emerald">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  </svg>
+                </div>
+                <div class="mini-tile-info">
+                  <span class="mini-label">Risk Attribution</span>
+                  <span class="mini-value">Parametric VaR & Beta</span>
+                </div>
+              </div>
+
+              <div class="visual-tile mini-tile">
+                <div class="mini-tile-icon icon-indigo">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                </div>
+                <div class="mini-tile-info">
+                  <span class="mini-label">Latency Optimization</span>
+                  <span class="mini-value">Sub-millisecond Engine</span>
+                </div>
+              </div>
+
+              <div class="visual-tile mini-tile">
+                <div class="mini-tile-icon icon-cyan">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                    <polyline points="17 6 23 6 23 12"></polyline>
+                  </svg>
+                </div>
+                <div class="mini-tile-info">
+                  <span class="mini-label">Market Vectorization</span>
+                  <span class="mini-value">Real-Time Depth Feeds</span>
+                </div>
+              </div>
             </div>
           </div>
-        }
 
-        @if (errorMessage() && !errorMessage()?.includes('Google')) {
-          <div class="status-box status-error" id="health-result-error">
-            <div class="status-row">
-              <span class="status-label">Error:</span>
-              <span class="status-val">{{ errorMessage() }}</span>
+          <!-- Bottom Visual Bar -->
+          <div class="visual-footer-bar">
+            <div class="footer-spec-item">
+              <span class="spec-dot"></span>
+              <span>REST API Connected</span>
+            </div>
+            <div class="footer-spec-item">
+              <span class="spec-dot"></span>
+              <span>Encrypted Data Stores</span>
             </div>
           </div>
-        }
+        </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Stack Architecture Card -->
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">Stack Architecture</h2>
-        <span class="badge badge-neutral">OAuth 2.0 + JWT</span>
+    <!-- 3. FEATURES SECTION -->
+    <section class="section features-section" id="features">
+      <div class="section-header">
+        <div class="section-tag">COMPREHENSIVE CAPABILITIES</div>
+        <h2 class="section-title">Designed for Modern Investment Strategy</h2>
+        <p class="section-subtitle">
+          Everything you need to oversee your positions, manage risk factors, track lifecycle orders, and analyze market trends.
+        </p>
       </div>
-      <div class="card-body">
-        <ul class="specs-list">
-          <li>
-            <span class="spec-name">Frontend</span>
-            <span class="spec-value">Angular 19 / 20+ (Standalone, Signals, RxJS)</span>
-          </li>
-          <li>
-            <span class="spec-name">Backend</span>
-            <span class="spec-value">Spring Boot 3.4 / Java 21+</span>
-          </li>
-          <li>
-            <span class="spec-name">Security</span>
-            <span class="spec-value">Spring Security OAuth2 Client + JWT</span>
-          </li>
-          <li>
-            <span class="spec-name">Persistence</span>
-            <span class="spec-value">Spring Data JPA / Hibernate + MySQL</span>
-          </li>
-          <li>
-            <span class="spec-name">Provider Support</span>
-            <span class="spec-value">LOCAL (Email/Password) + GOOGLE (OAuth 2.0)</span>
-          </li>
-          <li>
-            <span class="spec-name">CORS</span>
-            <span class="spec-value">Configured for http://localhost:4200</span>
-          </li>
-        </ul>
+
+      <div class="features-grid">
+        <!-- Feature 1: Portfolio Tracking -->
+        <div class="feature-card">
+          <div class="feature-icon-box icon-indigo">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+            </svg>
+          </div>
+          <h3 class="feature-name">Portfolio Tracking</h3>
+          <p class="feature-desc">
+            Gain a unified view of your equity positions, diversified asset allocations, benchmark comparisons, and historical performance trajectories without fragmentation.
+          </p>
+          <div class="feature-bullet-list">
+            <span class="feature-bullet">• Consolidated multi-asset holdings</span>
+            <span class="feature-bullet">• Accurate time-weighted performance</span>
+          </div>
+        </div>
+
+        <!-- Feature 2: Market Monitoring -->
+        <div class="feature-card">
+          <div class="feature-icon-box icon-cyan">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"></path>
+              <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+            </svg>
+          </div>
+          <h3 class="feature-name">Market Monitoring</h3>
+          <p class="feature-desc">
+            Stay ahead of macro shifts with continuous market intelligence, index indicators, sector rotation trends, and multi-exchange observability.
+          </p>
+          <div class="feature-bullet-list">
+            <span class="feature-bullet">• Real-time market telemetry</span>
+            <span class="feature-bullet">• Sector & index health indicators</span>
+          </div>
+        </div>
+
+        <!-- Feature 3: Watchlist -->
+        <div class="feature-card">
+          <div class="feature-icon-box icon-emerald">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
+          <h3 class="feature-name">Watchlist</h3>
+          <p class="feature-desc">
+            Build custom watchlist boards with smart triggers, volatility bands, and key movement alerts tailored to your investment mandate.
+          </p>
+          <div class="feature-bullet-list">
+            <span class="feature-bullet">• Dynamic multi-list categorization</span>
+            <span class="feature-bullet">• Custom alert condition thresholds</span>
+          </div>
+        </div>
+
+        <!-- Feature 4: Trading & Orders -->
+        <div class="feature-card">
+          <div class="feature-icon-box icon-rose">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="17 1 21 5 17 9"></polyline>
+              <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+              <polyline points="7 23 3 19 7 15"></polyline>
+              <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+            </svg>
+          </div>
+          <h3 class="feature-name">Trading & Orders</h3>
+          <p class="feature-desc">
+            Track order executions, manage limit/market order states, structure trade sizes, and maintain granular audit logs across all trading activities.
+          </p>
+          <div class="feature-bullet-list">
+            <span class="feature-bullet">• Order lifecycle management</span>
+            <span class="feature-bullet">• Position sizing & allocation audits</span>
+          </div>
+        </div>
+
+        <!-- Feature 5: Transactions -->
+        <div class="feature-card">
+          <div class="feature-icon-box icon-indigo">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+              <line x1="1" y1="10" x2="23" y2="10"></line>
+            </svg>
+          </div>
+          <h3 class="feature-name">Transactions</h3>
+          <p class="feature-desc">
+            A comprehensive financial ledger capturing deposits, withdrawals, dividend distributions, corporate actions, and fee reconciliations.
+          </p>
+          <div class="feature-bullet-list">
+            <span class="feature-bullet">• Immutable audit trails</span>
+            <span class="feature-bullet">• Automated tax-lot accounting</span>
+          </div>
+        </div>
+
+        <!-- Feature 6: Risk & Analysis -->
+        <div class="feature-card">
+          <div class="feature-icon-box icon-cyan">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+          </div>
+          <h3 class="feature-name">Risk & Analysis</h3>
+          <p class="feature-desc">
+            Institutional-grade risk assessment: Value at Risk (VaR), Sharpe ratios, maximum drawdown evaluation, and historical stress scenarios.
+          </p>
+          <div class="feature-bullet-list">
+            <span class="feature-bullet">• Parametric risk metrics & stress testing</span>
+            <span class="feature-bullet">• Correlation & volatility analytics</span>
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
+
+    <!-- 4. HOW IT WORKS SECTION -->
+    <section class="section how-it-works-section" id="how-it-works">
+      <div class="section-header">
+        <div class="section-tag">EFFORTLESS ONBOARDING</div>
+        <h2 class="section-title">How It Works</h2>
+        <p class="section-subtitle">
+          Start streamlining your investment oversight in three simple steps.
+        </p>
+      </div>
+
+      <div class="steps-container">
+        <!-- Step 1 -->
+        <div class="step-card">
+          <div class="step-number-badge">01</div>
+          <div class="step-icon-wrapper">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="8.5" cy="7" r="4"></circle>
+              <line x1="20" y1="8" x2="20" y2="14"></line>
+              <line x1="23" y1="11" x2="17" y2="11"></line>
+            </svg>
+          </div>
+          <h3 class="step-title">Create your account</h3>
+          <p class="step-desc">
+            Sign in securely using Google OAuth 2.0 or enterprise credentials. Your environment is provisioned instantly with zero setup delays.
+          </p>
+        </div>
+
+        <div class="step-connector"></div>
+
+        <!-- Step 2 -->
+        <div class="step-card">
+          <div class="step-number-badge">02</div>
+          <div class="step-icon-wrapper">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+          </div>
+          <h3 class="step-title">Track your investments</h3>
+          <p class="step-desc">
+            Organize your equity positions, categorize asset classes, configure watchlists, and log historical transactions with precision.
+          </p>
+        </div>
+
+        <div class="step-connector"></div>
+
+        <!-- Step 3 -->
+        <div class="step-card">
+          <div class="step-number-badge">03</div>
+          <div class="step-icon-wrapper">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+              <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+            </svg>
+          </div>
+          <h3 class="step-title">Manage your portfolio</h3>
+          <p class="step-desc">
+            Unlock advanced risk attribution, monitor macroeconomic shifts, evaluate trade performance, and optimize returns with clarity.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. SYSTEM HEALTH & ARCHITECTURE SECTION -->
+    <section class="section system-section" id="system-health">
+      <div class="section-header">
+        <div class="section-tag">PLATFORM STATUS & ARCHITECTURE</div>
+        <h2 class="section-title">Robust Full-Stack Foundation</h2>
+        <p class="section-subtitle">
+          Built on a decoupled Spring Boot 3.4 REST backend and an Angular 19+ reactive client.
+        </p>
+      </div>
+
+      <div class="system-grid">
+        <!-- Live Health Check Card -->
+        <div class="card card-glass card-glow">
+          <div class="card-header-clean">
+            <div class="card-title-group">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent-primary)" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+              <h3 class="card-title-text">Backend REST Health</h3>
+            </div>
+            <span class="badge-endpoint">GET /api/health</span>
+          </div>
+
+          <p class="card-description">
+            Verify real-time communication between this Angular frontend client and the active Spring Boot backend service.
+          </p>
+
+          <div class="actions-row">
+            <button 
+              id="health-check-btn"
+              type="button"
+              class="btn btn-primary" 
+              (click)="checkBackendHealth()" 
+              [disabled]="isLoading()"
+            >
+              @if (isLoading()) {
+                <span class="spinner"></span> Checking...
+              } @else {
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+                </svg>
+                <span>Check Backend Health</span>
+              }
+            </button>
+          </div>
+
+          @if (healthStatus()) {
+            <div class="status-result-box status-success" id="health-result-success">
+              <div class="status-row">
+                <span class="status-label">Status:</span>
+                <span class="status-pill status-ok">{{ healthStatus()?.status }}</span>
+              </div>
+              <div class="status-row">
+                <span class="status-label">Service:</span>
+                <span class="status-val">{{ healthStatus()?.service }}</span>
+              </div>
+              <div class="status-row">
+                <span class="status-label">Message:</span>
+                <span class="status-val">{{ healthStatus()?.message }}</span>
+              </div>
+              <div class="status-row">
+                <span class="status-label">Timestamp:</span>
+                <span class="status-val font-mono">{{ healthStatus()?.timestamp }}</span>
+              </div>
+            </div>
+          }
+
+          @if (errorMessage() && !errorMessage()?.includes('Google')) {
+            <div class="status-result-box status-error" id="health-result-error">
+              <div class="status-row">
+                <span class="status-label">Error:</span>
+                <span class="status-val">{{ errorMessage() }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Architecture Specs Card -->
+        <div class="card card-glass">
+          <div class="card-header-clean">
+            <div class="card-title-group">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent-secondary)" stroke-width="2">
+                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                <rect x="9" y="9" width="6" height="6"></rect>
+                <line x1="9" y1="1" x2="9" y2="4"></line>
+                <line x1="15" y1="1" x2="15" y2="4"></line>
+                <line x1="9" y1="20" x2="9" y2="23"></line>
+                <line x1="15" y1="20" x2="15" y2="23"></line>
+                <line x1="20" y1="9" x2="23" y2="9"></line>
+                <line x1="20" y1="14" x2="23" y2="14"></line>
+                <line x1="1" y1="9" x2="4" y2="9"></line>
+                <line x1="1" y1="14" x2="4" y2="14"></line>
+              </svg>
+              <h3 class="card-title-text">Architecture Stack</h3>
+            </div>
+            <span class="badge-endpoint">OAuth 2.0 + JWT</span>
+          </div>
+
+          <ul class="specs-list">
+            <li class="spec-row">
+              <span class="spec-name">Frontend</span>
+              <span class="spec-val">Angular 19+ (Standalone, Signals, Glassmorphism)</span>
+            </li>
+            <li class="spec-row">
+              <span class="spec-name">Backend</span>
+              <span class="spec-val">Spring Boot 3.4 / Java 21+</span>
+            </li>
+            <li class="spec-row">
+              <span class="spec-name">Authentication</span>
+              <span class="spec-val">Spring Security OAuth2 + Google OAuth 2.0 + JWT</span>
+            </li>
+            <li class="spec-row">
+              <span class="spec-name">Database</span>
+              <span class="spec-val">MySQL (Flyway Migrations & JPA)</span>
+            </li>
+            <li class="spec-row">
+              <span class="spec-name">CORS Protection</span>
+              <span class="spec-val">Allowed Origin: http://localhost:4200</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <!-- 6. FOOTER -->
+  <footer class="app-footer" id="footer">
+    <div class="footer-container">
+      <div class="footer-top">
+        <div class="footer-brand-col">
+          <div class="brand-link">
+            <div class="brand-logo-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                <polyline points="16 7 22 7 22 13"></polyline>
+              </svg>
+            </div>
+            <span class="brand-title">{{ title() }}</span>
+          </div>
+          <p class="footer-tagline">
+            Precision investment management, portfolio analytics, and stock market intelligence built for modern investors.
+          </p>
+        </div>
+
+        <div class="footer-links-grid">
+          <div class="footer-col">
+            <span class="footer-heading">Platform</span>
+            <button type="button" class="footer-link" (click)="scrollToSection('hero')">Home</button>
+            <button type="button" class="footer-link" (click)="scrollToSection('features')">Features</button>
+            <button type="button" class="footer-link" (click)="scrollToSection('how-it-works')">How It Works</button>
+            <button type="button" class="footer-link" (click)="scrollToSection('system-health')">System Status</button>
+          </div>
+
+          <div class="footer-col">
+            <span class="footer-heading">Capabilities</span>
+            <span class="footer-static-link">Portfolio Tracking</span>
+            <span class="footer-static-link">Market Monitoring</span>
+            <span class="footer-static-link">Risk & Analysis</span>
+            <span class="footer-static-link">Order Management</span>
+          </div>
+
+          <div class="footer-col">
+            <span class="footer-heading">Security & Tech</span>
+            <span class="footer-static-link">Google OAuth 2.0</span>
+            <span class="footer-static-link">Spring Boot 3.4</span>
+            <span class="footer-static-link">Angular Standalone</span>
+            <span class="footer-static-link">MySQL Persistence</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div class="footer-copyright">
+          © 2026 Portfolio StockMarket. All rights reserved.
+        </div>
+        <div class="footer-status-badge">
+          <span class="status-live-dot"></span>
+          <span>All Systems Operational</span>
+        </div>
+      </div>
+    </div>
+  </footer>
 
   <router-outlet></router-outlet>
 </div>

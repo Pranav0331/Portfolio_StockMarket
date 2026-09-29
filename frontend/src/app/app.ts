@@ -22,8 +22,58 @@ export class App implements OnInit {
   readonly oauthMessage = signal<string | null>(null);
   readonly isLoading = signal<boolean>(false);
 
+  readonly currentTheme = signal<'dark' | 'light'>('dark');
+  readonly isMobileMenuOpen = signal<boolean>(false);
+
   ngOnInit(): void {
+    this.initTheme();
     this.checkOAuthCallback();
+  }
+
+  private initTheme(): void {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('portfolio_theme');
+      if (stored === 'light' || stored === 'dark') {
+        this.setTheme(stored);
+      } else {
+        const prefersLight = typeof window.matchMedia === 'function' && 
+          window.matchMedia('(prefers-color-scheme: light)').matches;
+        this.setTheme(prefersLight ? 'light' : 'dark');
+      }
+    }
+  }
+
+  toggleTheme(): void {
+    const nextTheme = this.currentTheme() === 'dark' ? 'light' : 'dark';
+    this.setTheme(nextTheme);
+  }
+
+  setTheme(theme: 'dark' | 'light'): void {
+    this.currentTheme.set(theme);
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', theme);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('portfolio_theme', theme);
+      }
+    }
+  }
+
+  toggleMobileMenu(): void {
+    this.isMobileMenuOpen.update((open) => !open);
+  }
+
+  closeMobileMenu(): void {
+    this.isMobileMenuOpen.set(false);
+  }
+
+  scrollToSection(id: string): void {
+    this.closeMobileMenu();
+    if (typeof document !== 'undefined') {
+      const element = document.getElementById(id);
+      if (element && typeof element.scrollIntoView === 'function') {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
   }
 
   private checkOAuthCallback(): void {
