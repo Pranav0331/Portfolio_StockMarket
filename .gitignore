@@ -1,0 +1,46 @@
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pkcs12
+*.p12
+*.jks
+credentials.json
+secrets.*
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+
+# Spring Boot / Maven Build
+**/target/
+**/.mvn/wrapper/maven-wrapper.jar
+!**/mvnw
+!**/mvnw.cmd
+!**/.mvn/wrapper/maven-wrapper.properties
+
+# Angular / Node Build
+**/node_modules/
+**/dist/
+**/.angular/
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Logs & Temp
+*.log
+scratch/
+tmp/
+temp/

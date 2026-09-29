@@ -1,0 +1,103 @@
+<div class="foundation-container">
+  <header class="app-header">
+    <div class="brand-badge">
+      <span class="status-indicator-dot"></span>
+      <span>System Foundation</span>
+    </div>
+    <h1 class="brand-title">{{ title() }}</h1>
+    <p class="brand-subtitle">Angular Frontend + Spring Boot Backend Foundation</p>
+  </header>
+
+  <main class="content-grid">
+    <div class="card card-glow">
+      <div class="card-header">
+        <h2 class="card-title">Backend REST Communication</h2>
+        <span class="badge">Endpoint: /api/health</span>
+      </div>
+      
+      <div class="card-body">
+        <p class="card-desc">
+          Verify communication between Angular client and Spring Boot REST API.
+        </p>
+
+        <div class="actions-row">
+          <button 
+            id="health-check-btn"
+            class="btn btn-primary" 
+            (click)="checkBackendHealth()" 
+            [disabled]="isLoading()"
+          >
+            @if (isLoading()) {
+              <span class="spinner"></span> Checking...
+            } @else {
+              Check Backend Health
+            }
+          </button>
+        </div>
+
+        @if (healthStatus()) {
+          <div class="status-box status-success" id="health-result-success">
+            <div class="status-row">
+              <span class="status-label">Status:</span>
+              <span class="status-val status-badge-ok">{{ healthStatus()?.status }}</span>
+            </div>
+            <div class="status-row">
+              <span class="status-label">Service:</span>
+              <span class="status-val">{{ healthStatus()?.service }}</span>
+            </div>
+            <div class="status-row">
+              <span class="status-label">Message:</span>
+              <span class="status-val">{{ healthStatus()?.message }}</span>
+            </div>
+            <div class="status-row">
+              <span class="status-label">Timestamp:</span>
+              <span class="status-val">{{ healthStatus()?.timestamp }}</span>
+            </div>
+          </div>
+        }
+
+        @if (errorMessage()) {
+          <div class="status-box status-error" id="health-result-error">
+            <div class="status-row">
+              <span class="status-label">Error:</span>
+              <span class="status-val">{{ errorMessage() }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Stack Architecture</h2>
+        <span class="badge badge-neutral">Foundation</span>
+      </div>
+      <div class="card-body">
+        <ul class="specs-list">
+          <li>
+            <span class="spec-name">Frontend</span>
+            <span class="spec-value">Angular 19 / 20+ (Standalone, Signals, RxJS)</span>
+          </li>
+          <li>
+            <span class="spec-name">Backend</span>
+            <span class="spec-value">Spring Boot 3.4 / Java 21+</span>
+          </li>
+          <li>
+            <span class="spec-name">Persistence</span>
+            <span class="spec-value">Spring Data JPA / Hibernate + MySQL</span>
+          </li>
+          <li>
+            <span class="spec-name">Error Handling</span>
+            <span class="spec-value">Global REST Controller Advice + Validation</span>
+          </li>
+          <li>
+            <span class="spec-name">CORS</span>
+            <span class="spec-value">Configured for Angular Client</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <router-outlet></router-outlet>
+</div>
