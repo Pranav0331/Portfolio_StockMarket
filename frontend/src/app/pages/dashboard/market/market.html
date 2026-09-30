@@ -238,8 +238,23 @@
             }
           </button>
 
-          <!-- Action Tools: Fit / Reset & Fullscreen -->
+          <!-- Action Tools: Refresh, Fit / Reset & Fullscreen -->
           <div class="tools-btn-group">
+            <button 
+              type="button" 
+              class="tool-btn refresh-btn" 
+              id="chart-refresh-btn" 
+              (click)="refreshCurrentInstrument()" 
+              [class.loading]="isLoadingQuote() || isLoadingCandles()"
+              title="Refresh Real Market Data"
+            >
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6"></path>
+                <path d="M1 20v-6h6"></path>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              <span>Refresh</span>
+            </button>
             <button 
               type="button" 
               class="tool-btn reset-btn" 
@@ -434,6 +449,19 @@
             <button type="button" class="wl-clear-btn" (click)="watchlistSearch.set('')" title="Clear filter">✕</button>
           }
         </div>
+        <button
+          type="button"
+          class="wl-header-refresh-btn"
+          id="watchlist-refresh-btn"
+          (click)="refreshCurrentInstrument()"
+          title="Refresh Watchlist Prices"
+        >
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </button>
       </div>
 
       <!-- 2. Pinned Compact Columns Header Strip -->

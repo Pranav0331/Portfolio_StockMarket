@@ -205,6 +205,10 @@ export class MarketComponent implements OnInit, OnDestroy {
     // Indian Indices (Upstox)
     { symbol: 'NIFTY 50', name: 'Nifty 50 Index', category: 'indices', exchange: 'NSE' },
     { symbol: 'SENSEX', name: 'BSE Sensex Index', category: 'indices', exchange: 'BSE' },
+    { symbol: 'BANK NIFTY', name: 'Nifty Bank Index', category: 'indices', exchange: 'NSE' },
+    { symbol: 'NIFTY IT', name: 'Nifty IT Index', category: 'indices', exchange: 'NSE' },
+    { symbol: 'NIFTY AUTO', name: 'Nifty Auto Index', category: 'indices', exchange: 'NSE' },
+    { symbol: 'NIFTY FIN SERVICE', name: 'Nifty Financial Services Index', category: 'indices', exchange: 'NSE' },
 
     // Indian Stocks (Upstox)
     { symbol: 'RELIANCE', name: 'Reliance Industries Ltd', category: 'stocks', exchange: 'NSE' },
@@ -1252,6 +1256,13 @@ export class MarketComponent implements OnInit, OnDestroy {
     this.dragOverPosition.set(null);
   }
 
+  refreshCurrentInstrument(): void {
+    this.errorMessage.set(null);
+    this.isRateLimited.set(false);
+    this.loadInstrument(this.selectedSymbol());
+    this.refreshWatchlistQuotes();
+  }
+
   retryFetch(): void {
     this.errorMessage.set(null);
     this.isRateLimited.set(false);
@@ -1259,7 +1270,7 @@ export class MarketComponent implements OnInit, OnDestroy {
   }
 
   private refreshWatchlistQuotes(): void {
-    const topSymbols = ['MSFT', 'NVDA', 'EUR/USD', 'BTC/USD'];
+    const topSymbols = ['NIFTY 50', 'BANK NIFTY', 'RELIANCE', 'AAPL', 'EUR/USD', 'BTC/USD'];
     topSymbols.forEach((sym, idx) => {
       setTimeout(() => {
         this.marketService.getQuote(sym).pipe(
@@ -1269,7 +1280,7 @@ export class MarketComponent implements OnInit, OnDestroy {
             this.updateWatchlistItem(sym, quote.price, quote.change, quote.changePercent);
           }
         });
-      }, (idx + 1) * 2000);
+      }, (idx + 1) * 1500);
     });
   }
 

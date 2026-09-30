@@ -90,7 +90,11 @@ public class UpstoxService {
         mapInstrument("NIFTY", "NSE_INDEX|Nifty 50", "Nifty 50", "INDEX");
         mapInstrument("BANKNIFTY", "NSE_INDEX|Nifty Bank", "Nifty Bank", "INDEX");
         mapInstrument("NIFTY BANK", "NSE_INDEX|Nifty Bank", "Nifty Bank", "INDEX");
+        mapInstrument("BANK NIFTY", "NSE_INDEX|Nifty Bank", "Nifty Bank", "INDEX");
         mapInstrument("FINNIFTY", "NSE_INDEX|Nifty Fin Service", "Nifty Financial Services", "INDEX");
+        mapInstrument("NIFTY FIN SERVICE", "NSE_INDEX|Nifty Fin Service", "Nifty Financial Services", "INDEX");
+        mapInstrument("NIFTY IT", "NSE_INDEX|Nifty IT", "Nifty IT", "INDEX");
+        mapInstrument("NIFTY AUTO", "NSE_INDEX|Nifty Auto", "Nifty Auto", "INDEX");
         mapInstrument("MIDCPNIFTY", "NSE_INDEX|NIFTY MID SELECT", "Nifty Midcap Select", "INDEX");
         mapInstrument("SENSEX", "BSE_INDEX|SENSEX", "BSE Sensex", "INDEX");
         mapInstrument("BSESENSEX", "BSE_INDEX|SENSEX", "BSE Sensex", "INDEX");

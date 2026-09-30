@@ -380,7 +380,7 @@ describe('MarketComponent', () => {
     expect(component.stockWatchlist().length).toBe(1);
     expect(component.stockWatchlist()[0].symbol).toBe('AAPL');
 
-    component.watchlistSearch.set('NIFTY');
+    component.watchlistSearch.set('NIFTY 50');
     expect(component.indicesWatchlist().length).toBe(1);
     expect(component.indicesWatchlist()[0].symbol).toBe('NIFTY 50');
 
@@ -397,11 +397,16 @@ describe('MarketComponent', () => {
     const indicesSymbols = component.indicesWatchlist().map(i => i.symbol);
     expect(indicesSymbols).toContain('NIFTY 50');
     expect(indicesSymbols).toContain('SENSEX');
+    expect(indicesSymbols).toContain('BANK NIFTY');
+    expect(indicesSymbols).toContain('NIFTY IT');
+    expect(indicesSymbols).toContain('NIFTY AUTO');
+    expect(indicesSymbols).toContain('NIFTY FIN SERVICE');
 
-    // Ensure STOCKS section does NOT contain NIFTY 50 or SENSEX
+    // Ensure STOCKS section does NOT contain indices
     const stockSymbols = component.stockWatchlist().map(s => s.symbol);
     expect(stockSymbols).not.toContain('NIFTY 50');
     expect(stockSymbols).not.toContain('SENSEX');
+    expect(stockSymbols).not.toContain('BANK NIFTY');
     expect(stockSymbols).toContain('RELIANCE');
     expect(stockSymbols).toContain('TCS');
     expect(stockSymbols).toContain('AAPL');
@@ -414,6 +419,21 @@ describe('MarketComponent', () => {
     const cryptoSymbols = component.cryptoWatchlist().map(c => c.symbol);
     expect(cryptoSymbols).toContain('BTC/USD');
     expect(cryptoSymbols).toContain('ETH/USD');
+  });
+
+  it('should invoke refreshCurrentInstrument when refresh button clicked', async () => {
+    const fixture = TestBed.createComponent(MarketComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const refreshSpy = vi.spyOn(component, 'refreshCurrentInstrument');
+    const compiled = fixture.nativeElement as HTMLElement;
+    const refreshBtn = compiled.querySelector('#chart-refresh-btn') as HTMLButtonElement;
+    expect(refreshBtn).toBeTruthy();
+
+    refreshBtn.click();
+    expect(refreshSpy).toHaveBeenCalled();
   });
 
   it('should render all 4 section headers in DOM when viewing overview', async () => {
