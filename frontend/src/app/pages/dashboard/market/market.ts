@@ -43,7 +43,7 @@ import {
   IndicatorRenderSeries
 } from '../../../utils/indicator-calc';
 
-export type MarketCategory = 'all' | 'stocks' | 'forex' | 'crypto';
+export type MarketCategory = 'all' | 'indices' | 'stocks' | 'forex' | 'crypto';
 export type ChartType = 'candles' | 'line' | 'area';
 export type ChartInterval = '1min' | '5min' | '15min' | '30min' | '1h' | '4h' | '1day';
 export type TimeframeRange = '1D' | '5D' | '1M' | '3M' | '6M' | '1Y' | '5Y' | 'ALL';
@@ -51,7 +51,7 @@ export type TimeframeRange = '1D' | '5D' | '1M' | '3M' | '6M' | '1Y' | '5Y' | 'A
 export interface WatchlistItem {
   symbol: string;
   name: string;
-  category: 'stocks' | 'forex' | 'crypto';
+  category: 'indices' | 'stocks' | 'forex' | 'crypto';
   price?: number | null;
   change?: number | null;
   changePercent?: string | null;
@@ -117,11 +117,20 @@ export class MarketComponent implements OnInit, OnDestroy {
   // Live Hovered Candle / Bar Info
   readonly hoveredBar = signal<HoveredBarData | null>(null);
 
-  // Watchlist Local Search / Filter
+  // Watchlist Local Search / Filter & Section Collapsing
   readonly watchlistSearch = signal<string>('');
+  readonly isIndicesCollapsed = signal<boolean>(false);
   readonly isStocksCollapsed = signal<boolean>(false);
   readonly isForexCollapsed = signal<boolean>(false);
   readonly isCryptoCollapsed = signal<boolean>(false);
+
+  // Resizable Watchlist Pane
+  readonly watchlistWidth = signal<number>(330);
+  readonly isResizingWatchlist = signal<boolean>(false);
+  private resizeStartX = 0;
+  private resizeStartWidth = 330;
+  private boundOnMouseMove?: (e: MouseEvent) => void;
+  private boundOnMouseUp?: (e: MouseEvent) => void;
 
   // Real Candlestick Data Cache
   readonly candleData = signal<Candle[]>([]);
@@ -181,18 +190,23 @@ export class MarketComponent implements OnInit, OnDestroy {
 
   // Popular Market Quick Chips
   readonly popularShortcuts = [
+    { symbol: 'NIFTY 50', name: 'Nifty 50 Index', category: 'indices' as const },
+    { symbol: 'SENSEX', name: 'BSE Sensex Index', category: 'indices' as const },
     { symbol: 'RELIANCE', name: 'Reliance Industries Ltd', category: 'stocks' as const },
     { symbol: 'TCS', name: 'Tata Consultancy Services', category: 'stocks' as const },
-    { symbol: 'NIFTY 50', name: 'Nifty 50 Index', category: 'stocks' as const },
     { symbol: 'AAPL', name: 'Apple Inc.', category: 'stocks' as const },
     { symbol: 'NVDA', name: 'Nvidia Corp.', category: 'stocks' as const },
     { symbol: 'EUR/USD', name: 'Euro / USD', category: 'forex' as const },
     { symbol: 'BTC/USD', name: 'Bitcoin / USD', category: 'crypto' as const }
   ];
 
-  // Watchlist Catalog
+  // Watchlist Catalog (Strictly 4 separate categories: indices, stocks, forex, crypto)
   readonly watchlist = signal<WatchlistItem[]>([
-    // Indian Stocks & Indices (Upstox)
+    // Indian Indices (Upstox)
+    { symbol: 'NIFTY 50', name: 'Nifty 50 Index', category: 'indices', exchange: 'NSE' },
+    { symbol: 'SENSEX', name: 'BSE Sensex Index', category: 'indices', exchange: 'BSE' },
+
+    // Indian Stocks (Upstox)
     { symbol: 'RELIANCE', name: 'Reliance Industries Ltd', category: 'stocks', exchange: 'NSE' },
     { symbol: 'TCS', name: 'Tata Consultancy Services', category: 'stocks', exchange: 'NSE' },
     { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', category: 'stocks', exchange: 'NSE' },
@@ -200,8 +214,6 @@ export class MarketComponent implements OnInit, OnDestroy {
     { symbol: 'ICICIBANK', name: 'ICICI Bank Ltd', category: 'stocks', exchange: 'NSE' },
     { symbol: 'SBIN', name: 'State Bank of India', category: 'stocks', exchange: 'NSE' },
     { symbol: 'TATAMOTORS', name: 'Tata Motors Ltd', category: 'stocks', exchange: 'NSE' },
-    { symbol: 'NIFTY 50', name: 'Nifty 50 Index', category: 'stocks', exchange: 'NSE' },
-    { symbol: 'SENSEX', name: 'BSE Sensex Index', category: 'stocks', exchange: 'BSE' },
 
     // US Stocks (Twelve Data)
     { symbol: 'AAPL', name: 'Apple Inc.', category: 'stocks', exchange: 'NASDAQ' },
@@ -242,10 +254,12 @@ export class MarketComponent implements OnInit, OnDestroy {
     });
   });
 
+  readonly indicesWatchlist = computed(() => this.filteredWatchlist().filter(w => w.category === 'indices'));
   readonly stockWatchlist = computed(() => this.filteredWatchlist().filter(w => w.category === 'stocks'));
   readonly forexWatchlist = computed(() => this.filteredWatchlist().filter(w => w.category === 'forex'));
   readonly cryptoWatchlist = computed(() => this.filteredWatchlist().filter(w => w.category === 'crypto'));
 
+  readonly indicesCount = computed(() => this.watchlist().filter(w => w.category === 'indices').length);
   readonly stockCount = computed(() => this.watchlist().filter(w => w.category === 'stocks').length);
   readonly forexCount = computed(() => this.watchlist().filter(w => w.category === 'forex').length);
   readonly cryptoCount = computed(() => this.watchlist().filter(w => w.category === 'crypto').length);
@@ -340,6 +354,12 @@ export class MarketComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.searchSubscription?.unsubscribe();
     this.queryParamSub?.unsubscribe();
+    if (this.boundOnMouseMove) {
+      document.removeEventListener('mousemove', this.boundOnMouseMove);
+    }
+    if (this.boundOnMouseUp) {
+      document.removeEventListener('mouseup', this.boundOnMouseUp);
+    }
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
@@ -992,6 +1012,11 @@ export class MarketComponent implements OnInit, OnDestroy {
     this.showDropdown.set(false);
   }
 
+  toggleIndicesCollapse(): void {
+    this.isIndicesCollapsed.update(v => !v);
+    this.saveCollapsedState();
+  }
+
   toggleStocksCollapse(): void {
     this.isStocksCollapsed.update(v => !v);
     this.saveCollapsedState();
@@ -1008,20 +1033,88 @@ export class MarketComponent implements OnInit, OnDestroy {
   }
 
   // =========================================================================
+  // RESIZABLE WATCHLIST SIDEBAR
+  // =========================================================================
+
+  startWatchlistResize(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isResizingWatchlist.set(true);
+    this.resizeStartX = event.clientX;
+    this.resizeStartWidth = this.watchlistWidth();
+
+    this.boundOnMouseMove = (e: MouseEvent) => this.onWatchlistMouseMove(e);
+    this.boundOnMouseUp = (e: MouseEvent) => this.onWatchlistMouseUp(e);
+
+    document.addEventListener('mousemove', this.boundOnMouseMove);
+    document.addEventListener('mouseup', this.boundOnMouseUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }
+
+  private onWatchlistMouseMove(event: MouseEvent): void {
+    if (!this.isResizingWatchlist()) return;
+    // Dragging left edge: moving mouse left (decreasing clientX) expands the right sidebar
+    const deltaX = this.resizeStartX - event.clientX;
+    const newWidth = Math.min(Math.max(this.resizeStartWidth + deltaX, 260), 600);
+    this.watchlistWidth.set(newWidth);
+
+    // Keep Lightweight Chart responsive while resizing
+    if (this.chart && this.chartContainerRef()) {
+      const container = this.chartContainerRef()!.nativeElement;
+      this.chart.applyOptions({
+        width: container.clientWidth
+      });
+    }
+  }
+
+  private onWatchlistMouseUp(event: MouseEvent): void {
+    if (!this.isResizingWatchlist()) return;
+    this.isResizingWatchlist.set(false);
+
+    if (this.boundOnMouseMove) {
+      document.removeEventListener('mousemove', this.boundOnMouseMove);
+      this.boundOnMouseMove = undefined;
+    }
+    if (this.boundOnMouseUp) {
+      document.removeEventListener('mouseup', this.boundOnMouseUp);
+      this.boundOnMouseUp = undefined;
+    }
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(MarketComponent.STORAGE_KEY_WATCHLIST_WIDTH, this.watchlistWidth().toString());
+    }
+
+    // Refresh and fit chart layout
+    setTimeout(() => {
+      if (this.chart && this.chartContainerRef()) {
+        const container = this.chartContainerRef()!.nativeElement;
+        this.chart.applyOptions({
+          width: container.clientWidth
+        });
+      }
+    }, 20);
+  }
+
+  // =========================================================================
   // WATCHLIST DRAG & DROP REORDERING AND LOCAL STORAGE PERSISTENCE
   // =========================================================================
 
   private static readonly STORAGE_KEY_WATCHLIST_ORDER = 'portfolio_market_watchlist_order';
   private static readonly STORAGE_KEY_COLLAPSED = 'portfolio_market_watchlist_collapsed';
+  private static readonly STORAGE_KEY_WATCHLIST_WIDTH = 'portfolio_watchlist_width';
 
   private loadSavedWatchlistState(): void {
     if (typeof localStorage === 'undefined') return;
 
     try {
-      // 1. Restore collapsed sections
+      // 1. Restore collapsed sections (4 sections)
       const savedCollapsed = localStorage.getItem(MarketComponent.STORAGE_KEY_COLLAPSED);
       if (savedCollapsed) {
         const parsed = JSON.parse(savedCollapsed);
+        if (parsed.indices !== undefined) this.isIndicesCollapsed.set(parsed.indices);
         if (parsed.stocks !== undefined) this.isStocksCollapsed.set(parsed.stocks);
         if (parsed.forex !== undefined) this.isForexCollapsed.set(parsed.forex);
         if (parsed.crypto !== undefined) this.isCryptoCollapsed.set(parsed.crypto);
@@ -1045,6 +1138,15 @@ export class MarketComponent implements OnInit, OnDestroy {
           this.watchlist.set(currentList);
         }
       }
+
+      // 3. Restore persisted watchlist width
+      const savedWidth = localStorage.getItem(MarketComponent.STORAGE_KEY_WATCHLIST_WIDTH);
+      if (savedWidth) {
+        const parsedWidth = parseInt(savedWidth, 10);
+        if (!isNaN(parsedWidth) && parsedWidth >= 260 && parsedWidth <= 600) {
+          this.watchlistWidth.set(parsedWidth);
+        }
+      }
     } catch (e) {
       console.warn('Failed to load saved watchlist state:', e);
     }
@@ -1064,6 +1166,7 @@ export class MarketComponent implements OnInit, OnDestroy {
     if (typeof localStorage === 'undefined') return;
     try {
       const state = {
+        indices: this.isIndicesCollapsed(),
         stocks: this.isStocksCollapsed(),
         forex: this.isForexCollapsed(),
         crypto: this.isCryptoCollapsed()

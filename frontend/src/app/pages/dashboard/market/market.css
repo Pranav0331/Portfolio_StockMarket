@@ -684,9 +684,10 @@
 }
 
 /* ==========================================================================
-   3. RIGHT COMPACT TRADINGVIEW-STYLE WATCHLIST PANEL (330px wide)
+   3. RIGHT COMPACT TRADINGVIEW-STYLE WATCHLIST PANEL (Resizable right pane)
    ========================================================================== */
 .watchlist-compact-pane {
+  position: relative;
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
@@ -698,6 +699,42 @@
   box-sizing: border-box;
 }
 
+/* Left-edge Resize Handle (TradingView Style) */
+.watchlist-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 8px;
+  cursor: col-resize;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast);
+  user-select: none;
+}
+
+.watchlist-resize-handle:hover,
+.watchlist-compact-pane.is-resizing .watchlist-resize-handle {
+  background: rgba(99, 102, 241, 0.22);
+}
+
+.resize-handle-bar {
+  width: 2px;
+  height: 28px;
+  border-radius: 1px;
+  background: var(--border-subtle);
+  transition: background var(--transition-fast), height var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.watchlist-resize-handle:hover .resize-handle-bar,
+.watchlist-compact-pane.is-resizing .resize-handle-bar {
+  background: var(--accent-primary);
+  height: 48px;
+  box-shadow: 0 0 8px var(--accent-primary);
+}
+
 /* 1. Top Header Bar */
 .watchlist-header-bar {
   display: flex;
@@ -705,6 +742,7 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.45rem 0.65rem;
+  padding-left: 0.85rem;
   border-bottom: 1px solid var(--border-glass);
   background: var(--bg-surface-elevated);
   flex-shrink: 0;

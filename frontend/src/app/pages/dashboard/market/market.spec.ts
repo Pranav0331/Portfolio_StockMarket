@@ -380,14 +380,65 @@ describe('MarketComponent', () => {
     expect(component.stockWatchlist().length).toBe(1);
     expect(component.stockWatchlist()[0].symbol).toBe('AAPL');
 
+    component.watchlistSearch.set('NIFTY');
+    expect(component.indicesWatchlist().length).toBe(1);
+    expect(component.indicesWatchlist()[0].symbol).toBe('NIFTY 50');
+
     component.watchlistSearch.set('non-existent-xyz');
     expect(component.filteredWatchlist().length).toBe(0);
   });
 
-  it('should toggle and persist collapsible sections in localStorage', () => {
+  it('should maintain 4 distinct sections and NOT include NIFTY 50/SENSEX in STOCKS', () => {
     const fixture = TestBed.createComponent(MarketComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
+
+    // Check INDICES section
+    const indicesSymbols = component.indicesWatchlist().map(i => i.symbol);
+    expect(indicesSymbols).toContain('NIFTY 50');
+    expect(indicesSymbols).toContain('SENSEX');
+
+    // Ensure STOCKS section does NOT contain NIFTY 50 or SENSEX
+    const stockSymbols = component.stockWatchlist().map(s => s.symbol);
+    expect(stockSymbols).not.toContain('NIFTY 50');
+    expect(stockSymbols).not.toContain('SENSEX');
+    expect(stockSymbols).toContain('RELIANCE');
+    expect(stockSymbols).toContain('TCS');
+    expect(stockSymbols).toContain('AAPL');
+
+    // Check FOREX and CRYPTO sections
+    const forexSymbols = component.forexWatchlist().map(f => f.symbol);
+    expect(forexSymbols).toContain('EUR/USD');
+    expect(forexSymbols).toContain('GBP/USD');
+
+    const cryptoSymbols = component.cryptoWatchlist().map(c => c.symbol);
+    expect(cryptoSymbols).toContain('BTC/USD');
+    expect(cryptoSymbols).toContain('ETH/USD');
+  });
+
+  it('should render all 4 section headers in DOM when viewing overview', async () => {
+    const fixture = TestBed.createComponent(MarketComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const sectionHeaders = compiled.querySelectorAll('.wl-sec-name');
+    const headerTexts = Array.from(sectionHeaders).map(h => h.textContent?.trim());
+
+    expect(headerTexts).toContain('INDICES');
+    expect(headerTexts).toContain('STOCKS');
+    expect(headerTexts).toContain('FOREX');
+    expect(headerTexts).toContain('CRYPTO');
+  });
+
+  it('should toggle and persist all 4 collapsible sections in localStorage', () => {
+    const fixture = TestBed.createComponent(MarketComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(component.isIndicesCollapsed()).toBe(false);
+    component.toggleIndicesCollapse();
+    expect(component.isIndicesCollapsed()).toBe(true);
 
     expect(component.isStocksCollapsed()).toBe(false);
     component.toggleStocksCollapse();
@@ -398,6 +449,58 @@ describe('MarketComponent', () => {
 
     component.toggleCryptoCollapse();
     expect(component.isCryptoCollapsed()).toBe(true);
+
+    const saved = localStorage.getItem('portfolio_market_watchlist_collapsed');
+    expect(saved).toBeTruthy();
+    const parsed = JSON.parse(saved!);
+    expect(parsed.indices).toBe(true);
+    expect(parsed.stocks).toBe(true);
+    expect(parsed.forex).toBe(true);
+    expect(parsed.crypto).toBe(true);
+  });
+
+  it('should resize watchlist panel horizontally and persist width', () => {
+    const fixture = TestBed.createComponent(MarketComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(component.watchlistWidth()).toBe(330);
+    expect(component.isResizingWatchlist()).toBe(false);
+
+    // Start resize at clientX = 800
+    const mockMouseDown = new MouseEvent('mousedown', { clientX: 800 });
+    component.startWatchlistResize(mockMouseDown);
+    expect(component.isResizingWatchlist()).toBe(true);
+
+    // Move mouse left to clientX = 750 (delta = 50px increase in width)
+    const mockMouseMove = new MouseEvent('mousemove', { clientX: 750 });
+    document.dispatchEvent(mockMouseMove);
+    expect(component.watchlistWidth()).toBe(380);
+
+    // End resize
+    const mockMouseUp = new MouseEvent('mouseup', { clientX: 750 });
+    document.dispatchEvent(mockMouseUp);
+    expect(component.isResizingWatchlist()).toBe(false);
+
+    const savedWidth = localStorage.getItem('portfolio_watchlist_width');
+    expect(savedWidth).toBe('380');
+  });
+
+  it('should clamp resized watchlist width between min and max bounds', () => {
+    const fixture = TestBed.createComponent(MarketComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    // Resize beyond max limit (e.g. clientX = 100 -> delta = 700px)
+    component.startWatchlistResize(new MouseEvent('mousedown', { clientX: 800 }));
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 100 }));
+    expect(component.watchlistWidth()).toBe(600); // Clamped to 600
+
+    // Resize below min limit (e.g. clientX = 1200 -> delta = -400px)
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 1200 }));
+    expect(component.watchlistWidth()).toBe(260); // Clamped to 260
+
+    document.dispatchEvent(new MouseEvent('mouseup'));
   });
 
   it('should reorder watchlist items via drag and drop and persist order', () => {

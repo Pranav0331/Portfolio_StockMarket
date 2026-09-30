@@ -96,6 +96,14 @@
         <button
           type="button"
           class="tab-btn"
+          [class.active]="activeCategory() === 'indices'"
+          (click)="setCategory('indices')"
+        >
+          Indices
+        </button>
+        <button
+          type="button"
+          class="tab-btn"
           [class.active]="activeCategory() === 'stocks'"
           (click)="setCategory('stocks')"
         >
@@ -127,9 +135,9 @@
   </header>
 
   <!-- =========================================================================
-       2. MAIN TRADING TERMINAL WORKSPACE (75-80% Chart | 20-25% Watchlist)
+       2. MAIN TRADING TERMINAL WORKSPACE (Dominant Chart | Resizable Watchlist)
        ========================================================================= -->
-  <div class="terminal-body-grid">
+  <div class="terminal-body-grid" [style.gridTemplateColumns]="'minmax(0, 1fr) ' + watchlistWidth() + 'px'">
     <!-- LEFT / CENTER: DOMINANT CHART VIEWPORT -->
     <main class="chart-main-pane">
       <!-- Chart Controls Toolbar Strip -->
@@ -387,8 +395,21 @@
       </footer>
     </main>
 
-    <!-- RIGHT: COMPACT TRADINGVIEW-STYLE WATCHLIST PANEL (Fixed right pane) -->
-    <aside class="watchlist-compact-pane" aria-label="Watchlist">
+    <!-- RIGHT: COMPACT TRADINGVIEW-STYLE WATCHLIST PANEL (Resizable right pane) -->
+    <aside
+      class="watchlist-compact-pane"
+      [class.is-resizing]="isResizingWatchlist()"
+      aria-label="Watchlist"
+    >
+      <!-- Left Edge Resize Handle (TradingView Style) -->
+      <div
+        class="watchlist-resize-handle"
+        (mousedown)="startWatchlistResize($event)"
+        title="Drag left/right to resize watchlist"
+      >
+        <div class="resize-handle-bar"></div>
+      </div>
+
       <!-- 1. Pinned Top Watchlist Bar -->
       <div class="watchlist-header-bar">
         <div class="wl-title-wrap">
@@ -437,7 +458,68 @@
           </div>
         }
 
-        <!-- 1. STOCKS SECTION -->
+        <!-- 1. INDICES SECTION (NIFTY 50, SENSEX) -->
+        @if ((activeCategory() === 'all' || activeCategory() === 'indices') && indicesWatchlist().length > 0) {
+          <div class="wl-section">
+            <button type="button" class="wl-section-header" (click)="toggleIndicesCollapse()">
+              <span class="wl-caret" [class.rotated]="isIndicesCollapsed()">▾</span>
+              <span class="wl-sec-name">INDICES</span>
+              <span class="wl-sec-count">({{ indicesWatchlist().length }})</span>
+            </button>
+            @if (!isIndicesCollapsed()) {
+              @for (item of indicesWatchlist(); track item.symbol) {
+                <div
+                  class="wl-row"
+                  [class.active]="selectedSymbol() === item.symbol"
+                  [class.is-dragging]="draggedItem()?.symbol === item.symbol"
+                  [class.drag-over-above]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
+                  [class.drag-over-below]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
+                  draggable="true"
+                  (dragstart)="onDragStart($event, item)"
+                  (dragover)="onDragOver($event, item)"
+                  (dragleave)="onDragLeave($event)"
+                  (drop)="onDrop($event, item)"
+                  (dragend)="onDragEnd()"
+                  (click)="selectWatchlistItem(item)"
+                  [title]="item.name + ' (' + (item.exchange || 'Index') + ')'"
+                >
+                  <div class="wl-cell col-sym">
+                    <span class="wl-drag-grip" title="Drag to reorder">⋮⋮</span>
+                    <div class="sym-text-group">
+                      <span class="wl-sym">{{ item.symbol }}</span>
+                      <span class="wl-desc">{{ item.exchange || 'Index' }}</span>
+                    </div>
+                  </div>
+                  <div class="wl-cell col-last">
+                    <span class="wl-price">
+                      {{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}
+                    </span>
+                  </div>
+                  <div class="wl-cell col-chg">
+                    <span
+                      class="wl-change-val"
+                      [class.positive]="(item.change ?? 0) >= 0"
+                      [class.negative]="(item.change ?? 0) < 0"
+                    >
+                      {{ item.change != null ? ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-2')) : '—' }}
+                    </span>
+                  </div>
+                  <div class="wl-cell col-pct">
+                    <span
+                      class="wl-pct-pill"
+                      [class.positive]="(item.change ?? 0) >= 0"
+                      [class.negative]="(item.change ?? 0) < 0"
+                    >
+                      {{ item.changePercent != null ? item.changePercent : '—' }}
+                    </span>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        }
+
+        <!-- 2. STOCKS SECTION -->
         @if ((activeCategory() === 'all' || activeCategory() === 'stocks') && stockWatchlist().length > 0) {
           <div class="wl-section">
             <button type="button" class="wl-section-header" (click)="toggleStocksCollapse()">
