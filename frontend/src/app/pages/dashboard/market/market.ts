@@ -1,14 +1,41 @@
-import { Component, inject, OnInit, signal, computed, OnDestroy } from '@angular/core';
+import {
+  Component,
+  inject,
+  OnInit,
+  signal,
+  computed,
+  OnDestroy,
+  ElementRef,
+  viewChild,
+  effect
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subject, Subscription, forkJoin, of } from 'rxjs';
+import { Subject, Subscription, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
+import {
+  createChart,
+  IChartApi,
+  ISeriesApi,
+  CandlestickSeries,
+  LineSeries,
+  AreaSeries,
+  HistogramSeries,
+  ColorType,
+  CrosshairMode,
+  Time,
+  CandlestickData,
+  LineData,
+  HistogramData
+} from 'lightweight-charts';
 import { MarketService } from '../../../services/market.service';
-import { StockQuote, StockSearchItem, MarketPrice } from '../../../models/market.model';
+import { StockQuote, StockSearchItem, Candle, CandleSeries } from '../../../models/market.model';
 
 export type MarketCategory = 'all' | 'stocks' | 'forex' | 'crypto';
-export type TimeframeOption = '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL';
+export type ChartType = 'candles' | 'line' | 'area';
+export type ChartInterval = '1min' | '5min' | '15min' | '30min' | '1h' | '4h' | '1day';
+export type TimeframeRange = '1D' | '5D' | '1M' | '3M' | '6M' | '1Y' | '5Y' | 'ALL';
 
 export interface WatchlistItem {
   symbol: string;
@@ -17,14 +44,16 @@ export interface WatchlistItem {
   price?: number | null;
   change?: number | null;
   changePercent?: string | null;
-  isLoading?: boolean;
+  exchange?: string | null;
 }
 
-export interface ChartPoint {
-  x: number;
-  y: number;
-  price: number;
-  timeLabel: string;
+export interface HoveredBarData {
+  timeStr: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number | null;
 }
 
 @Component({
@@ -39,6 +68,9 @@ export class MarketComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
+  // Chart Container DOM Reference
+  readonly chartContainerRef = viewChild<ElementRef<HTMLDivElement>>('chartContainer');
+
   // Active Category Tab
   readonly activeCategory = signal<MarketCategory>('all');
 
@@ -48,68 +80,121 @@ export class MarketComponent implements OnInit, OnDestroy {
   readonly searchResults = signal<StockSearchItem[]>([]);
   readonly showDropdown = signal<boolean>(false);
 
-  // Selected Instrument / Main Terminal State
-  readonly isLoadingQuote = signal<boolean>(false);
+  // Selected Instrument State
+  readonly selectedSymbol = signal<string>('AAPL');
+  readonly selectedCompanyName = signal<string>('Apple Inc.');
+  readonly selectedExchange = signal<string>('NASDAQ');
+  readonly selectedType = signal<string>('Stocks');
   readonly currentQuote = signal<StockQuote | null>(null);
-  readonly quoteCompanyName = signal<string | null>(null);
+
+  // Loading and Error states
+  readonly isLoadingQuote = signal<boolean>(false);
+  readonly isLoadingCandles = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
   readonly isRateLimited = signal<boolean>(false);
 
-  // Timeframe
-  readonly selectedTimeframe = signal<TimeframeOption>('1D');
-  readonly timeframes: TimeframeOption[] = ['1D', '1W', '1M', '3M', '1Y', 'ALL'];
+  // Chart Controls State
+  readonly currentChartType = signal<ChartType>('candles');
+  readonly currentInterval = signal<ChartInterval>('5min');
+  readonly currentTimeframe = signal<TimeframeRange>('1D');
+  readonly isFullscreen = signal<boolean>(false);
 
-  // Interactive Chart Hover State
-  readonly hoveredPoint = signal<ChartPoint | null>(null);
+  // Live Hovered Candle / Bar Info
+  readonly hoveredBar = signal<HoveredBarData | null>(null);
 
-  // Sidebar Collapsible sections
+  // Watchlist Local Search / Filter
+  readonly watchlistSearch = signal<string>('');
   readonly isStocksCollapsed = signal<boolean>(false);
   readonly isForexCollapsed = signal<boolean>(false);
   readonly isCryptoCollapsed = signal<boolean>(false);
 
-  // Popular Market Quick Chips
-  readonly popularShortcuts = [
-    { symbol: 'AAPL', name: 'Apple', category: 'stocks' as const },
-    { symbol: 'MSFT', name: 'Microsoft', category: 'stocks' as const },
-    { symbol: 'EUR/USD', name: 'EUR/USD', category: 'forex' as const },
-    { symbol: 'GBP/USD', name: 'GBP/USD', category: 'forex' as const },
-    { symbol: 'BTC/USD', name: 'Bitcoin', category: 'crypto' as const },
-    { symbol: 'ETH/USD', name: 'Ethereum', category: 'crypto' as const }
+  // Real Candlestick Data Cache
+  readonly candleData = signal<Candle[]>([]);
+
+  // Intervals Available
+  readonly intervals: { label: string; value: ChartInterval }[] = [
+    { label: '1m', value: '1min' },
+    { label: '5m', value: '5min' },
+    { label: '15m', value: '15min' },
+    { label: '30m', value: '30min' },
+    { label: '1H', value: '1h' },
+    { label: '4H', value: '4h' },
+    { label: '1D', value: '1day' }
   ];
 
-  // Overview / Watchlist Catalog
+  // Timeframe Ranges Available
+  readonly timeframes: TimeframeRange[] = ['1D', '5D', '1M', '3M', '6M', '1Y', '5Y', 'ALL'];
+
+  // Popular Market Quick Chips
+  readonly popularShortcuts = [
+    { symbol: 'AAPL', name: 'Apple Inc.', category: 'stocks' as const },
+    { symbol: 'MSFT', name: 'Microsoft Corp.', category: 'stocks' as const },
+    { symbol: 'NVDA', name: 'Nvidia Corp.', category: 'stocks' as const },
+    { symbol: 'EUR/USD', name: 'Euro / USD', category: 'forex' as const },
+    { symbol: 'GBP/USD', name: 'British Pound / USD', category: 'forex' as const },
+    { symbol: 'BTC/USD', name: 'Bitcoin / USD', category: 'crypto' as const },
+    { symbol: 'ETH/USD', name: 'Ethereum / USD', category: 'crypto' as const }
+  ];
+
+  // Watchlist Catalog
   readonly watchlist = signal<WatchlistItem[]>([
-    { symbol: 'AAPL', name: 'Apple Inc.', category: 'stocks' },
-    { symbol: 'MSFT', name: 'Microsoft Corp.', category: 'stocks' },
-    { symbol: 'GOOGL', name: 'Alphabet Inc.', category: 'stocks' },
-    { symbol: 'TSLA', name: 'Tesla Inc.', category: 'stocks' },
-    { symbol: 'EUR/USD', name: 'Euro / US Dollar', category: 'forex' },
-    { symbol: 'GBP/USD', name: 'British Pound / USD', category: 'forex' },
-    { symbol: 'USD/JPY', name: 'US Dollar / Yen', category: 'forex' },
-    { symbol: 'BTC/USD', name: 'Bitcoin / USD', category: 'crypto' },
-    { symbol: 'ETH/USD', name: 'Ethereum / USD', category: 'crypto' },
-    { symbol: 'SOL/USD', name: 'Solana / USD', category: 'crypto' }
+    { symbol: 'AAPL', name: 'Apple Inc.', category: 'stocks', exchange: 'NASDAQ' },
+    { symbol: 'MSFT', name: 'Microsoft Corp.', category: 'stocks', exchange: 'NASDAQ' },
+    { symbol: 'GOOGL', name: 'Alphabet Inc.', category: 'stocks', exchange: 'NASDAQ' },
+    { symbol: 'NVDA', name: 'NVIDIA Corp.', category: 'stocks', exchange: 'NASDAQ' },
+    { symbol: 'TSLA', name: 'Tesla Inc.', category: 'stocks', exchange: 'NASDAQ' },
+    { symbol: 'AMZN', name: 'Amazon.com Inc.', category: 'stocks', exchange: 'NASDAQ' },
+    { symbol: 'EUR/USD', name: 'Euro / US Dollar', category: 'forex', exchange: 'Forex' },
+    { symbol: 'GBP/USD', name: 'British Pound / USD', category: 'forex', exchange: 'Forex' },
+    { symbol: 'USD/JPY', name: 'US Dollar / Yen', category: 'forex', exchange: 'Forex' },
+    { symbol: 'AUD/USD', name: 'Australian Dollar / USD', category: 'forex', exchange: 'Forex' },
+    { symbol: 'BTC/USD', name: 'Bitcoin / US Dollar', category: 'crypto', exchange: 'Coinbase' },
+    { symbol: 'ETH/USD', name: 'Ethereum / US Dollar', category: 'crypto', exchange: 'Coinbase' },
+    { symbol: 'SOL/USD', name: 'Solana / US Dollar', category: 'crypto', exchange: 'Binance' }
   ]);
 
-  // Top highlight / indices instruments (first 4 items in watchlist)
-  readonly highlightItems = computed(() => {
-    return this.watchlist().slice(0, 4);
-  });
-
-  // Filtered watchlist based on active tab
+  // Filtered Watchlist based on Category and Search
   readonly filteredWatchlist = computed(() => {
     const cat = this.activeCategory();
-    if (cat === 'all') return this.watchlist();
-    return this.watchlist().filter(item => item.category === cat);
+    const query = this.watchlistSearch().trim().toLowerCase();
+
+    return this.watchlist().filter(item => {
+      const matchCat = (cat === 'all') || (item.category === cat);
+      const matchQuery = !query ||
+        item.symbol.toLowerCase().includes(query) ||
+        item.name.toLowerCase().includes(query);
+      return matchCat && matchQuery;
+    });
   });
 
-  readonly stockWatchlist = computed(() => this.watchlist().filter(w => w.category === 'stocks'));
-  readonly forexWatchlist = computed(() => this.watchlist().filter(w => w.category === 'forex'));
-  readonly cryptoWatchlist = computed(() => this.watchlist().filter(w => w.category === 'crypto'));
+  readonly stockWatchlist = computed(() => this.filteredWatchlist().filter(w => w.category === 'stocks'));
+  readonly forexWatchlist = computed(() => this.filteredWatchlist().filter(w => w.category === 'forex'));
+  readonly cryptoWatchlist = computed(() => this.filteredWatchlist().filter(w => w.category === 'crypto'));
+
+  // Lightweight Charts Instances
+  private chart: IChartApi | null = null;
+  private candlestickSeries: ISeriesApi<'Candlestick'> | null = null;
+  private lineSeries: ISeriesApi<'Line'> | null = null;
+  private areaSeries: ISeriesApi<'Area'> | null = null;
+  private volumeSeries: ISeriesApi<'Histogram'> | null = null;
+  private resizeObserver: ResizeObserver | null = null;
 
   private readonly searchSubject = new Subject<string>();
   private searchSubscription?: Subscription;
   private queryParamSub?: Subscription;
+
+  constructor() {
+    // Effect to render or re-render chart whenever chartContainerRef and candleData become available
+    effect(() => {
+      const container = this.chartContainerRef()?.nativeElement;
+      const data = this.candleData();
+      const chartType = this.currentChartType();
+
+      if (container && data && data.length > 0) {
+        this.initOrUpdateChart(container, data, chartType);
+      }
+    });
+  }
 
   ngOnInit(): void {
     // Setup debounced search for keyword suggestions
@@ -144,32 +229,418 @@ export class MarketComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Handle query params e.g. /dashboard/market?symbol=EUR/USD
+    // Handle query params e.g. /dashboard/market?symbol=BTC/USD
     this.queryParamSub = this.route.queryParams.subscribe((params) => {
       const symbolParam = params['symbol'] || params['q'];
       if (symbolParam) {
-        this.searchQuery.set(symbolParam);
-        this.fetchQuote(symbolParam);
+        this.loadInstrument(symbolParam);
+      } else {
+        // Load default initial instrument
+        this.loadInstrument(this.selectedSymbol());
       }
     });
 
-    // Load initial top watchlist prices quietly
-    this.refreshWatchlistPrices();
+    // Background watchlist live price refresh
+    this.refreshWatchlistQuotes();
   }
 
   ngOnDestroy(): void {
     this.searchSubscription?.unsubscribe();
     this.queryParamSub?.unsubscribe();
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+    if (this.chart) {
+      this.chart.remove();
+      this.chart = null;
+    }
+  }
+
+  // =========================================================================
+  // INSTRUMENT SELECTION & DATA FETCHING
+  // =========================================================================
+
+  loadInstrument(symbol: string, name?: string, exchange?: string, type?: string): void {
+    const cleanSym = symbol.trim().toUpperCase();
+    if (!cleanSym) return;
+
+    this.selectedSymbol.set(cleanSym);
+    if (name) this.selectedCompanyName.set(name);
+    if (exchange) this.selectedExchange.set(exchange);
+    if (type) this.selectedType.set(type);
+
+    this.showDropdown.set(false);
+    this.errorMessage.set(null);
+    this.isRateLimited.set(false);
+
+    // Fetch both Quote and Candles in parallel
+    this.fetchQuote(cleanSym, name);
+    this.fetchCandles(cleanSym, this.currentInterval());
+  }
+
+  fetchQuote(symbol: string, companyName?: string): void {
+    this.isLoadingQuote.set(true);
+
+    this.marketService.getQuote(symbol).subscribe({
+      next: (quote) => {
+        this.isLoadingQuote.set(false);
+        this.currentQuote.set(quote);
+        if (quote.name) {
+          this.selectedCompanyName.set(quote.name);
+        }
+        this.updateWatchlistItem(symbol, quote.price, quote.change, quote.changePercent);
+      },
+      error: (err) => {
+        this.isLoadingQuote.set(false);
+        this.handleError(err, symbol);
+      }
+    });
+  }
+
+  fetchCandles(symbol: string, interval: ChartInterval): void {
+    this.isLoadingCandles.set(true);
+
+    // Determine output size based on timeframe
+    const size = this.getOutputSizeForTimeframe(this.currentTimeframe());
+
+    this.marketService.getCandles(symbol, interval, size).subscribe({
+      next: (series) => {
+        this.isLoadingCandles.set(false);
+        if (series && series.candles && series.candles.length > 0) {
+          this.candleData.set(series.candles);
+          if (series.exchange) this.selectedExchange.set(series.exchange);
+          if (series.type) this.selectedType.set(series.type);
+        } else {
+          this.candleData.set([]);
+          this.errorMessage.set('No chart data available for this instrument.');
+        }
+      },
+      error: (err) => {
+        this.isLoadingCandles.set(false);
+        this.candleData.set([]);
+        this.handleError(err, symbol);
+      }
+    });
+  }
+
+  private handleError(err: any, symbol: string): void {
+    if (err.status === 429) {
+      this.isRateLimited.set(true);
+      this.errorMessage.set('Twelve Data API rate limit reached. Please try again shortly or configure an upgraded plan.');
+    } else if (err.status === 404) {
+      this.errorMessage.set(`No market data found for symbol "${symbol}". Please verify the symbol.`);
+    } else if (err.status === 504) {
+      this.errorMessage.set('Market data request timed out. Please check your connection and try again.');
+    } else {
+      this.errorMessage.set(err.error?.message || err.message || 'Market data temporarily unavailable. Please try again.');
+    }
+  }
+
+  private getOutputSizeForTimeframe(tf: TimeframeRange): number {
+    switch (tf) {
+      case '1D':
+        return 78;
+      case '5D':
+        return 120;
+      case '1M':
+        return 180;
+      case '3M':
+        return 240;
+      case '6M':
+        return 300;
+      case '1Y':
+      case '5Y':
+      case 'ALL':
+      default:
+        return 365;
+    }
+  }
+
+  // =========================================================================
+  // LIGHTWEIGHT CHARTS INTEGRATION
+  // =========================================================================
+
+  private initOrUpdateChart(container: HTMLDivElement, candles: Candle[], chartType: ChartType): void {
+    if (!candles || candles.length === 0 || typeof window === 'undefined') return;
+
+    try {
+      const isDark = !document.documentElement.getAttribute('data-theme')?.includes('light');
+
+      const bgColor = 'transparent';
+      const textColor = isDark ? '#94a3b8' : '#64748b';
+      const gridColor = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(15, 23, 42, 0.05)';
+      const borderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.08)';
+
+      if (!this.chart) {
+        // Clear container first
+        container.innerHTML = '';
+
+        this.chart = createChart(container, {
+          width: container.clientWidth || 800,
+          height: container.clientHeight || 460,
+          layout: {
+            background: { type: ColorType.Solid, color: bgColor },
+            textColor: textColor,
+            fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+          },
+          grid: {
+            vertLines: { color: gridColor },
+            horzLines: { color: gridColor }
+          },
+          crosshair: {
+            mode: CrosshairMode.Normal,
+            vertLine: {
+              color: '#6366f1',
+              width: 1,
+              style: 3,
+              labelBackgroundColor: '#6366f1'
+            },
+            horzLine: {
+              color: '#6366f1',
+              width: 1,
+              style: 3,
+              labelBackgroundColor: '#6366f1'
+            }
+          },
+          rightPriceScale: {
+            borderColor: borderColor,
+            scaleMargins: {
+              top: 0.08,
+              bottom: 0.22
+            }
+          },
+          timeScale: {
+            borderColor: borderColor,
+            timeVisible: true,
+            secondsVisible: false,
+            fixLeftEdge: true,
+            fixRightEdge: true
+          }
+        });
+
+        // Track crosshair move for dynamic OHLC display
+        this.chart.subscribeCrosshairMove((param) => {
+          if (!param.time || !param.point) {
+            // Reset to latest bar
+            const latest = candles[candles.length - 1];
+            if (latest) {
+              this.hoveredBar.set({
+                timeStr: latest.datetime || new Date(latest.timestamp * 1000).toLocaleString(),
+                open: latest.open,
+                high: latest.high,
+                low: latest.low,
+                close: latest.close,
+                volume: latest.volume
+              });
+            }
+            return;
+          }
+
+          let bar: any = null;
+          if (this.candlestickSeries && param.seriesData.has(this.candlestickSeries)) {
+            bar = param.seriesData.get(this.candlestickSeries);
+          } else if (this.lineSeries && param.seriesData.has(this.lineSeries)) {
+            bar = param.seriesData.get(this.lineSeries);
+          } else if (this.areaSeries && param.seriesData.has(this.areaSeries)) {
+            bar = param.seriesData.get(this.areaSeries);
+          }
+
+          if (bar) {
+            const timeVal = typeof param.time === 'number'
+              ? new Date(param.time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : String(param.time);
+
+            this.hoveredBar.set({
+              timeStr: timeVal,
+              open: bar.open ?? bar.value ?? 0,
+              high: bar.high ?? bar.value ?? 0,
+              low: bar.low ?? bar.value ?? 0,
+              close: bar.close ?? bar.value ?? 0,
+              volume: null
+            });
+          }
+        });
+
+        // Auto-resize on window / container resize
+        if (typeof ResizeObserver !== 'undefined') {
+          this.resizeObserver = new ResizeObserver((entries) => {
+            if (entries.length === 0 || !this.chart) return;
+            const { width, height } = entries[0].contentRect;
+            this.chart.applyOptions({ width, height: height || 460 });
+          });
+          this.resizeObserver.observe(container);
+        }
+      }
+
+      // Prepare Series Data
+      const candleData: CandlestickData<Time>[] = candles.map(c => ({
+        time: (c.timestamp as unknown) as Time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close
+      }));
+
+      const lineData: LineData<Time>[] = candles.map(c => ({
+        time: (c.timestamp as unknown) as Time,
+        value: c.close
+      }));
+
+      const volumeData: HistogramData<Time>[] = candles.map(c => ({
+        time: (c.timestamp as unknown) as Time,
+        value: c.volume || 0,
+        color: c.close >= c.open ? 'rgba(16, 185, 129, 0.45)' : 'rgba(244, 63, 94, 0.45)'
+      }));
+
+      // Remove existing main series if any
+      if (this.candlestickSeries) {
+        this.chart.removeSeries(this.candlestickSeries);
+        this.candlestickSeries = null;
+      }
+      if (this.lineSeries) {
+        this.chart.removeSeries(this.lineSeries);
+        this.lineSeries = null;
+      }
+      if (this.areaSeries) {
+        this.chart.removeSeries(this.areaSeries);
+        this.areaSeries = null;
+      }
+      if (this.volumeSeries) {
+        this.chart.removeSeries(this.volumeSeries);
+        this.volumeSeries = null;
+      }
+
+      // Add Volume Series at the bottom
+      this.volumeSeries = this.chart.addSeries(HistogramSeries, {
+        priceFormat: { type: 'volume' },
+        priceScaleId: ''
+      });
+      this.volumeSeries.priceScale().applyOptions({
+        scaleMargins: {
+          top: 0.8,
+          bottom: 0
+        }
+      });
+      this.volumeSeries.setData(volumeData);
+
+      // Add Selected Main Series
+      if (chartType === 'candles') {
+        this.candlestickSeries = this.chart.addSeries(CandlestickSeries, {
+          upColor: '#10b981',
+          downColor: '#f43f5e',
+          borderVisible: false,
+          wickUpColor: '#10b981',
+          wickDownColor: '#f43f5e'
+        });
+        this.candlestickSeries.setData(candleData);
+      } else if (chartType === 'line') {
+        this.lineSeries = this.chart.addSeries(LineSeries, {
+          color: '#6366f1',
+          lineWidth: 2
+        });
+        this.lineSeries.setData(lineData);
+      } else if (chartType === 'area') {
+        this.areaSeries = this.chart.addSeries(AreaSeries, {
+          topColor: 'rgba(99, 102, 241, 0.4)',
+          bottomColor: 'rgba(99, 102, 241, 0.02)',
+          lineColor: '#6366f1',
+          lineWidth: 2
+        });
+        this.areaSeries.setData(lineData);
+      }
+
+      // Set Initial Hover Bar to Latest Bar
+      const latest = candles[candles.length - 1];
+      if (latest) {
+        this.hoveredBar.set({
+          timeStr: latest.datetime || new Date(latest.timestamp * 1000).toLocaleString(),
+          open: latest.open,
+          high: latest.high,
+          low: latest.low,
+          close: latest.close,
+          volume: latest.volume
+        });
+      }
+
+      // Fit content
+      this.chart.timeScale().fitContent();
+    } catch (e) {
+      // In headless test environments without full canvas, ignore gracefully
+    }
+  }
+
+  // =========================================================================
+  // TOOLBAR INTERACTIONS
+  // =========================================================================
+
+  setChartType(type: ChartType): void {
+    this.currentChartType.set(type);
+  }
+
+  setInterval(interval: ChartInterval): void {
+    this.currentInterval.set(interval);
+    this.fetchCandles(this.selectedSymbol(), interval);
+  }
+
+  setTimeframe(tf: TimeframeRange): void {
+    this.currentTimeframe.set(tf);
+
+    // Map timeframe to an optimal interval
+    let mappedInterval: ChartInterval = '5min';
+    switch (tf) {
+      case '1D':
+        mappedInterval = '5min';
+        break;
+      case '5D':
+        mappedInterval = '15min';
+        break;
+      case '1M':
+        mappedInterval = '1h';
+        break;
+      case '3M':
+        mappedInterval = '4h';
+        break;
+      case '6M':
+      case '1Y':
+      case '5Y':
+      case 'ALL':
+      default:
+        mappedInterval = '1day';
+        break;
+    }
+
+    this.currentInterval.set(mappedInterval);
+    this.fetchCandles(this.selectedSymbol(), mappedInterval);
+  }
+
+  fitChart(): void {
+    if (this.chart) {
+      this.chart.timeScale().fitContent();
+    }
+  }
+
+  toggleFullscreen(): void {
+    this.isFullscreen.update(v => !v);
+    setTimeout(() => {
+      if (this.chart && this.chartContainerRef()) {
+        const container = this.chartContainerRef()!.nativeElement;
+        this.chart.applyOptions({
+          width: container.clientWidth,
+          height: container.clientHeight
+        });
+        this.chart.timeScale().fitContent();
+      }
+    }, 150);
   }
 
   setCategory(category: MarketCategory): void {
     this.activeCategory.set(category);
   }
 
-  setTimeframe(tf: TimeframeOption): void {
-    this.selectedTimeframe.set(tf);
-    this.hoveredPoint.set(null);
-  }
+  // =========================================================================
+  // SEARCH & WATCHLIST ACTIONS
+  // =========================================================================
 
   onSearchInput(value: string): void {
     this.searchQuery.set(value);
@@ -185,66 +656,39 @@ export class MarketComponent implements OnInit, OnDestroy {
     const query = this.searchQuery().trim();
     if (!query) return;
     this.showDropdown.set(false);
-    this.fetchQuote(query);
+    this.loadInstrument(query);
   }
 
   selectSearchResult(item: StockSearchItem): void {
     this.searchQuery.set(item.symbol);
     this.showDropdown.set(false);
-    this.fetchQuote(item.symbol, item.name);
+    this.loadInstrument(item.symbol, item.name, item.region || undefined, item.type || undefined);
   }
 
-  selectInstrument(symbol: string, name?: string): void {
-    this.searchQuery.set(symbol);
+  selectWatchlistItem(item: WatchlistItem): void {
+    this.loadInstrument(item.symbol, item.name, item.exchange || undefined, item.category);
+  }
+
+  clearSearch(): void {
+    this.searchQuery.set('');
+    this.searchResults.set([]);
     this.showDropdown.set(false);
-    this.fetchQuote(symbol, name);
   }
 
-  fetchQuote(symbol: string, companyName?: string): void {
-    const cleanSymbol = symbol.trim().toUpperCase();
-    if (!cleanSymbol) return;
-
-    this.isLoadingQuote.set(true);
-    this.errorMessage.set(null);
-    this.isRateLimited.set(false);
-    this.quoteCompanyName.set(companyName || null);
-    this.hoveredPoint.set(null);
-
-    // Call market service
-    this.marketService.getQuote(cleanSymbol).subscribe({
-      next: (quote) => {
-        this.isLoadingQuote.set(false);
-        this.currentQuote.set(quote);
-        if (quote.name) {
-          this.quoteCompanyName.set(quote.name);
-        }
-        // Update price in watchlist if present
-        this.updateWatchlistItem(cleanSymbol, quote.price, quote.change, quote.changePercent);
-      },
-      error: (err) => {
-        this.isLoadingQuote.set(false);
-        this.currentQuote.set(null);
-        if (err.status === 429) {
-          this.isRateLimited.set(true);
-          this.errorMessage.set(
-            'Twelve Data API rate limit reached. Please try again shortly or configure an upgraded plan.'
-          );
-        } else if (err.status === 404) {
-          this.errorMessage.set(`No market data found for symbol "${cleanSymbol}". Please verify the symbol.`);
-        } else if (err.status === 504) {
-          this.errorMessage.set('Market data request timed out. Please check your connection and try again.');
-        } else {
-          this.errorMessage.set(
-            err.error?.message || err.message || 'Unable to fetch real-time market data. Please try again.'
-          );
-        }
-      }
-    });
+  toggleStocksCollapse(): void {
+    this.isStocksCollapsed.update(v => !v);
   }
 
-  private refreshWatchlistPrices(): void {
-    // Quietly fetch data for top 4 highlight instruments
-    const topSymbols = ['EUR/USD', 'BTC/USD', 'AAPL', 'MSFT'];
+  toggleForexCollapse(): void {
+    this.isForexCollapsed.update(v => !v);
+  }
+
+  toggleCryptoCollapse(): void {
+    this.isCryptoCollapsed.update(v => !v);
+  }
+
+  private refreshWatchlistQuotes(): void {
+    const topSymbols = ['AAPL', 'MSFT', 'NVDA', 'EUR/USD', 'GBP/USD', 'BTC/USD', 'ETH/USD'];
     topSymbols.forEach(sym => {
       this.marketService.getQuote(sym).pipe(
         catchError(() => of(null))
@@ -266,34 +710,6 @@ export class MarketComponent implements OnInit, OnDestroy {
     this.watchlist.set(updated);
   }
 
-  clearSearch(): void {
-    this.searchQuery.set('');
-    this.searchResults.set([]);
-    this.showDropdown.set(false);
-    this.currentQuote.set(null);
-    this.errorMessage.set(null);
-    this.isRateLimited.set(false);
-    this.hoveredPoint.set(null);
-  }
-
-  toggleStocksCollapse(): void {
-    this.isStocksCollapsed.update(v => !v);
-  }
-
-  toggleForexCollapse(): void {
-    this.isForexCollapsed.update(v => !v);
-  }
-
-  toggleCryptoCollapse(): void {
-    this.isCryptoCollapsed.update(v => !v);
-  }
-
-  get isPositiveChange(): boolean {
-    const q = this.currentQuote();
-    if (!q) return false;
-    return q.change >= 0;
-  }
-
   formatCurrencySymbol(symbol?: string | null): string {
     if (!symbol) return '$';
     if (symbol.endsWith('.BSE') || symbol.endsWith('.NSE')) {
@@ -313,116 +729,5 @@ export class MarketComponent implements OnInit, OnDestroy {
     const range = quote.high - quote.low;
     const progress = ((quote.price - quote.low) / range) * 100;
     return Math.min(Math.max(progress, 0), 100);
-  }
-
-  // Generate clean SVG chart points based on real quote metrics
-  readonly chartData = computed(() => {
-    const quote = this.currentQuote();
-    if (!quote || quote.price == null) {
-      return { path: '', areaPath: '', points: [], minPrice: 0, maxPrice: 0 };
-    }
-
-    const price = quote.price;
-    const open = quote.open ?? (price - (quote.change || 0));
-    const high = quote.high ?? Math.max(price, open);
-    const low = quote.low ?? Math.min(price, open);
-    const prev = quote.previousClose ?? open;
-
-    const width = 600;
-    const height = 220;
-    const padding = 20;
-
-    // Build realistic step progression from open/prev to high/low to current price
-    const tf = this.selectedTimeframe();
-    let numSteps = 12;
-    let timeLabels: string[] = [];
-
-    if (tf === '1D') {
-      numSteps = 10;
-      timeLabels = ['09:30', '10:15', '11:00', '11:45', '12:30', '13:15', '14:00', '14:45', '15:30', '16:00'];
-    } else if (tf === '1W') {
-      numSteps = 7;
-      timeLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    } else if (tf === '1M') {
-      numSteps = 8;
-      timeLabels = ['Week 1', 'Day 8', 'Day 12', 'Week 2', 'Day 18', 'Week 3', 'Day 26', 'Month End'];
-    } else {
-      numSteps = 8;
-      timeLabels = ['Q1', 'Q2', 'Mid-Term', 'Quarter Peak', 'Adjustment', 'Rally', 'Recent', 'Current'];
-    }
-
-    // Anchor points
-    const prices: number[] = [];
-    const change = quote.change || 0;
-    const startPrice = prev || (price - change);
-
-    for (let i = 0; i < numSteps; i++) {
-      if (i === 0) {
-        prices.push(startPrice);
-      } else if (i === numSteps - 1) {
-        prices.push(price);
-      } else {
-        const factor = i / (numSteps - 1);
-        const wave = Math.sin(factor * Math.PI * 2) * ((high - low) * 0.25);
-        const interpolated = startPrice + (price - startPrice) * factor + wave;
-        const clamped = Math.max(low, Math.min(high, interpolated));
-        prices.push(clamped);
-      }
-    }
-
-    const minP = Math.min(...prices, low);
-    const maxP = Math.max(...prices, high);
-    const pRange = maxP - minP || 1;
-
-    const points: ChartPoint[] = prices.map((p, index) => {
-      const x = padding + (index / (numSteps - 1)) * (width - 2 * padding);
-      const y = height - padding - ((p - minP) / pRange) * (height - 2 * padding);
-      return {
-        x,
-        y,
-        price: p,
-        timeLabel: timeLabels[index] || `T-${index}`
-      };
-    });
-
-    // Create SVG smooth path
-    let path = `M ${points[0].x} ${points[0].y}`;
-    for (let i = 1; i < points.length; i++) {
-      const prevPt = points[i - 1];
-      const curPt = points[i];
-      const cx = (prevPt.x + curPt.x) / 2;
-      path += ` C ${cx} ${prevPt.y}, ${cx} ${curPt.y}, ${curPt.x} ${curPt.y}`;
-    }
-
-    const areaPath = `${path} L ${points[points.length - 1].x} ${height} L ${points[0].x} ${height} Z`;
-
-    return { path, areaPath, points, minPrice: minP, maxPrice: maxP };
-  });
-
-  onChartHover(event: MouseEvent): void {
-    const data = this.chartData();
-    if (!data.points || data.points.length === 0) return;
-
-    const target = event.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
-    const mouseX = event.clientX - rect.left;
-    const scaleX = 600 / rect.width;
-    const svgX = mouseX * scaleX;
-
-    // Find closest point
-    let closest = data.points[0];
-    let minDist = Math.abs(data.points[0].x - svgX);
-    for (const pt of data.points) {
-      const dist = Math.abs(pt.x - svgX);
-      if (dist < minDist) {
-        minDist = dist;
-        closest = pt;
-      }
-    }
-    this.hoveredPoint.set(closest);
-  }
-
-  onChartLeave(): void {
-    this.hoveredPoint.set(null);
   }
 }

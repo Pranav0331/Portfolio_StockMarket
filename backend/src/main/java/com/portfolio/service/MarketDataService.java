@@ -2,6 +2,8 @@ package com.portfolio.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.portfolio.dto.market.CandleDto;
+import com.portfolio.dto.market.CandleSeriesDto;
 import com.portfolio.dto.market.MarketPriceDto;
 import com.portfolio.dto.market.StockQuoteDto;
 import com.portfolio.dto.market.StockSearchItemDto;
@@ -19,13 +21,21 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Service
 public class MarketDataService {
 
     private static final Logger log = LoggerFactory.getLogger(MarketDataService.class);
+
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -216,6 +226,78 @@ public class MarketDataService {
     }
 
     /**
+     * Fetch real OHLC Candlestick time series from Twelve Data
+     */
+    public CandleSeriesDto getCandles(String symbol, String interval, Integer outputsize) {
+        if (symbol == null || symbol.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Symbol parameter is required");
+        }
+
+        String cleanSymbol = symbol.trim().toUpperCase();
+        String normalizedInterval = normalizeInterval(interval);
+        int size = (outputsize != null && outputsize > 0 && outputsize <= 500) ? outputsize : 60;
+
+        String url = String.format("%s/time_series?symbol=%s&interval=%s&outputsize=%d&apikey=%s",
+                baseUrl, cleanSymbol, normalizedInterval, size, apiKey);
+
+        try {
+            log.info("Fetching Twelve Data candles for symbol: {}, interval: {}, size: {}", cleanSymbol, normalizedInterval, size);
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+
+            if (response.getBody() == null || response.getBody().trim().isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Empty response from Twelve Data API");
+            }
+
+            JsonNode root = objectMapper.readTree(response.getBody());
+            checkTwelveDataError(root, cleanSymbol);
+
+            JsonNode metaNode = root.path("meta");
+            String symbolOut = metaNode.path("symbol").asText(cleanSymbol);
+            String intervalOut = metaNode.path("interval").asText(normalizedInterval);
+            String currency = metaNode.path("currency").asText(metaNode.path("currency_quote").asText(null));
+            String exchange = metaNode.path("exchange").asText(null);
+            String type = metaNode.path("type").asText(null);
+
+            JsonNode valuesNode = root.path("values");
+            List<CandleDto> candles = new ArrayList<>();
+
+            if (valuesNode != null && valuesNode.isArray()) {
+                for (JsonNode val : valuesNode) {
+                    String dtStr = val.path("datetime").asText(null);
+                    Long ts = parseEpochSeconds(dtStr);
+                    BigDecimal open = parseBigDecimal(val.path("open").asText(null));
+                    BigDecimal high = parseBigDecimal(val.path("high").asText(null));
+                    BigDecimal low = parseBigDecimal(val.path("low").asText(null));
+                    BigDecimal close = parseBigDecimal(val.path("close").asText(null));
+                    Long volume = parseLong(val.path("volume").asText(null));
+
+                    if (open != null && high != null && low != null && close != null) {
+                        candles.add(new CandleDto(ts, dtStr, open, high, low, close, volume));
+                    }
+                }
+            }
+
+            if (candles.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No candlestick data found for symbol: " + cleanSymbol);
+            }
+
+            // Twelve Data returns descending; reverse to chronological ascending order for charting
+            Collections.reverse(candles);
+
+            return new CandleSeriesDto(symbolOut, intervalOut, currency, exchange, type, candles);
+
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (RestClientException e) {
+            log.error("Network error communicating with Twelve Data for candles: {}", e.getMessage());
+            throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "Twelve Data provider request timed out or unavailable");
+        } catch (Exception e) {
+            log.error("Unexpected error processing Twelve Data candles: {}", e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error parsing Twelve Data candles response");
+        }
+    }
+
+    /**
      * Search market symbols from Twelve Data
      */
     public StockSearchResponseDto searchSymbols(String keywords) {
@@ -263,6 +345,45 @@ public class MarketDataService {
         } catch (Exception e) {
             log.error("Unexpected error searching Twelve Data symbols: {}", e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error parsing symbol search response");
+        }
+    }
+
+    private String normalizeInterval(String interval) {
+        if (interval == null || interval.trim().isEmpty()) {
+            return "5min";
+        }
+        String clean = interval.trim().toLowerCase();
+        return switch (clean) {
+            case "1m", "1min" -> "1min";
+            case "5m", "5min" -> "5min";
+            case "15m", "15min" -> "15min";
+            case "30m", "30min" -> "30min";
+            case "45m", "45min" -> "45min";
+            case "1h", "60min" -> "1h";
+            case "2h" -> "2h";
+            case "4h" -> "4h";
+            case "1d", "1day", "day", "daily" -> "1day";
+            case "1w", "1week", "week", "weekly" -> "1week";
+            case "1mth", "1month", "month", "monthly" -> "1month";
+            default -> clean;
+        };
+    }
+
+    private Long parseEpochSeconds(String datetimeStr) {
+        if (datetimeStr == null || datetimeStr.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            String trimmed = datetimeStr.trim();
+            if (trimmed.length() > 10) {
+                LocalDateTime ldt = LocalDateTime.parse(trimmed, DATETIME_FORMATTER);
+                return ldt.toEpochSecond(ZoneOffset.UTC);
+            } else {
+                LocalDate ld = LocalDate.parse(trimmed, DATE_FORMATTER);
+                return ld.atStartOfDay().toEpochSecond(ZoneOffset.UTC);
+            }
+        } catch (Exception e) {
+            return null;
         }
     }
 

@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { MarketService } from './market.service';
-import { StockQuote, StockSearchResponse, MarketPrice } from '../models/market.model';
+import { StockQuote, StockSearchResponse, MarketPrice, CandleSeries } from '../models/market.model';
 import { environment } from '../../environments/environment';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
@@ -52,6 +52,42 @@ describe('MarketService', () => {
     const req = httpTesting.expectOne((r) => r.url === `${environment.apiUrl}/market/quote` && r.params.get('symbol') === 'AAPL');
     expect(req.request.method).toBe('GET');
     req.flush(mockQuote);
+  });
+
+  it('should fetch candlestick series for given symbol and interval', () => {
+    const mockCandles: CandleSeries = {
+      symbol: 'AAPL',
+      interval: '5min',
+      currency: 'USD',
+      exchange: 'NASDAQ',
+      type: 'Common Stock',
+      candles: [
+        {
+          timestamp: 1727500000,
+          datetime: '2026-09-28 15:55:00',
+          open: 184.0,
+          high: 186.0,
+          low: 183.5,
+          close: 185.5,
+          volume: 250000
+        }
+      ]
+    };
+
+    service.getCandles('AAPL', '5min', 100).subscribe((series) => {
+      expect(series).toEqual(mockCandles);
+      expect(series.symbol).toBe('AAPL');
+      expect(series.candles.length).toBe(1);
+      expect(series.candles[0].open).toBe(184.0);
+    });
+
+    const req = httpTesting.expectOne((r) =>
+      r.url === `${environment.apiUrl}/market/candles` &&
+      r.params.get('symbol') === 'AAPL' &&
+      r.params.get('interval') === '5min'
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush(mockCandles);
   });
 
   it('should fetch forex price for given symbol', () => {

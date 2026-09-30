@@ -1,9 +1,6 @@
 package com.portfolio.controller;
 
-import com.portfolio.dto.market.MarketPriceDto;
-import com.portfolio.dto.market.StockQuoteDto;
-import com.portfolio.dto.market.StockSearchItemDto;
-import com.portfolio.dto.market.StockSearchResponseDto;
+import com.portfolio.dto.market.*;
 import com.portfolio.service.MarketDataService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -113,7 +110,29 @@ class MarketControllerTest {
     }
 
     @Test
-    @DisplayName("4. GET /api/market/quote with invalid symbol returns HTTP 404")
+    @DisplayName("4. GET /api/market/candles returns HTTP 200 and OHLC candle series")
+    void testGetCandlesSuccess() throws Exception {
+        CandleDto c1 = new CandleDto(1727690000L, "2026-09-28 15:55:00",
+                new BigDecimal("227.00"), new BigDecimal("229.50"), new BigDecimal("226.50"), new BigDecimal("228.50"), 150000L);
+        CandleSeriesDto mockSeries = new CandleSeriesDto("AAPL", "5min", "USD", "NASDAQ", "Common Stock", List.of(c1));
+
+        when(marketDataService.getCandles(eq("AAPL"), eq("5min"), eq(null))).thenReturn(mockSeries);
+
+        mockMvc.perform(get("/api/market/candles")
+                        .param("symbol", "AAPL")
+                        .param("interval", "5min")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.symbol").value("AAPL"))
+                .andExpect(jsonPath("$.interval").value("5min"))
+                .andExpect(jsonPath("$.candles[0].open").value(227.00))
+                .andExpect(jsonPath("$.candles[0].high").value(229.50))
+                .andExpect(jsonPath("$.candles[0].low").value(226.50))
+                .andExpect(jsonPath("$.candles[0].close").value(228.50));
+    }
+
+    @Test
+    @DisplayName("5. GET /api/market/quote with invalid symbol returns HTTP 404")
     void testGetQuoteNotFound() throws Exception {
         when(marketDataService.getQuote(eq("INVALIDXYZ")))
                 .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "No market quote found for symbol: INVALIDXYZ"));
@@ -125,7 +144,7 @@ class MarketControllerTest {
     }
 
     @Test
-    @DisplayName("5. GET /api/market/quote with rate limit returns HTTP 429")
+    @DisplayName("6. GET /api/market/quote with rate limit returns HTTP 429")
     void testGetQuoteRateLimit() throws Exception {
         when(marketDataService.getQuote(eq("IBM")))
                 .thenThrow(new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Twelve Data API rate limit reached. Please try again shortly."));
@@ -137,7 +156,7 @@ class MarketControllerTest {
     }
 
     @Test
-    @DisplayName("6. GET /api/market/search with keywords returns matches and HTTP 200")
+    @DisplayName("7. GET /api/market/search with keywords returns matches and HTTP 200")
     void testSearchSymbolsSuccess() throws Exception {
         StockSearchItemDto item = new StockSearchItemDto(
                 "BTC/USD",

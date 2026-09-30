@@ -1,6 +1,7 @@
 package com.portfolio.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.portfolio.dto.market.CandleSeriesDto;
 import com.portfolio.dto.market.MarketPriceDto;
 import com.portfolio.dto.market.StockQuoteDto;
 import com.portfolio.dto.market.StockSearchResponseDto;
@@ -159,7 +160,57 @@ class MarketDataServiceTest {
     }
 
     @Test
-    @DisplayName("4. Throw 429 when Twelve Data returns rate limit error")
+    @DisplayName("4. Successfully parse Twelve Data Candles time series")
+    void testGetCandlesSuccess() {
+        String jsonResponse = """
+                {
+                    "meta": {
+                        "symbol": "AAPL",
+                        "interval": "5min",
+                        "currency": "USD",
+                        "exchange": "NASDAQ",
+                        "type": "Common Stock"
+                    },
+                    "values": [
+                        {
+                            "datetime": "2026-09-29 15:55:00",
+                            "open": "228.00",
+                            "high": "229.00",
+                            "low": "227.50",
+                            "close": "228.50",
+                            "volume": "100000"
+                        },
+                        {
+                            "datetime": "2026-09-29 15:50:00",
+                            "open": "227.00",
+                            "high": "228.20",
+                            "low": "226.80",
+                            "close": "228.00",
+                            "volume": "80000"
+                        }
+                    ],
+                    "status": "ok"
+                }
+                """;
+
+        mockServer.expect(requestTo(containsString("/time_series?symbol=AAPL&interval=5min&outputsize=60")))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(jsonResponse, MediaType.APPLICATION_JSON));
+
+        CandleSeriesDto result = marketDataService.getCandles("AAPL", "5min", 60);
+
+        mockServer.verify();
+        assertThat(result).isNotNull();
+        assertThat(result.getSymbol()).isEqualTo("AAPL");
+        assertThat(result.getInterval()).isEqualTo("5min");
+        assertThat(result.getCandles()).hasSize(2);
+        // Chronologically reversed (ascending: 15:50 first, then 15:55)
+        assertThat(result.getCandles().get(0).getDatetime()).isEqualTo("2026-09-29 15:50:00");
+        assertThat(result.getCandles().get(1).getDatetime()).isEqualTo("2026-09-29 15:55:00");
+    }
+
+    @Test
+    @DisplayName("5. Throw 429 when Twelve Data returns rate limit error")
     void testRateLimitHandling() {
         String jsonResponse = """
                 {
@@ -181,7 +232,7 @@ class MarketDataServiceTest {
     }
 
     @Test
-    @DisplayName("5. Throw 404 when symbol is not found")
+    @DisplayName("6. Throw 404 when symbol is not found")
     void testSymbolNotFound() {
         String jsonResponse = """
                 {
@@ -203,7 +254,7 @@ class MarketDataServiceTest {
     }
 
     @Test
-    @DisplayName("6. Successfully parse Twelve Data Symbol Search response")
+    @DisplayName("7. Successfully parse Twelve Data Symbol Search response")
     void testSearchSymbolsSuccess() {
         String jsonResponse = """
                 {

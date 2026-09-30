@@ -21,6 +21,25 @@ export interface MarketPrice {
   timestamp: number;
 }
 
+export interface Candle {
+  timestamp: number;
+  datetime?: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number;
+}
+
+export interface CandleSeries {
+  symbol: string;
+  interval: string;
+  currency?: string;
+  exchange?: string;
+  type?: string;
+  candles: Candle[];
+}
+
 export interface StockSearchItem {
   symbol: string;
   name: string;
