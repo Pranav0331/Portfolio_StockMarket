@@ -37,6 +37,18 @@
           </div>
         }
       </div>
+
+      <a
+        [routerLink]="['/dashboard/stock', selectedSymbol()]"
+        class="ticker-details-link"
+        title="View Full Stock Details Page"
+      >
+        <span>Details</span>
+        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="7" y1="17" x2="17" y2="7"></line>
+          <polyline points="7 7 17 7 17 17"></polyline>
+        </svg>
+      </a>
     </div>
 
     <!-- Center: Global Market Search -->

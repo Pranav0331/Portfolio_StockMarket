@@ -1,0 +1,402 @@
+<div class="stock-details-page" [class.page-fullscreen]="isFullscreen()">
+  <!-- TOP BREADCRUMB & BACK NAVIGATION -->
+  <div class="details-nav-header">
+    <a routerLink="/dashboard/market" class="back-link">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      <span>Back to Market Dashboard</span>
+    </a>
+
+    <div class="header-right-actions">
+      <span class="provider-pill">
+        <span class="pulse-dot"></span>
+        Provider: <strong>{{ currentProvider() }}</strong>
+      </span>
+      <button
+        type="button"
+        class="action-icon-btn"
+        (click)="refreshData()"
+        [disabled]="isLoadingQuote() || isLoadingCandles()"
+        title="Refresh Data"
+      >
+        <svg
+          [class.spinning]="isLoadingQuote() || isLoadingCandles()"
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M23 4v6h-6"></path>
+          <path d="M1 20v-6h6"></path>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- INSTRUMENT HERO CARD -->
+  <div class="hero-instrument-card">
+    <div class="instrument-primary-info">
+      <div class="symbol-large-box">
+        <span class="symbol-tag">{{ symbol() }}</span>
+      </div>
+      <div class="instrument-titles">
+        <div class="title-row">
+          <h1 class="instrument-name">{{ companyName() }}</h1>
+          <div class="badge-group">
+            <span class="meta-badge exchange">{{ exchange() }}</span>
+            <span class="meta-badge type">{{ instrumentType() }}</span>
+            <span class="meta-badge currency">{{ formatCurrencySymbol(symbol()) }}</span>
+          </div>
+        </div>
+        <div class="sub-meta-row">
+          <span class="meta-label">Symbol: <strong class="font-mono">{{ symbol() }}</strong></span>
+          <span class="meta-sep">•</span>
+          <span class="meta-label">Exchange: <strong>{{ exchange() }}</strong></span>
+          @if (currentQuote()?.latestTradingDay) {
+            <span class="meta-sep">•</span>
+            <span class="meta-label">Trading Day: <strong>{{ currentQuote()!.latestTradingDay }}</strong></span>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Price Block -->
+    <div class="price-hero-block">
+      <div class="price-val-hero">
+        @if (isLoadingQuote() && !currentQuote()) {
+          <div class="skeleton-shimmer price-skeleton"></div>
+        } @else if (currentQuote()?.price != null) {
+          <span class="currency-prefix">{{ formatCurrencySymbol(symbol()) }}</span>
+          <span class="price-number font-mono">{{ currentQuote()!.price | number:'1.2-4' }}</span>
+        } @else {
+          <span class="price-unavailable">Data unavailable</span>
+        }
+      </div>
+
+      @if (currentQuote(); as quote) {
+        @if (quote.change != null) {
+          <div
+            class="change-hero-badge"
+            [class.positive]="quote.change >= 0"
+            [class.negative]="quote.change < 0"
+          >
+            <span class="arrow-icon">{{ quote.change >= 0 ? '▲' : '▼' }}</span>
+            <span class="change-amount font-mono">
+              {{ quote.change >= 0 ? '+' : '' }}{{ quote.change | number:'1.2-4' }}
+            </span>
+            <span class="change-pct font-mono">({{ quote.changePercent }})</span>
+          </div>
+        }
+      }
+    </div>
+  </div>
+
+  <!-- ERROR NOTIFICATION BANNER -->
+  @if (errorMessage()) {
+    <div class="error-banner" [class.warning-rate-limit]="isRateLimited()">
+      <div class="error-icon">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <div class="error-text">
+        <span class="error-title">{{ isRateLimited() ? 'Rate Limit Notice' : 'Notice' }}</span>
+        <p class="error-desc">{{ errorMessage() }}</p>
+      </div>
+      <button type="button" class="btn-retry-err" (click)="refreshData()">
+        Retry
+      </button>
+    </div>
+  }
+
+  <!-- KEY METRICS STATS BAR -->
+  <div class="key-metrics-grid">
+    <!-- Open Price -->
+    <div class="stat-card">
+      <span class="stat-label">Open</span>
+      <div class="stat-value font-mono">
+        @if (currentQuote()?.open != null) {
+          {{ formatCurrencySymbol(symbol()) }}{{ currentQuote()!.open | number:'1.2-4' }}
+        } @else {
+          <span class="text-dim">Data unavailable</span>
+        }
+      </div>
+    </div>
+
+    <!-- Previous Close -->
+    <div class="stat-card">
+      <span class="stat-label">Previous Close</span>
+      <div class="stat-value font-mono">
+        @if (currentQuote()?.previousClose != null) {
+          {{ formatCurrencySymbol(symbol()) }}{{ currentQuote()!.previousClose | number:'1.2-4' }}
+        } @else {
+          <span class="text-dim">Data unavailable</span>
+        }
+      </div>
+    </div>
+
+    <!-- Day High -->
+    <div class="stat-card">
+      <span class="stat-label">Day High</span>
+      <div class="stat-value font-mono text-emerald">
+        @if (currentQuote()?.high != null) {
+          {{ formatCurrencySymbol(symbol()) }}{{ currentQuote()!.high | number:'1.2-4' }}
+        } @else {
+          <span class="text-dim">Data unavailable</span>
+        }
+      </div>
+    </div>
+
+    <!-- Day Low -->
+    <div class="stat-card">
+      <span class="stat-label">Day Low</span>
+      <div class="stat-value font-mono text-rose">
+        @if (currentQuote()?.low != null) {
+          {{ formatCurrencySymbol(symbol()) }}{{ currentQuote()!.low | number:'1.2-4' }}
+        } @else {
+          <span class="text-dim">Data unavailable</span>
+        }
+      </div>
+    </div>
+
+    <!-- Volume -->
+    <div class="stat-card">
+      <span class="stat-label">Volume</span>
+      <div class="stat-value font-mono">
+        @if (currentQuote()?.volume != null && currentQuote()!.volume! > 0) {
+          {{ currentQuote()!.volume | number:'1.0-0' }}
+        } @else {
+          <span class="text-dim">Data unavailable</span>
+        }
+      </div>
+    </div>
+
+    <!-- Day Range Indicator -->
+    <div class="stat-card range-card">
+      <div class="range-header">
+        <span class="stat-label">Day's Range</span>
+        @if (currentQuote()?.low != null && currentQuote()?.high != null) {
+          <span class="range-numbers font-mono">
+            {{ currentQuote()!.low | number:'1.2-2' }} — {{ currentQuote()!.high | number:'1.2-2' }}
+          </span>
+        }
+      </div>
+      <div class="range-track">
+        @if (currentQuote(); as q) {
+          @if (q.low != null && q.high != null && q.price != null) {
+            <div
+              class="range-thumb"
+              [style.left.%]="getDayProgressPercent(q)"
+              [title]="'Current: ' + q.price"
+            ></div>
+          }
+        }
+      </div>
+      <div class="range-labels">
+        <span>Low</span>
+        <span>High</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- INTERACTIVE CANDLESTICK CHART CONTAINER -->
+  <div class="chart-section-card">
+    <!-- Chart Controls Toolbar -->
+    <div class="chart-toolbar">
+      <!-- Left: Timeframes (1D, 1W, 1M, 3M, 6M, 1Y) -->
+      <div class="toolbar-group timeframes-group">
+        <span class="toolbar-label">Range</span>
+        <div class="btn-segmented">
+          @for (tf of timeframes; track tf) {
+            <button
+              type="button"
+              class="seg-btn"
+              [class.active]="currentTimeframe() === tf"
+              (click)="setTimeframe(tf)"
+            >
+              {{ tf }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Center: Chart Type (Candles, Line, Area) -->
+      <div class="toolbar-group types-group">
+        <span class="toolbar-label">Type</span>
+        <div class="btn-segmented">
+          <button
+            type="button"
+            class="seg-btn"
+            [class.active]="currentChartType() === 'candles'"
+            (click)="setChartType('candles')"
+            title="Candlestick Chart"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="5" y="8" width="4" height="8" rx="1"></rect>
+              <line x1="7" y1="3" x2="7" y2="8"></line>
+              <line x1="7" y1="16" x2="7" y2="21"></line>
+              <rect x="15" y="5" width="4" height="10" rx="1"></rect>
+              <line x1="17" y1="2" x2="17" y2="5"></line>
+              <line x1="17" y1="15" x2="17" y2="22"></line>
+            </svg>
+            <span>Candles</span>
+          </button>
+          <button
+            type="button"
+            class="seg-btn"
+            [class.active]="currentChartType() === 'line'"
+            (click)="setChartType('line')"
+            title="Line Chart"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            <span>Line</span>
+          </button>
+          <button
+            type="button"
+            class="seg-btn"
+            [class.active]="currentChartType() === 'area'"
+            (click)="setChartType('area')"
+            title="Mountain / Area Chart"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 3v18h18"></path>
+              <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+            </svg>
+            <span>Area</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Right: Actions (Fit/Reset, Fullscreen) -->
+      <div class="toolbar-group actions-group">
+        <button
+          type="button"
+          class="tool-btn"
+          (click)="fitChart()"
+          title="Reset Scale & Fit Content"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+          <span>Fit</span>
+        </button>
+        <button
+          type="button"
+          class="tool-btn"
+          (click)="toggleFullscreen()"
+          [title]="isFullscreen() ? 'Exit Fullscreen' : 'Fullscreen Chart'"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            @if (isFullscreen()) {
+              <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
+            } @else {
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+            }
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Crosshair OHLC Strip -->
+    <div class="chart-telemetry-bar">
+      @if (hoveredBar(); as bar) {
+        <div class="telemetry-items">
+          <span class="telemetry-item time-item">
+            <span class="telemetry-lbl">Time:</span>
+            <strong class="font-mono">{{ bar.timeStr }}</strong>
+          </span>
+          <span class="telemetry-item">
+            <span class="telemetry-lbl">O:</span>
+            <strong class="font-mono">{{ bar.open | number:'1.2-4' }}</strong>
+          </span>
+          <span class="telemetry-item">
+            <span class="telemetry-lbl">H:</span>
+            <strong class="font-mono text-emerald">{{ bar.high | number:'1.2-4' }}</strong>
+          </span>
+          <span class="telemetry-item">
+            <span class="telemetry-lbl">L:</span>
+            <strong class="font-mono text-rose">{{ bar.low | number:'1.2-4' }}</strong>
+          </span>
+          <span class="telemetry-item">
+            <span class="telemetry-lbl">C:</span>
+            <strong
+              class="font-mono"
+              [class.text-emerald]="bar.close >= bar.open"
+              [class.text-rose]="bar.close < bar.open"
+            >
+              {{ bar.close | number:'1.2-4' }}
+            </strong>
+          </span>
+          @if (bar.volume != null) {
+            <span class="telemetry-item">
+              <span class="telemetry-lbl">Vol:</span>
+              <strong class="font-mono">{{ bar.volume | number:'1.0-0' }}</strong>
+            </span>
+          }
+        </div>
+      } @else {
+        <span class="telemetry-hint">Hover over candles to view precise OHLCV values</span>
+      }
+    </div>
+
+    <!-- Chart Canvas Area -->
+    <div class="chart-canvas-wrapper">
+      @if (isLoadingCandles()) {
+        <div class="chart-loading-overlay">
+          <div class="loading-spinner"></div>
+          <span class="loading-text">Fetching historical market data from {{ currentProvider() }}...</span>
+        </div>
+      }
+
+      @if (!isLoadingCandles() && candleData().length === 0) {
+        <div class="chart-empty-state">
+          <div class="empty-icon-box">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+          </div>
+          <h3 class="empty-title">Data unavailable</h3>
+          <p class="empty-desc">
+            Historical candle series for <strong class="font-mono">{{ symbol() }}</strong> ({{ currentTimeframe() }}) is currently unavailable from {{ currentProvider() }}.
+          </p>
+          <button type="button" class="btn-retry-chart" (click)="refreshData()">
+            Retry Fetch
+          </button>
+        </div>
+      }
+
+      <div #chartContainer class="chart-canvas-container"></div>
+    </div>
+  </div>
+
+  <!-- POPULAR INSTRUMENTS QUICK SHORTCUTS -->
+  <div class="popular-instruments-section">
+    <span class="shortcuts-title">Explore Other Instruments:</span>
+    <div class="chips-list">
+      @for (item of quickShortcuts; track item.symbol) {
+        <button
+          type="button"
+          class="instrument-chip"
+          [class.active]="item.symbol === symbol()"
+          (click)="navigateToStock(item.symbol)"
+        >
+          <span class="chip-sym">{{ item.symbol }}</span>
+          <span class="chip-name">{{ item.name }}</span>
+        </button>
+      }
+    </div>
+  </div>
+</div>

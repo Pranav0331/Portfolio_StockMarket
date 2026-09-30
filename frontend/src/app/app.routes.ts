@@ -11,6 +11,7 @@ import { OrdersComponent } from './pages/dashboard/orders/orders';
 import { TransactionsComponent } from './pages/dashboard/transactions/transactions';
 import { AlertsComponent } from './pages/dashboard/alerts/alerts';
 import { SettingsComponent } from './pages/dashboard/settings/settings';
+import { StockDetailsComponent } from './pages/dashboard/stock-details/stock-details';
 import { authGuard, rootGuard, guestGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
@@ -41,6 +42,7 @@ export const routes: Routes = [
     children: [
       { path: '', component: DashboardHomeComponent },
       { path: 'market', component: MarketComponent },
+      { path: 'stock/:symbol', component: StockDetailsComponent },
       { path: 'portfolio', component: PortfolioComponent },
       { path: 'watchlist', component: WatchlistComponent },
       { path: 'orders', component: OrdersComponent },

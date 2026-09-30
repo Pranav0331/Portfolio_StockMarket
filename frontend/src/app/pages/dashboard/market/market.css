@@ -56,6 +56,29 @@
   flex-shrink: 0;
 }
 
+.ticker-details-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 4px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  margin-left: 0.25rem;
+}
+
+.ticker-details-link:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
 .symbol-badge {
   font-size: 0.95rem;
   font-weight: 800;
