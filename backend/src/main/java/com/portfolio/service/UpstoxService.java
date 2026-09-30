@@ -91,10 +91,14 @@ public class UpstoxService {
         mapInstrument("BANKNIFTY", "NSE_INDEX|Nifty Bank", "Nifty Bank", "INDEX");
         mapInstrument("NIFTY BANK", "NSE_INDEX|Nifty Bank", "Nifty Bank", "INDEX");
         mapInstrument("BANK NIFTY", "NSE_INDEX|Nifty Bank", "Nifty Bank", "INDEX");
+        mapInstrument("NIFTYBANK", "NSE_INDEX|Nifty Bank", "Nifty Bank", "INDEX");
         mapInstrument("FINNIFTY", "NSE_INDEX|Nifty Fin Service", "Nifty Financial Services", "INDEX");
         mapInstrument("NIFTY FIN SERVICE", "NSE_INDEX|Nifty Fin Service", "Nifty Financial Services", "INDEX");
+        mapInstrument("NIFTYFINSERVICE", "NSE_INDEX|Nifty Fin Service", "Nifty Financial Services", "INDEX");
         mapInstrument("NIFTY IT", "NSE_INDEX|Nifty IT", "Nifty IT", "INDEX");
+        mapInstrument("NIFTYIT", "NSE_INDEX|Nifty IT", "Nifty IT", "INDEX");
         mapInstrument("NIFTY AUTO", "NSE_INDEX|Nifty Auto", "Nifty Auto", "INDEX");
+        mapInstrument("NIFTYAUTO", "NSE_INDEX|Nifty Auto", "Nifty Auto", "INDEX");
         mapInstrument("MIDCPNIFTY", "NSE_INDEX|NIFTY MID SELECT", "Nifty Midcap Select", "INDEX");
         mapInstrument("SENSEX", "BSE_INDEX|SENSEX", "BSE Sensex", "INDEX");
         mapInstrument("BSESENSEX", "BSE_INDEX|SENSEX", "BSE Sensex", "INDEX");
@@ -627,19 +631,47 @@ public class UpstoxService {
 
         String clean = symbol.trim().toUpperCase(Locale.ROOT);
 
-        // Already fully-qualified Upstox key (e.g., NSE_EQ|INE002A01018 or NSE_INDEX|Nifty 50)
-        if (clean.contains("|") || clean.startsWith("NSE_") || clean.startsWith("BSE_")) {
-            return clean;
-        }
-
-        // Direct dictionary match
+        // 1. Direct dictionary match (e.g., "BANK NIFTY", "NIFTY 50", "RELIANCE")
         if (INSTRUMENT_MAP.containsKey(clean)) {
             return INSTRUMENT_MAP.get(clean);
         }
 
-        // Handle .NSE or .BSE suffixes
+        // 2. Check normalized variations (strip or single-space)
+        String normalizedSpaces = clean.replaceAll("\\s+", " ");
+        if (INSTRUMENT_MAP.containsKey(normalizedSpaces)) {
+            return INSTRUMENT_MAP.get(normalizedSpaces);
+        }
+        String strippedSpaces = clean.replaceAll("\\s+", "");
+        if (INSTRUMENT_MAP.containsKey(strippedSpaces)) {
+            return INSTRUMENT_MAP.get(strippedSpaces);
+        }
+
+        // 3. If symbol contains prefix like NSE_EQ|, NSE_INDEX|, BSE_EQ|, BSE_INDEX|, NSE:, BSE:
+        if (clean.contains("|") || clean.contains(":")) {
+            int sepIndex = clean.indexOf('|') != -1 ? clean.indexOf('|') : clean.indexOf(':');
+            String afterSep = clean.substring(sepIndex + 1).trim();
+            if (INSTRUMENT_MAP.containsKey(afterSep)) {
+                return INSTRUMENT_MAP.get(afterSep);
+            }
+            String afterSepNoSpace = afterSep.replaceAll("\\s+", "");
+            if (INSTRUMENT_MAP.containsKey(afterSepNoSpace)) {
+                return INSTRUMENT_MAP.get(afterSepNoSpace);
+            }
+        }
+
+        // 4. If it's a known fully-qualified Upstox key with ISIN or exact index key
+        if (clean.startsWith("NSE_INDEX|") || clean.startsWith("BSE_INDEX|")
+                || (clean.startsWith("NSE_EQ|INE") || clean.startsWith("BSE_EQ|INE"))) {
+            return clean;
+        }
+
+        if (clean.contains("|")) {
+            return clean;
+        }
+
+        // 5. Handle .NSE or .BSE suffixes
         if (clean.endsWith(".NSE")) {
-            String bare = clean.substring(0, clean.length() - 4);
+            String bare = clean.substring(0, clean.length() - 4).trim();
             if (INSTRUMENT_MAP.containsKey(bare)) {
                 return INSTRUMENT_MAP.get(bare);
             }
@@ -647,7 +679,10 @@ public class UpstoxService {
         }
 
         if (clean.endsWith(".BSE")) {
-            String bare = clean.substring(0, clean.length() - 4);
+            String bare = clean.substring(0, clean.length() - 4).trim();
+            if (INSTRUMENT_MAP.containsKey(bare)) {
+                return INSTRUMENT_MAP.get(bare);
+            }
             return "BSE_EQ|" + bare;
         }
 

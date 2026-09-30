@@ -208,6 +208,11 @@ class UpstoxServiceTest {
         assertThat(upstoxService.resolveInstrumentKey("RELIANCE.NSE")).isEqualTo("NSE_EQ|INE002A01018");
         assertThat(upstoxService.resolveInstrumentKey("NIFTY 50")).isEqualTo("NSE_INDEX|Nifty 50");
         assertThat(upstoxService.resolveInstrumentKey("SENSEX")).isEqualTo("BSE_INDEX|SENSEX");
+        assertThat(upstoxService.resolveInstrumentKey("BANK NIFTY")).isEqualTo("NSE_INDEX|Nifty Bank");
+        assertThat(upstoxService.resolveInstrumentKey("BANKNIFTY")).isEqualTo("NSE_INDEX|Nifty Bank");
+        assertThat(upstoxService.resolveInstrumentKey("NIFTY BANK")).isEqualTo("NSE_INDEX|Nifty Bank");
+        assertThat(upstoxService.resolveInstrumentKey("NSE_EQ|BANK NIFTY")).isEqualTo("NSE_INDEX|Nifty Bank");
+        assertThat(upstoxService.resolveInstrumentKey("NSE_INDEX|BANK NIFTY")).isEqualTo("NSE_INDEX|Nifty Bank");
         assertThat(upstoxService.resolveInstrumentKey("NSE_EQ|INE040A01034")).isEqualTo("NSE_EQ|INE040A01034");
     }
 
