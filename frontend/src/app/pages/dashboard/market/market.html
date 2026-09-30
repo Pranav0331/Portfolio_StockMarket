@@ -214,6 +214,22 @@
             </button>
           </div>
 
+          <!-- Indicators Button (TradingView / Terminal Style) -->
+          <button
+            type="button"
+            class="tool-btn indicator-trigger-btn"
+            id="indicators-modal-trigger-btn"
+            [class.active]="activeIndicators().length > 0"
+            (click)="openIndicatorModal()"
+            title="Technical Indicators Library"
+          >
+            <span class="fx-icon">ƒx</span>
+            <span>Indicators</span>
+            @if (activeIndicators().length > 0) {
+              <span class="ind-count-badge">{{ activeIndicators().length }}</span>
+            }
+          </button>
+
           <!-- Action Tools: Fit / Reset & Fullscreen -->
           <div class="tools-btn-group">
             <button 
@@ -240,6 +256,68 @@
           </div>
         </div>
       </div>
+
+      <!-- ACTIVE INDICATORS MANAGEMENT RIBBON -->
+      @if (activeIndicators().length > 0) {
+        <div class="active-indicators-ribbon">
+          <div class="ribbon-label">
+            <span class="pulse-dot"></span>
+            <span>Active:</span>
+          </div>
+          <div class="active-pills-list">
+            @for (ind of activeIndicators(); track ind.instanceId) {
+              <div class="ind-pill" [class.disabled]="!ind.enabled">
+                <span class="ind-color-dot" [style.backgroundColor]="ind.color"></span>
+                <span class="ind-name">{{ ind.shortName }}</span>
+                
+                <!-- Visibility / Enable-Disable Toggle Button -->
+                <button
+                  type="button"
+                  class="ind-action-btn toggle-visibility-btn"
+                  (click)="toggleIndicatorEnabled(ind.instanceId)"
+                  [title]="ind.enabled ? 'Hide Indicator' : 'Show Indicator'"
+                >
+                  @if (ind.enabled) {
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                  }
+                </button>
+
+                <!-- Settings Button -->
+                <button
+                  type="button"
+                  class="ind-action-btn settings-btn"
+                  (click)="openIndicatorSettings(ind)"
+                  title="Indicator Settings"
+                >
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                  </svg>
+                </button>
+
+                <!-- Remove Button -->
+                <button
+                  type="button"
+                  class="ind-action-btn remove-btn"
+                  (click)="removeIndicator(ind.instanceId)"
+                  title="Remove Indicator"
+                >
+                  ✕
+                </button>
+              </div>
+            }
+          </div>
+          <button type="button" class="clear-all-ind-btn" (click)="clearAllIndicators()" title="Remove all active indicators">Clear All</button>
+        </div>
+      }
 
       <!-- HUGE Candlestick + Volume Chart Canvas Container -->
       <div class="chart-canvas-viewport">
@@ -439,4 +517,224 @@
       </div>
     </aside>
   </div>
+
+  <!-- =========================================================================
+       3. SEARCHABLE INDICATORS LIBRARY MODAL
+       ========================================================================= -->
+  @if (isIndicatorModalOpen()) {
+    <div class="indicator-modal-backdrop" (click)="closeIndicatorModal()">
+      <div class="indicator-modal-dialog" (click)="$event.stopPropagation()">
+        <!-- Header -->
+        <div class="ind-modal-header">
+          <div class="header-titles">
+            <div class="modal-badge-title">
+              <span class="fx-badge">ƒx</span>
+              <h3>Technical Indicators & Overlays</h3>
+            </div>
+            <p class="modal-sub">Search across 30+ trend, momentum, volatility, volume, moving average and oscillator indicators.</p>
+          </div>
+          <button type="button" class="modal-close-btn" (click)="closeIndicatorModal()" title="Close (Esc)">✕</button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="ind-modal-search">
+          <svg class="search-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            type="text"
+            id="indicator-search-input"
+            [ngModel]="indicatorSearchQuery()"
+            (ngModelChange)="indicatorSearchQuery.set($event)"
+            placeholder="Search indicator by name, symbol, or keyword (e.g., RSI, EMA, Bollinger, VWAP, MACD)..."
+            class="ind-search-field"
+            autofocus
+          />
+          @if (indicatorSearchQuery()) {
+            <button type="button" class="ind-search-clear" (click)="indicatorSearchQuery.set('')">✕</button>
+          }
+        </div>
+
+        <!-- Category Filter Pills -->
+        <div class="ind-category-pills">
+          @for (cat of indicatorCategories; track cat.id) {
+            <button
+              type="button"
+              class="cat-pill-btn"
+              [class.active]="selectedIndicatorCategory() === cat.id"
+              (click)="setIndicatorCategory(cat.id)"
+            >
+              <span>{{ cat.label }}</span>
+              <span class="cat-count">({{ getCategoryCount(cat.id) }})</span>
+            </button>
+          }
+        </div>
+
+        <!-- Indicators Scrollable List -->
+        <div class="ind-modal-body">
+          @if (filteredIndicators().length === 0) {
+            <div class="ind-no-results">
+              <span class="no-res-icon">🔍</span>
+              <h4>No matching indicators found</h4>
+              <p>Try searching for moving averages, RSI, MACD, Bollinger Bands, Supertrend, or VWAP.</p>
+              <button type="button" class="btn-reset-search" (click)="indicatorSearchQuery.set(''); selectedIndicatorCategory.set('all')">
+                View All Indicators
+              </button>
+            </div>
+          } @else {
+            <div class="ind-grid">
+              @for (ind of filteredIndicators(); track ind.id) {
+                <div class="ind-card" [class.is-added]="isIndicatorActive(ind.id)">
+                  <div class="ind-card-top">
+                    <div class="ind-meta-left">
+                      <span class="ind-short-tag">{{ ind.shortName }}</span>
+                      <h4 class="ind-card-title">{{ ind.name }}</h4>
+                    </div>
+                    <span class="ind-cat-tag">{{ ind.category | uppercase }}</span>
+                  </div>
+
+                  <p class="ind-card-desc">{{ ind.description }}</p>
+
+                  <div class="ind-card-footer">
+                    <div class="ind-badges">
+                      <span class="overlay-badge" [class.overlay-yes]="ind.isOverlay">
+                        {{ ind.isOverlay ? 'Main Chart Overlay' : 'Sub-Pane Oscillator' }}
+                      </span>
+                      @if (getActiveIndicatorCount(ind.id) > 0) {
+                        <span class="active-count-tag">Active ({{ getActiveIndicatorCount(ind.id) }})</span>
+                      }
+                    </div>
+
+                    <button
+                      type="button"
+                      class="btn-add-indicator"
+                      (click)="addIndicator(ind)"
+                      title="Add to chart"
+                    >
+                      <span class="plus-icon">+</span>
+                      <span>{{ getActiveIndicatorCount(ind.id) > 0 ? 'Add Another' : 'Add to Chart' }}</span>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Modal Bottom Status / Done Action -->
+        <div class="ind-modal-footer">
+          <div class="active-summary">
+            <span class="summary-label">Currently Applied:</span>
+            <span class="summary-count">{{ activeIndicators().length }} indicator(s)</span>
+          </div>
+          <button type="button" class="btn-modal-done" (click)="closeIndicatorModal()">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- =========================================================================
+       4. INDICATOR SETTINGS MODAL
+       ========================================================================= -->
+  @if (editingIndicator(); as currentInd) {
+    <div class="indicator-modal-backdrop settings-backdrop" (click)="cancelIndicatorSettings()">
+      <div class="indicator-settings-dialog" (click)="$event.stopPropagation()">
+        <!-- Header -->
+        <div class="settings-modal-header">
+          <div class="settings-title-cluster">
+            <span class="settings-color-preview" [style.backgroundColor]="editingColor()"></span>
+            <div>
+              <h3>{{ currentInd.name }} Settings</h3>
+              <span class="settings-sub">{{ currentInd.shortName }} Parameters & Visual Styling</span>
+            </div>
+          </div>
+          <button type="button" class="modal-close-btn" (click)="cancelIndicatorSettings()">✕</button>
+        </div>
+
+        <!-- Body Form -->
+        <div class="settings-modal-body">
+          <!-- Parameter Inputs (Generated dynamically based on indicator schema) -->
+          <div class="settings-section">
+            <h4 class="section-heading">Inputs & Calculation</h4>
+            <div class="params-fields-grid">
+              @for (field of editingIndicator()?.params | keyvalue; track field.key) {
+                <div class="form-field-group">
+                  <label class="field-label">{{ field.key | uppercase }}</label>
+                  <input
+                    type="number"
+                    [ngModel]="editingParams()[field.key]"
+                    (ngModelChange)="updateEditingParam(field.key, $event)"
+                    class="field-input"
+                  />
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Visual Styling (Color & Line Width) -->
+          <div class="settings-section">
+            <h4 class="section-heading">Style & Appearance</h4>
+            
+            <div class="styling-controls-grid">
+              <!-- Color Picker -->
+              <div class="form-field-group">
+                <label class="field-label">Line Color</label>
+                <div class="color-picker-row">
+                  <input
+                    type="color"
+                    [ngModel]="editingColor()"
+                    (ngModelChange)="editingColor.set($event)"
+                    class="color-input-native"
+                  />
+                  <div class="preset-colors">
+                    @for (preset of ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316']; track preset) {
+                      <button
+                        type="button"
+                        class="preset-swatch"
+                        [style.backgroundColor]="preset"
+                        [class.selected]="editingColor() === preset"
+                        (click)="editingColor.set(preset)"
+                      ></button>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <!-- Line Width -->
+              <div class="form-field-group">
+                <label class="field-label">Line Thickness</label>
+                <div class="line-width-selector">
+                  @for (w of [1, 2, 3, 4]; track w) {
+                    <button
+                      type="button"
+                      class="width-btn"
+                      [class.active]="editingLineWidth() === w"
+                      (click)="editingLineWidth.set(w)"
+                    >
+                      <span class="line-sample" [style.height.px]="w"></span>
+                      <span>{{ w }}px</span>
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="settings-modal-footer">
+          <button type="button" class="btn-settings-cancel" (click)="cancelIndicatorSettings()">
+            Cancel
+          </button>
+          <button type="button" class="btn-settings-save" (click)="saveIndicatorSettings()">
+            Apply & Save
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 </div>
+

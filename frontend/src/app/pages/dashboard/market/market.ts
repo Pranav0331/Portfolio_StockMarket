@@ -31,6 +31,17 @@ import {
 } from 'lightweight-charts';
 import { MarketService } from '../../../services/market.service';
 import { StockQuote, StockSearchItem, Candle, CandleSeries } from '../../../models/market.model';
+import {
+  IndicatorCategory,
+  IndicatorDefinition,
+  ActiveIndicator,
+  INDICATOR_LIBRARY,
+  INDICATOR_CATEGORIES
+} from '../../../models/indicator.model';
+import {
+  calculateIndicatorSeries,
+  IndicatorRenderSeries
+} from '../../../utils/indicator-calc';
 
 export type MarketCategory = 'all' | 'stocks' | 'forex' | 'crypto';
 export type ChartType = 'candles' | 'line' | 'area';
@@ -111,6 +122,45 @@ export class MarketComponent implements OnInit, OnDestroy {
   // Real Candlestick Data Cache
   readonly candleData = signal<Candle[]>([]);
 
+  // ==========================================
+  // INDICATOR LIBRARY & ACTIVE STATE
+  // ==========================================
+  readonly indicatorCategories = INDICATOR_CATEGORIES;
+  readonly isIndicatorModalOpen = signal<boolean>(false);
+  readonly indicatorSearchQuery = signal<string>('');
+  readonly selectedIndicatorCategory = signal<string>('all');
+  readonly indicatorLibrary = signal<IndicatorDefinition[]>(INDICATOR_LIBRARY);
+  readonly activeIndicators = signal<ActiveIndicator[]>([]);
+
+  // Editing Settings Modal State
+  readonly editingIndicator = signal<ActiveIndicator | null>(null);
+  readonly editingParams = signal<Record<string, any>>({});
+  readonly editingColor = signal<string>('#3b82f6');
+  readonly editingLineWidth = signal<number>(2);
+
+  // Filtered Indicators in Library Modal
+  readonly filteredIndicators = computed(() => {
+    const query = this.indicatorSearchQuery().trim().toLowerCase();
+    const cat = this.selectedIndicatorCategory();
+
+    return this.indicatorLibrary().filter(ind => {
+      const matchCat = cat === 'all' || ind.category === cat;
+      const matchQuery =
+        !query ||
+        ind.name.toLowerCase().includes(query) ||
+        ind.shortName.toLowerCase().includes(query) ||
+        ind.description.toLowerCase().includes(query) ||
+        ind.tags.some(t => t.toLowerCase().includes(query));
+      return matchCat && matchQuery;
+    });
+  });
+
+  // Count helper for category badges
+  getCategoryCount(catId: string): number {
+    if (catId === 'all') return this.indicatorLibrary().length;
+    return this.indicatorLibrary().filter(i => i.category === catId).length;
+  }
+
   // Intervals Available
   readonly intervals: { label: string; value: ChartInterval }[] = [
     { label: '1m', value: '1min' },
@@ -177,6 +227,7 @@ export class MarketComponent implements OnInit, OnDestroy {
   private lineSeries: ISeriesApi<'Line'> | null = null;
   private areaSeries: ISeriesApi<'Area'> | null = null;
   private volumeSeries: ISeriesApi<'Histogram'> | null = null;
+  private indicatorSeriesMap = new Map<string, ISeriesApi<any>>();
   private resizeObserver: ResizeObserver | null = null;
 
   private readonly searchSubject = new Subject<string>();
@@ -192,6 +243,16 @@ export class MarketComponent implements OnInit, OnDestroy {
 
       if (container && data && data.length > 0) {
         this.initOrUpdateChart(container, data, chartType);
+      }
+    });
+
+    // Effect to re-render indicators when activeIndicators change
+    effect(() => {
+      // Track active indicators
+      this.activeIndicators();
+      const data = this.candleData();
+      if (this.chart && data && data.length > 0) {
+        this.renderAllIndicators();
       }
     });
   }
@@ -591,11 +652,206 @@ export class MarketComponent implements OnInit, OnDestroy {
         });
       }
 
+      // Render Active Indicators on the chart
+      this.renderAllIndicators();
+
       // Fit content
       this.chart.timeScale().fitContent();
     } catch (e) {
       // In headless test environments without full canvas, ignore gracefully
     }
+  }
+
+  // =========================================================================
+  // INDICATOR ENGINE & MANAGEMENT
+  // =========================================================================
+
+  renderAllIndicators(): void {
+    if (!this.chart || typeof window === 'undefined') return;
+
+    try {
+      const candles = this.candleData();
+      if (!candles || candles.length === 0) return;
+
+      const active = this.activeIndicators();
+      const currentActiveIds = new Set<string>();
+
+      // 1. Calculate and update series for all active enabled indicators
+      active.forEach(ind => {
+        if (!ind.enabled) return;
+
+        const renderSeriesList = calculateIndicatorSeries(ind, candles);
+        renderSeriesList.forEach(rs => {
+          currentActiveIds.add(rs.id);
+
+          let series = this.indicatorSeriesMap.get(rs.id);
+          if (!series) {
+            if (rs.type === 'histogram') {
+              series = this.chart!.addSeries(HistogramSeries, {
+                color: rs.color,
+                priceScaleId: rs.priceScaleId || ''
+              });
+            } else {
+              series = this.chart!.addSeries(LineSeries, {
+                color: rs.color,
+                lineWidth: (rs.lineWidth || 2) as any,
+                lineStyle: rs.lineStyle || 0,
+                priceScaleId: rs.overlay ? 'right' : (rs.priceScaleId || '')
+              });
+            }
+
+            if (rs.scaleMargins) {
+              series.priceScale().applyOptions({ scaleMargins: rs.scaleMargins });
+            }
+
+            this.indicatorSeriesMap.set(rs.id, series);
+          } else {
+            // Apply updated options (color, width, etc.)
+            series.applyOptions({
+              color: rs.color,
+              lineWidth: (rs.lineWidth || 2) as any
+            });
+          }
+
+          if (rs.data && rs.data.length > 0) {
+            series.setData(rs.data as any);
+          }
+        });
+      });
+
+      // 2. Remove stale series no longer active or disabled
+      this.indicatorSeriesMap.forEach((series, id) => {
+        if (!currentActiveIds.has(id)) {
+          try {
+            this.chart!.removeSeries(series);
+          } catch (e) {
+            // ignore
+          }
+          this.indicatorSeriesMap.delete(id);
+        }
+      });
+    } catch (e) {
+      // ignore headless canvas errors
+    }
+  }
+
+  openIndicatorModal(): void {
+    this.isIndicatorModalOpen.set(true);
+  }
+
+  closeIndicatorModal(): void {
+    this.isIndicatorModalOpen.set(false);
+  }
+
+  setIndicatorCategory(cat: string): void {
+    this.selectedIndicatorCategory.set(cat);
+  }
+
+  isIndicatorActive(defId: string): boolean {
+    return this.activeIndicators().some(i => i.defId === defId);
+  }
+
+  getActiveIndicatorCount(defId: string): number {
+    return this.activeIndicators().filter(i => i.defId === defId).length;
+  }
+
+  addIndicator(def: IndicatorDefinition): void {
+    const instanceId = `${def.id}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const newActive: ActiveIndicator = {
+      instanceId,
+      defId: def.id,
+      name: def.name,
+      shortName: def.shortName,
+      category: def.category,
+      enabled: true,
+      params: { ...def.defaultParams },
+      color: def.defaultColor,
+      lineWidth: 2,
+      isOverlay: def.isOverlay
+    };
+
+    this.activeIndicators.update(list => [...list, newActive]);
+  }
+
+  removeIndicator(instanceId: string): void {
+    // Remove series directly from map and chart
+    this.indicatorSeriesMap.forEach((series, key) => {
+      if (key.startsWith(instanceId)) {
+        if (this.chart) {
+          try {
+            this.chart.removeSeries(series);
+          } catch (e) {
+            // ignore
+          }
+        }
+        this.indicatorSeriesMap.delete(key);
+      }
+    });
+
+    this.activeIndicators.update(list => list.filter(i => i.instanceId !== instanceId));
+  }
+
+  toggleIndicatorEnabled(instanceId: string): void {
+    this.activeIndicators.update(list =>
+      list.map(i => {
+        if (i.instanceId === instanceId) {
+          return { ...i, enabled: !i.enabled };
+        }
+        return i;
+      })
+    );
+  }
+
+  openIndicatorSettings(ind: ActiveIndicator): void {
+    this.editingIndicator.set(ind);
+    this.editingParams.set({ ...ind.params });
+    this.editingColor.set(ind.color);
+    this.editingLineWidth.set(ind.lineWidth);
+  }
+
+  updateEditingParam(key: string, val: any): void {
+    const current = { ...this.editingParams() };
+    current[key] = val;
+    this.editingParams.set(current);
+  }
+
+  saveIndicatorSettings(): void {
+    const current = this.editingIndicator();
+    if (!current) return;
+
+    this.activeIndicators.update(list =>
+      list.map(i => {
+        if (i.instanceId === current.instanceId) {
+          return {
+            ...i,
+            params: { ...this.editingParams() },
+            color: this.editingColor(),
+            lineWidth: Number(this.editingLineWidth()) || 2
+          };
+        }
+        return i;
+      })
+    );
+
+    this.editingIndicator.set(null);
+  }
+
+  cancelIndicatorSettings(): void {
+    this.editingIndicator.set(null);
+  }
+
+  clearAllIndicators(): void {
+    if (this.chart) {
+      this.indicatorSeriesMap.forEach(s => {
+        try {
+          this.chart!.removeSeries(s);
+        } catch (e) {
+          // ignore
+        }
+      });
+    }
+    this.indicatorSeriesMap.clear();
+    this.activeIndicators.set([]);
   }
 
   // =========================================================================

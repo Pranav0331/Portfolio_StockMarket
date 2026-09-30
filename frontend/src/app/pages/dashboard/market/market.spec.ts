@@ -251,4 +251,116 @@ describe('MarketComponent', () => {
     resetBtn.click();
     expect(fitSpy).toHaveBeenCalled();
   });
+
+  it('should render Indicators toolbar button and open/close modal', async () => {
+    const fixture = TestBed.createComponent(MarketComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const indBtn = compiled.querySelector('#indicators-modal-trigger-btn') as HTMLButtonElement;
+    expect(indBtn).toBeTruthy();
+    expect(indBtn.textContent).toContain('Indicators');
+
+    expect(component.isIndicatorModalOpen()).toBe(false);
+    indBtn.click();
+    fixture.detectChanges();
+    expect(component.isIndicatorModalOpen()).toBe(true);
+
+    const modal = compiled.querySelector('.indicator-modal-dialog');
+    expect(modal).toBeTruthy();
+
+    const closeBtn = compiled.querySelector('.modal-close-btn') as HTMLButtonElement;
+    closeBtn.click();
+    fixture.detectChanges();
+    expect(component.isIndicatorModalOpen()).toBe(false);
+  });
+
+  it('should filter indicators by search query and category', async () => {
+    const fixture = TestBed.createComponent(MarketComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    component.openIndicatorModal();
+    fixture.detectChanges();
+
+    expect(component.indicatorLibrary().length).toBeGreaterThanOrEqual(25);
+    expect(component.filteredIndicators().length).toBe(component.indicatorLibrary().length);
+
+    // Filter by category
+    component.setIndicatorCategory('momentum');
+    fixture.detectChanges();
+    expect(component.filteredIndicators().every(i => i.category === 'momentum')).toBe(true);
+
+    // Filter by search keyword 'Bollinger'
+    component.setIndicatorCategory('all');
+    component.indicatorSearchQuery.set('Bollinger');
+    fixture.detectChanges();
+    expect(component.filteredIndicators().length).toBeGreaterThanOrEqual(1);
+    expect(component.filteredIndicators()[0].name).toContain('Bollinger Bands');
+  });
+
+  it('should add, toggle enable/disable, open settings and remove multiple indicators', async () => {
+    const fixture = TestBed.createComponent(MarketComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const smaDef = component.indicatorLibrary().find(i => i.id === 'sma')!;
+    const rsiDef = component.indicatorLibrary().find(i => i.id === 'rsi')!;
+    const bbDef = component.indicatorLibrary().find(i => i.id === 'bb')!;
+
+    // Add multiple indicators simultaneously
+    component.addIndicator(smaDef);
+    component.addIndicator(rsiDef);
+    component.addIndicator(bbDef);
+    fixture.detectChanges();
+
+    expect(component.activeIndicators().length).toBe(3);
+    expect(component.isIndicatorActive('sma')).toBe(true);
+    expect(component.isIndicatorActive('rsi')).toBe(true);
+    expect(component.isIndicatorActive('bb')).toBe(true);
+
+    const firstActive = component.activeIndicators()[0];
+
+    // Toggle visibility (enable/disable)
+    expect(firstActive.enabled).toBe(true);
+    component.toggleIndicatorEnabled(firstActive.instanceId);
+    fixture.detectChanges();
+    expect(component.activeIndicators()[0].enabled).toBe(false);
+
+    component.toggleIndicatorEnabled(firstActive.instanceId);
+    fixture.detectChanges();
+    expect(component.activeIndicators()[0].enabled).toBe(true);
+
+    // Open settings and save customized parameters
+    component.openIndicatorSettings(firstActive);
+    fixture.detectChanges();
+    expect(component.editingIndicator()).toBeTruthy();
+
+    component.updateEditingParam('period', 200);
+    component.editingColor.set('#ef4444');
+    component.editingLineWidth.set(3);
+    component.saveIndicatorSettings();
+    fixture.detectChanges();
+
+    expect(component.editingIndicator()).toBeNull();
+    const updatedActive = component.activeIndicators().find(i => i.instanceId === firstActive.instanceId)!;
+    expect(updatedActive.params['period']).toBe(200);
+    expect(updatedActive.color).toBe('#ef4444');
+    expect(updatedActive.lineWidth).toBe(3);
+
+    // Remove single indicator
+    component.removeIndicator(firstActive.instanceId);
+    fixture.detectChanges();
+    expect(component.activeIndicators().length).toBe(2);
+
+    // Clear all
+    component.clearAllIndicators();
+    fixture.detectChanges();
+    expect(component.activeIndicators().length).toBe(0);
+  });
 });
+
