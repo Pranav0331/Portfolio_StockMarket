@@ -29,16 +29,16 @@ export class MarketComponent implements OnInit, OnDestroy {
   readonly isRateLimited = signal<boolean>(false);
   readonly showDropdown = signal<boolean>(false);
 
-  // Popular tickers to quickly query real data
+  // Popular tickers across Stocks, Forex, and Crypto
   readonly quickTickers = [
-    { symbol: 'RELIANCE.BSE', name: 'Reliance Industries' },
-    { symbol: 'IBM', name: 'IBM Corp.' },
+    { symbol: 'EUR/USD', name: 'Euro / US Dollar' },
+    { symbol: 'BTC/USD', name: 'Bitcoin / USD' },
     { symbol: 'AAPL', name: 'Apple Inc.' },
     { symbol: 'MSFT', name: 'Microsoft Corp.' },
     { symbol: 'GOOGL', name: 'Alphabet Inc.' },
-    { symbol: 'TSLA', name: 'Tesla Inc.' },
-    { symbol: 'INFY.BSE', name: 'Infosys Ltd.' },
-    { symbol: 'TCS.BSE', name: 'Tata Consultancy' }
+    { symbol: 'ETH/USD', name: 'Ethereum / USD' },
+    { symbol: 'GBP/USD', name: 'British Pound / USD' },
+    { symbol: 'TSLA', name: 'Tesla Inc.' }
   ];
 
   private readonly searchSubject = new Subject<string>();
@@ -77,7 +77,7 @@ export class MarketComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Handle query params e.g. /dashboard/market?symbol=RELIANCE.BSE
+    // Handle query params e.g. /dashboard/market?symbol=EUR/USD
     this.queryParamSub = this.route.queryParams.subscribe((params) => {
       const symbolParam = params['symbol'] || params['q'];
       if (symbolParam) {
@@ -144,7 +144,7 @@ export class MarketComponent implements OnInit, OnDestroy {
         if (err.status === 429) {
           this.isRateLimited.set(true);
           this.errorMessage.set(
-            'Alpha Vantage API standard rate limit reached (25 requests/day or 5/min). Please try again shortly or configure an upgraded API key.'
+            'Twelve Data API rate limit reached. Please try again shortly or configure an upgraded API key.'
           );
         } else if (err.status === 404) {
           this.errorMessage.set(`No market quote found for symbol "${cleanSymbol}". Please verify the ticker symbol.`);

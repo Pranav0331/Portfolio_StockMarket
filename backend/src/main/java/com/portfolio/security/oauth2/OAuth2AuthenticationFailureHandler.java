@@ -18,8 +18,14 @@ public class OAuth2AuthenticationFailureHandler extends SimpleUrlAuthenticationF
 
     private static final Logger log = LoggerFactory.getLogger(OAuth2AuthenticationFailureHandler.class);
 
+    private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
+
     @Value("${app.oauth2.authorized-redirect-uri:http://localhost:4200/oauth2/redirect}")
     private String redirectUri;
+
+    public OAuth2AuthenticationFailureHandler(HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository) {
+        this.cookieAuthorizationRequestRepository = cookieAuthorizationRequestRepository;
+    }
 
     @Override
     public void onAuthenticationFailure(
@@ -28,6 +34,8 @@ public class OAuth2AuthenticationFailureHandler extends SimpleUrlAuthenticationF
             AuthenticationException exception
     ) throws IOException {
         log.warn("OAuth2 authentication failed: {}", exception.getMessage());
+
+        cookieAuthorizationRequestRepository.removeAuthorizationRequestCookies(request, response);
 
         String targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
                 .queryParam("error", exception.getLocalizedMessage())

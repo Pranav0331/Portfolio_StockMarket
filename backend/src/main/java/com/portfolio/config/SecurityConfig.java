@@ -4,6 +4,7 @@ import com.portfolio.security.jwt.JwtAccessDeniedHandler;
 import com.portfolio.security.jwt.JwtAuthenticationEntryPoint;
 import com.portfolio.security.jwt.JwtAuthenticationFilter;
 import com.portfolio.security.oauth2.CustomOAuth2UserService;
+import com.portfolio.security.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
 import com.portfolio.security.oauth2.OAuth2AuthenticationFailureHandler;
 import com.portfolio.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,6 +38,7 @@ public class SecurityConfig {
     private final JwtAccessDeniedHandler accessDeniedHandler;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomOAuth2UserService customOAuth2UserService;
+    private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
     private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
 
@@ -48,6 +50,7 @@ public class SecurityConfig {
             JwtAccessDeniedHandler accessDeniedHandler,
             JwtAuthenticationFilter jwtAuthenticationFilter,
             CustomOAuth2UserService customOAuth2UserService,
+            HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository,
             OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler,
             OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler
     ) {
@@ -55,6 +58,7 @@ public class SecurityConfig {
         this.accessDeniedHandler = accessDeniedHandler;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.customOAuth2UserService = customOAuth2UserService;
+        this.cookieAuthorizationRequestRepository = cookieAuthorizationRequestRepository;
         this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
         this.oAuth2AuthenticationFailureHandler = oAuth2AuthenticationFailureHandler;
     }
@@ -103,6 +107,9 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(auth -> auth
+                                .authorizationRequestRepository(cookieAuthorizationRequestRepository)
+                        )
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                         .successHandler(oAuth2AuthenticationSuccessHandler)
                         .failureHandler(oAuth2AuthenticationFailureHandler)

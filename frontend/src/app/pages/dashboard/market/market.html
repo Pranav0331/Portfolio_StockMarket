@@ -7,7 +7,7 @@
         <span>Real-Time Market Telemetry</span>
       </div>
       <h1 class="market-heading">Market Intelligence</h1>
-      <p class="market-sub">Search global exchanges and inspect real-time live stock quotes powered by Alpha Vantage.</p>
+      <p class="market-sub">Search global exchanges, Forex, and Crypto pairs with real-time live quotes powered by Twelve Data.</p>
     </div>
   </div>
 
@@ -27,7 +27,7 @@
           [ngModel]="searchQuery()"
           (ngModelChange)="onSearchInput($event)"
           name="searchQuery"
-          placeholder="Search ticker symbol or company (e.g. RELIANCE.BSE, IBM, AAPL, MSFT)..."
+          placeholder="Search ticker, forex, or crypto (e.g. EUR/USD, BTC/USD, AAPL, MSFT)..."
           class="market-search-input"
           autocomplete="off"
         />
@@ -254,7 +254,7 @@
             <span class="stat-label">Data Provider</span>
             <div class="provider-pill">
               <span class="provider-dot"></span>
-              <span>Alpha Vantage</span>
+              <span>Twelve Data</span>
             </div>
           </div>
         </div>
@@ -272,16 +272,16 @@
         </div>
         <h3 class="empty-title">Ready for Live Market Exploration</h3>
         <p class="empty-desc">
-          Search for any stock symbol above or click one of the popular tickers to query live pricing, session ranges, and trading telemetry from Alpha Vantage.
+          Search for any stock symbol, Forex pair (e.g. EUR/USD), or Crypto pair (e.g. BTC/USD) above to query live pricing and trading telemetry powered by Twelve Data.
         </p>
         <div class="empty-suggestions">
           <span class="suggestion-hint">Try searching:</span>
           <div class="suggestion-buttons">
             <button type="button" class="btn btn-outline btn-sm" (click)="selectQuickTicker(quickTickers[0])">
-              RELIANCE.BSE
+              EUR/USD
             </button>
             <button type="button" class="btn btn-outline btn-sm" (click)="selectQuickTicker(quickTickers[1])">
-              IBM
+              BTC/USD
             </button>
             <button type="button" class="btn btn-outline btn-sm" (click)="selectQuickTicker(quickTickers[2])">
               AAPL

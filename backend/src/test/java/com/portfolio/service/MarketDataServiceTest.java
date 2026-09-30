@@ -1,6 +1,7 @@
 package com.portfolio.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.portfolio.dto.market.MarketPriceDto;
 import com.portfolio.dto.market.StockQuoteDto;
 import com.portfolio.dto.market.StockSearchResponseDto;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,10 +19,10 @@ import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
-import static org.hamcrest.Matchers.containsString;
 
 class MarketDataServiceTest {
 
@@ -37,59 +38,138 @@ class MarketDataServiceTest {
         objectMapper = new ObjectMapper();
         marketDataService = new MarketDataService(restTemplate, objectMapper);
         ReflectionTestUtils.setField(marketDataService, "apiKey", "test-api-key");
-        ReflectionTestUtils.setField(marketDataService, "baseUrl", "https://www.alphavantage.co");
+        ReflectionTestUtils.setField(marketDataService, "baseUrl", "https://api.twelvedata.com");
     }
 
     @Test
-    @DisplayName("1. Successfully parse Alpha Vantage Global Quote response")
-    void testGetQuoteSuccess() {
+    @DisplayName("1. Successfully parse Twelve Data Forex quote")
+    void testGetForexPriceSuccess() {
         String jsonResponse = """
                 {
-                    "Global Quote": {
-                        "01. symbol": "IBM",
-                        "02. open": "119.3700",
-                        "03. high": "120.5000",
-                        "04. low": "118.8000",
-                        "05. price": "119.8500",
-                        "06. volume": "4468975",
-                        "07. latest trading day": "2026-09-28",
-                        "08. previous close": "119.5000",
-                        "09. change": "0.3500",
-                        "10. change percent": "0.2929%"
-                    }
+                    "symbol": "EUR/USD",
+                    "name": "Euro / US Dollar",
+                    "exchange": "Forex",
+                    "currency": "USD",
+                    "datetime": "2026-09-30",
+                    "timestamp": 1727690000,
+                    "open": "1.08500",
+                    "high": "1.08900",
+                    "low": "1.08200",
+                    "close": "1.08650",
+                    "previous_close": "1.08450",
+                    "change": "0.00200",
+                    "percent_change": "0.18442"
                 }
                 """;
 
-        mockServer.expect(requestTo(containsString("function=GLOBAL_QUOTE")))
+        mockServer.expect(requestTo(containsString("/quote?symbol=EUR/USD")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess(jsonResponse, MediaType.APPLICATION_JSON));
 
-        StockQuoteDto quote = marketDataService.getQuote("IBM");
+        MarketPriceDto forex = marketDataService.getForexPrice("EUR/USD");
 
         mockServer.verify();
-        assertThat(quote).isNotNull();
-        assertThat(quote.symbol()).isEqualTo("IBM");
-        assertThat(quote.price()).isEqualByComparingTo(new BigDecimal("119.8500"));
-        assertThat(quote.open()).isEqualByComparingTo(new BigDecimal("119.3700"));
-        assertThat(quote.high()).isEqualByComparingTo(new BigDecimal("120.5000"));
-        assertThat(quote.low()).isEqualByComparingTo(new BigDecimal("118.8000"));
-        assertThat(quote.previousClose()).isEqualByComparingTo(new BigDecimal("119.5000"));
-        assertThat(quote.change()).isEqualByComparingTo(new BigDecimal("0.3500"));
-        assertThat(quote.changePercent()).isEqualTo("0.2929%");
-        assertThat(quote.volume()).isEqualTo(4468975L);
-        assertThat(quote.latestTradingDay()).isEqualTo("2026-09-28");
+        assertThat(forex).isNotNull();
+        assertThat(forex.symbol()).isEqualTo("EUR/USD");
+        assertThat(forex.price()).isEqualByComparingTo(new BigDecimal("1.08650"));
+        assertThat(forex.change()).isEqualByComparingTo(new BigDecimal("0.00200"));
+        assertThat(forex.changePercent()).isEqualTo("+0.18%");
+        assertThat(forex.timestamp()).isEqualTo(1727690000L);
     }
 
     @Test
-    @DisplayName("2. Throw 429 when Alpha Vantage returns rate limit Note")
-    void testRateLimitHandling() {
+    @DisplayName("2. Successfully parse Twelve Data Crypto quote")
+    void testGetCryptoPriceSuccess() {
         String jsonResponse = """
                 {
-                    "Note": "Thank you for using Alpha Vantage! Our standard API rate limit is 25 requests per day."
+                    "symbol": "BTC/USD",
+                    "name": "Bitcoin / US Dollar",
+                    "exchange": "Coinbase Pro",
+                    "currency_base": "Bitcoin",
+                    "currency_quote": "US Dollar",
+                    "datetime": "2026-09-30",
+                    "timestamp": 1727690000,
+                    "open": "64500.00",
+                    "high": "65200.00",
+                    "low": "63900.00",
+                    "close": "64850.00",
+                    "previous_close": "64200.00",
+                    "change": "650.00",
+                    "percent_change": "1.01246"
                 }
                 """;
 
-        mockServer.expect(requestTo(containsString("function=GLOBAL_QUOTE")))
+        mockServer.expect(requestTo(containsString("/quote?symbol=BTC/USD")))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(jsonResponse, MediaType.APPLICATION_JSON));
+
+        MarketPriceDto crypto = marketDataService.getCryptoPrice("BTC/USD");
+
+        mockServer.verify();
+        assertThat(crypto).isNotNull();
+        assertThat(crypto.symbol()).isEqualTo("BTC/USD");
+        assertThat(crypto.price()).isEqualByComparingTo(new BigDecimal("64850.00"));
+        assertThat(crypto.change()).isEqualByComparingTo(new BigDecimal("650.00"));
+        assertThat(crypto.changePercent()).isEqualTo("+1.01%");
+        assertThat(crypto.timestamp()).isEqualTo(1727690000L);
+    }
+
+    @Test
+    @DisplayName("3. Successfully parse Twelve Data Stock quote response")
+    void testGetQuoteSuccess() {
+        String jsonResponse = """
+                {
+                    "symbol": "AAPL",
+                    "name": "Apple Inc",
+                    "exchange": "NASDAQ",
+                    "currency": "USD",
+                    "datetime": "2026-09-30",
+                    "timestamp": 1727690000,
+                    "open": "227.00000",
+                    "high": "229.50000",
+                    "low": "226.00000",
+                    "close": "228.50000",
+                    "volume": "45000000",
+                    "previous_close": "226.70000",
+                    "change": "1.80000",
+                    "percent_change": "0.79400"
+                }
+                """;
+
+        mockServer.expect(requestTo(containsString("/quote?symbol=AAPL")))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(jsonResponse, MediaType.APPLICATION_JSON));
+
+        StockQuoteDto quote = marketDataService.getQuote("AAPL");
+
+        mockServer.verify();
+        assertThat(quote).isNotNull();
+        assertThat(quote.symbol()).isEqualTo("AAPL");
+        assertThat(quote.name()).isEqualTo("Apple Inc");
+        assertThat(quote.price()).isEqualByComparingTo(new BigDecimal("228.50000"));
+        assertThat(quote.open()).isEqualByComparingTo(new BigDecimal("227.00000"));
+        assertThat(quote.high()).isEqualByComparingTo(new BigDecimal("229.50000"));
+        assertThat(quote.low()).isEqualByComparingTo(new BigDecimal("226.00000"));
+        assertThat(quote.previousClose()).isEqualByComparingTo(new BigDecimal("226.70000"));
+        assertThat(quote.change()).isEqualByComparingTo(new BigDecimal("1.80000"));
+        assertThat(quote.changePercent()).isEqualTo("+0.79%");
+        assertThat(quote.volume()).isEqualTo(45000000L);
+        assertThat(quote.latestTradingDay()).isEqualTo("2026-09-30");
+        assertThat(quote.timestamp()).isEqualTo(1727690000L);
+    }
+
+    @Test
+    @DisplayName("4. Throw 429 when Twelve Data returns rate limit error")
+    void testRateLimitHandling() {
+        String jsonResponse = """
+                {
+                    "code": 429,
+                    "message": "You have reached your API limit. Please upgrade your plan.",
+                    "status": "error"
+                }
+                """;
+
+        mockServer.expect(requestTo(containsString("/quote?symbol=IBM")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess(jsonResponse, MediaType.APPLICATION_JSON));
 
@@ -101,15 +181,17 @@ class MarketDataServiceTest {
     }
 
     @Test
-    @DisplayName("3. Throw 404 when Global Quote object is empty")
-    void testEmptyGlobalQuote() {
+    @DisplayName("5. Throw 404 when symbol is not found")
+    void testSymbolNotFound() {
         String jsonResponse = """
                 {
-                    "Global Quote": {}
+                    "code": 404,
+                    "message": "Cannot be found: symbol UNKNOWN not found",
+                    "status": "error"
                 }
                 """;
 
-        mockServer.expect(requestTo(containsString("function=GLOBAL_QUOTE")))
+        mockServer.expect(requestTo(containsString("/quote?symbol=UNKNOWN")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess(jsonResponse, MediaType.APPLICATION_JSON));
 
@@ -121,36 +203,34 @@ class MarketDataServiceTest {
     }
 
     @Test
-    @DisplayName("4. Successfully parse Alpha Vantage Symbol Search response")
+    @DisplayName("6. Successfully parse Twelve Data Symbol Search response")
     void testSearchSymbolsSuccess() {
         String jsonResponse = """
                 {
-                    "bestMatches": [
+                    "data": [
                         {
-                            "1. symbol": "RELIANCE.BSE",
-                            "2. name": "Reliance Industries Limited",
-                            "3. type": "Equity",
-                            "4. region": "India/Bombay",
-                            "5. marketOpen": "09:15",
-                            "6. marketClose": "15:30",
-                            "7. timezone": "UTC+5.5",
-                            "8. currency": "INR",
-                            "9. matchScore": "0.9091"
+                            "symbol": "BTC/USD",
+                            "instrument_name": "Bitcoin / US Dollar",
+                            "exchange": "Coinbase Pro",
+                            "country": "",
+                            "type": "Digital Currency",
+                            "currency": "USD"
                         }
-                    ]
+                    ],
+                    "status": "ok"
                 }
                 """;
 
-        mockServer.expect(requestTo(containsString("function=SYMBOL_SEARCH")))
+        mockServer.expect(requestTo(containsString("/symbol_search?symbol=Bitcoin")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess(jsonResponse, MediaType.APPLICATION_JSON));
 
-        StockSearchResponseDto result = marketDataService.searchSymbols("Reliance");
+        StockSearchResponseDto result = marketDataService.searchSymbols("Bitcoin");
 
         mockServer.verify();
         assertThat(result).isNotNull();
         assertThat(result.bestMatches()).hasSize(1);
-        assertThat(result.bestMatches().get(0).symbol()).isEqualTo("RELIANCE.BSE");
-        assertThat(result.bestMatches().get(0).name()).isEqualTo("Reliance Industries Limited");
+        assertThat(result.bestMatches().get(0).symbol()).isEqualTo("BTC/USD");
+        assertThat(result.bestMatches().get(0).name()).isEqualTo("Bitcoin / US Dollar");
     }
 }

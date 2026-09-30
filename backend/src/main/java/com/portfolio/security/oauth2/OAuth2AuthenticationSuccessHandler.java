@@ -21,12 +21,20 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private static final Logger log = LoggerFactory.getLogger(OAuth2AuthenticationSuccessHandler.class);
 
     private final JwtTokenProvider tokenProvider;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
 
     @Value("${app.oauth2.authorized-redirect-uri:http://localhost:4200/oauth2/redirect}")
     private String redirectUri;
 
-    public OAuth2AuthenticationSuccessHandler(JwtTokenProvider tokenProvider) {
+    public OAuth2AuthenticationSuccessHandler(
+            JwtTokenProvider tokenProvider,
+            CustomOAuth2UserService customOAuth2UserService,
+            HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository
+    ) {
         this.tokenProvider = tokenProvider;
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.cookieAuthorizationRequestRepository = cookieAuthorizationRequestRepository;
     }
 
     @Override
@@ -42,8 +50,13 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             return;
         }
 
-        clearAuthenticationAttributes(request);
+        clearAuthenticationAttributes(request, response);
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
+    }
+
+    protected void clearAuthenticationAttributes(HttpServletRequest request, HttpServletResponse response) {
+        super.clearAuthenticationAttributes(request);
+        cookieAuthorizationRequestRepository.removeAuthorizationRequestCookies(request, response);
     }
 
     protected String determineTargetUrl(
@@ -51,7 +64,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             HttpServletResponse response,
             Authentication authentication
     ) {
-        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        UserPrincipal userPrincipal = resolveUserPrincipal(authentication);
         String token = tokenProvider.generateToken(userPrincipal);
 
         String role = userPrincipal.getAuthorities().isEmpty() ? "ROLE_USER" :
@@ -66,5 +79,20 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                 .build()
                 .encode(StandardCharsets.UTF_8)
                 .toUriString();
+    }
+
+    private UserPrincipal resolveUserPrincipal(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserPrincipal userPrincipal) {
+            return userPrincipal;
+        } else if (principal instanceof org.springframework.security.oauth2.core.user.OAuth2User oAuth2User) {
+            org.springframework.security.oauth2.core.user.OAuth2User processedUser =
+                    customOAuth2UserService.processOAuth2User(null, oAuth2User);
+            if (processedUser instanceof UserPrincipal userPrincipal) {
+                return userPrincipal;
+            }
+        }
+        throw new IllegalStateException("Unable to resolve UserPrincipal from authentication principal of type: " +
+                (principal != null ? principal.getClass().getName() : "null"));
     }
 }

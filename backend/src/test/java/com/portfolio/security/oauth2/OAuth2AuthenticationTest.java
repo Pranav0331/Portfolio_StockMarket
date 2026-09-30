@@ -143,4 +143,53 @@ class OAuth2AuthenticationTest {
         assertThat(jwtTokenProvider.validateToken(tokenParam)).isTrue();
         assertThat(jwtTokenProvider.getEmailFromToken(tokenParam)).isEqualTo("oauth.redirect@gmail.com");
     }
+
+    @Test
+    @DisplayName("4. Success handler handles DefaultOidcUser (Google OIDC flow), provisions user, and redirects with valid JWT")
+    void testSuccessHandlerWithDefaultOidcUser() throws Exception {
+        Map<String, Object> claims = Map.of(
+                "sub", "google-oidc-sub-9999",
+                "email", "oidc.user@gmail.com",
+                "name", "Google OIDC Explorer"
+        );
+        org.springframework.security.oauth2.core.oidc.OidcIdToken idToken =
+                new org.springframework.security.oauth2.core.oidc.OidcIdToken(
+                        "mock-id-token-value",
+                        java.time.Instant.now(),
+                        java.time.Instant.now().plusSeconds(3600),
+                        claims
+                );
+        org.springframework.security.oauth2.core.oidc.OidcUserInfo userInfo =
+                new org.springframework.security.oauth2.core.oidc.OidcUserInfo(claims);
+        org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser oidcUser =
+                new org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser(
+                        Collections.emptyList(),
+                        idToken,
+                        userInfo,
+                        "email"
+                );
+
+        org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken authentication =
+                new org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken(
+                        oidcUser,
+                        Collections.emptyList(),
+                        "google"
+                );
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        successHandler.onAuthenticationSuccess(request, response, authentication);
+
+        String redirectedUrl = response.getRedirectedUrl();
+        assertThat(redirectedUrl).isNotNull();
+        assertThat(redirectedUrl).startsWith("http://localhost:4200/oauth2/redirect");
+        assertThat(redirectedUrl).contains("token=");
+        assertThat(redirectedUrl).contains("email=oidc.user@gmail.com");
+        assertThat(redirectedUrl).contains("role=ROLE_USER");
+
+        Optional<User> savedUserOpt = userRepository.findByEmail("oidc.user@gmail.com");
+        assertThat(savedUserOpt).isPresent();
+        assertThat(savedUserOpt.get().getProviderId()).isEqualTo("google-oidc-sub-9999");
+    }
 }

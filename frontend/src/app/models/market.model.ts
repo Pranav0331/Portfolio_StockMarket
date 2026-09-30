@@ -10,6 +10,15 @@ export interface StockQuote {
   low?: number | null;
   volume?: number | null;
   latestTradingDay?: string | null;
+  timestamp?: number | null;
+}
+
+export interface MarketPrice {
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: string;
+  timestamp: number;
 }
 
 export interface StockSearchItem {
