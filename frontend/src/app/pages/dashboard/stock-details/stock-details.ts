@@ -10,6 +10,7 @@ import {
   effect
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import {
@@ -28,7 +29,10 @@ import {
   HistogramData
 } from 'lightweight-charts';
 import { MarketService } from '../../../services/market.service';
-import { StockQuote, Candle, CandleSeries } from '../../../models/market.model';
+import { AuthService } from '../../../services/auth.service';
+import { TradingService } from '../../../services/trading.service';
+import { StockQuote, Candle } from '../../../models/market.model';
+import { TradeResponse, VirtualWallet, UserHolding } from '../../../models/trading.model';
 
 export type ChartType = 'candles' | 'line' | 'area';
 export type TimeframeRange = '1D' | '1W' | '1M' | '3M' | '6M' | '1Y';
@@ -45,12 +49,14 @@ export interface HoveredBarData {
 @Component({
   selector: 'app-stock-details',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './stock-details.html',
   styleUrl: './stock-details.css'
 })
 export class StockDetailsComponent implements OnInit, OnDestroy {
-  private readonly marketService = inject(MarketService);
+  readonly marketService = inject(MarketService);
+  readonly authService = inject(AuthService);
+  readonly tradingService = inject(TradingService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -88,6 +94,37 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
   // Timeframe Ranges Available
   readonly timeframes: TimeframeRange[] = ['1D', '1W', '1M', '3M', '6M', '1Y'];
+
+  // =========================================================================
+  // SIMULATED TRADING STATE
+  // =========================================================================
+  readonly tradeType = signal<'BUY' | 'SELL'>('BUY');
+  readonly tradeQuantity = signal<number>(1);
+  readonly isSubmittingTrade = signal<boolean>(false);
+  readonly tradeSuccessReceipt = signal<TradeResponse | null>(null);
+  readonly tradeErrorMessage = signal<string | null>(null);
+  readonly userWallet = signal<VirtualWallet | null>(null);
+  readonly userHolding = signal<UserHolding | null>(null);
+
+  // Estimated Total Amount Computed
+  readonly estimatedTradeTotal = computed(() => {
+    const price = this.currentQuote()?.price ?? 0;
+    const qty = this.tradeQuantity() ?? 0;
+    return price * qty;
+  });
+
+  // Validation Computed Properties
+  readonly hasInsufficientBalance = computed(() => {
+    if (this.tradeType() !== 'BUY') return false;
+    const balance = this.userWallet()?.cashBalance ?? 0;
+    return this.estimatedTradeTotal() > balance;
+  });
+
+  readonly hasInsufficientHoldings = computed(() => {
+    if (this.tradeType() !== 'SELL') return false;
+    const owned = this.userHolding()?.quantity ?? 0;
+    return (this.tradeQuantity() ?? 0) > owned;
+  });
 
   // Quick navigation chips
   readonly quickShortcuts = [
@@ -132,6 +169,10 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         this.loadInstrumentData(this.symbol());
       }
     });
+
+    if (this.authService.isAuthenticated()) {
+      this.refreshTradingState();
+    }
   }
 
   ngOnDestroy(): void {
@@ -157,6 +198,8 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     this.symbol.set(cleanSym);
     this.errorMessage.set(null);
     this.isRateLimited.set(false);
+    this.tradeSuccessReceipt.set(null);
+    this.tradeErrorMessage.set(null);
 
     // Derive display metadata
     if (cleanSym.includes('NIFTY') || cleanSym.includes('SENSEX')) {
@@ -175,6 +218,10 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
     this.fetchQuote(cleanSym);
     this.fetchCandles(cleanSym, this.currentTimeframe());
+
+    if (this.authService.isAuthenticated()) {
+      this.refreshTradingState();
+    }
   }
 
   fetchQuote(symbol: string): void {
@@ -217,6 +264,19 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         this.candleData.set([]);
         this.handleError(err, symbol);
       }
+    });
+  }
+
+  refreshTradingState(): void {
+    const sym = this.symbol();
+    this.tradingService.getWallet().subscribe({
+      next: (wallet) => this.userWallet.set(wallet),
+      error: () => {}
+    });
+
+    this.tradingService.getHoldingForSymbol(sym).subscribe({
+      next: (holding) => this.userHolding.set(holding),
+      error: () => this.userHolding.set(null)
     });
   }
 
@@ -459,6 +519,79 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     } catch (e) {
       // Ignore headless canvas error
     }
+  }
+
+  // =========================================================================
+  // SIMULATED TRADING ACTIONS
+  // =========================================================================
+
+  setTradeType(type: 'BUY' | 'SELL'): void {
+    this.tradeType.set(type);
+    this.tradeErrorMessage.set(null);
+    this.tradeSuccessReceipt.set(null);
+  }
+
+  setTradeQuantity(qty: number): void {
+    const val = Math.max(1, Math.floor(qty || 1));
+    this.tradeQuantity.set(val);
+  }
+
+  adjustQuantity(delta: number): void {
+    const nextVal = Math.max(1, (this.tradeQuantity() || 1) + delta);
+    this.tradeQuantity.set(nextVal);
+  }
+
+  setMaxQuantity(): void {
+    const currentPrice = this.currentQuote()?.price;
+    if (!currentPrice || currentPrice <= 0) return;
+
+    if (this.tradeType() === 'BUY') {
+      const balance = this.userWallet()?.cashBalance ?? 0;
+      const maxAffordable = Math.floor(balance / currentPrice);
+      this.tradeQuantity.set(Math.max(1, maxAffordable));
+    } else {
+      const owned = this.userHolding()?.quantity ?? 0;
+      this.tradeQuantity.set(Math.max(1, Math.floor(owned)));
+    }
+  }
+
+  submitTrade(): void {
+    if (!this.authService.isAuthenticated()) {
+      this.tradeErrorMessage.set('Please log in to execute simulated trades.');
+      return;
+    }
+
+    const qty = this.tradeQuantity();
+    if (!qty || qty <= 0) {
+      this.tradeErrorMessage.set('Quantity must be greater than zero.');
+      return;
+    }
+
+    const sym = this.symbol();
+    this.isSubmittingTrade.set(true);
+    this.tradeErrorMessage.set(null);
+    this.tradeSuccessReceipt.set(null);
+
+    const action$ = this.tradeType() === 'BUY'
+      ? this.tradingService.buy({ symbol: sym, quantity: qty })
+      : this.tradingService.sell({ symbol: sym, quantity: qty });
+
+    action$.subscribe({
+      next: (receipt) => {
+        this.isSubmittingTrade.set(false);
+        this.tradeSuccessReceipt.set(receipt);
+        this.refreshTradingState();
+      },
+      error: (err) => {
+        this.isSubmittingTrade.set(false);
+        const errMsg = err.error?.message || err.message || 'Trade execution failed';
+        this.tradeErrorMessage.set(errMsg);
+      }
+    });
+  }
+
+  dismissTradeSuccess(): void {
+    this.tradeSuccessReceipt.set(null);
   }
 
   // =========================================================================

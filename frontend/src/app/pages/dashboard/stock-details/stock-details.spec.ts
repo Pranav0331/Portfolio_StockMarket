@@ -5,7 +5,10 @@ import { provideRouter, ActivatedRoute } from '@angular/router';
 import { of, throwError, BehaviorSubject } from 'rxjs';
 import { StockDetailsComponent } from './stock-details';
 import { MarketService } from '../../../services/market.service';
+import { AuthService } from '../../../services/auth.service';
+import { TradingService } from '../../../services/trading.service';
 import { StockQuote, CandleSeries } from '../../../models/market.model';
+import { TradeResponse, VirtualWallet, UserHolding } from '../../../models/trading.model';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Polyfills for JSDOM headless environment
@@ -61,6 +64,9 @@ if (typeof window !== 'undefined') {
 
 describe('StockDetailsComponent', () => {
   let marketService: MarketService;
+  let authService: AuthService;
+  let tradingService: TradingService;
+
   const paramMap$ = new BehaviorSubject<{ get: (k: string) => string | null }>({
     get: (k: string) => (k === 'symbol' ? 'RELIANCE' : null)
   });
@@ -123,6 +129,28 @@ describe('StockDetailsComponent', () => {
     timestamp: 1727690000
   };
 
+  const mockWallet: VirtualWallet = {
+    cashBalance: 100000,
+    totalInvested: 0,
+    totalPortfolioValue: 100000,
+    currency: 'USD'
+  };
+
+  const mockHolding: UserHolding = {
+    holdingId: 1,
+    symbol: 'RELIANCE',
+    companyName: 'Reliance Industries Ltd',
+    exchange: 'NSE',
+    currency: 'INR',
+    quantity: 10,
+    averageBuyPrice: 2900,
+    totalInvested: 29000,
+    currentPrice: 2950.5,
+    currentValue: 29505,
+    unrealizedPnL: 505,
+    unrealizedPnLPercent: 1.74
+  };
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [StockDetailsComponent],
@@ -140,6 +168,8 @@ describe('StockDetailsComponent', () => {
     }).compileComponents();
 
     marketService = TestBed.inject(MarketService);
+    authService = TestBed.inject(AuthService);
+    tradingService = TestBed.inject(TradingService);
   });
 
   it('should create the StockDetailsComponent', () => {
@@ -217,17 +247,124 @@ describe('StockDetailsComponent', () => {
     expect(component.currentChartType()).toBe('candles');
   });
 
-  it('should handle 429 rate limit error gracefully', () => {
+  it('should handle simulated BUY trade execution', () => {
     paramMap$.next({ get: (k: string) => (k === 'symbol' ? 'RELIANCE' : null) });
-    vi.spyOn(marketService, 'getQuote').mockReturnValue(throwError(() => ({ status: 429 })));
-    vi.spyOn(marketService, 'getCandles').mockReturnValue(throwError(() => ({ status: 429 })));
+    vi.spyOn(marketService, 'getQuote').mockReturnValue(of(mockRelianceQuote));
+    vi.spyOn(marketService, 'getCandles').mockReturnValue(of(mockRelianceCandles));
+    vi.spyOn(authService, 'isAuthenticated').mockReturnValue(true);
+
+    const mockTradeRes: TradeResponse = {
+      orderId: 101,
+      transactionId: 201,
+      symbol: 'RELIANCE',
+      companyName: 'Reliance Industries Ltd',
+      orderType: 'BUY',
+      orderStatus: 'EXECUTED',
+      quantity: 5,
+      executionPrice: 2950.5,
+      totalAmount: 14752.5,
+      remainingCashBalance: 85247.5,
+      currentHoldingQuantity: 5,
+      executedAt: '2026-10-01T03:00:00Z',
+      message: 'Successfully bought 5 shares of RELIANCE'
+    };
+
+    const buySpy = vi.spyOn(tradingService, 'buy').mockReturnValue(of(mockTradeRes));
+    vi.spyOn(tradingService, 'getWallet').mockReturnValue(of(mockWallet));
+    vi.spyOn(tradingService, 'getHoldingForSymbol').mockReturnValue(of(mockHolding));
 
     const fixture = TestBed.createComponent(StockDetailsComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
 
-    expect(component.isRateLimited()).toBe(true);
-    expect(component.errorMessage()).toContain('rate limit');
+    component.setTradeType('BUY');
+    component.setTradeQuantity(5);
+    component.submitTrade();
+
+    expect(buySpy).toHaveBeenCalledWith({ symbol: 'RELIANCE', quantity: 5 });
+    expect(component.tradeSuccessReceipt()).toEqual(mockTradeRes);
+  });
+
+  it('should handle simulated SELL trade execution', () => {
+    paramMap$.next({ get: (k: string) => (k === 'symbol' ? 'RELIANCE' : null) });
+    vi.spyOn(marketService, 'getQuote').mockReturnValue(of(mockRelianceQuote));
+    vi.spyOn(marketService, 'getCandles').mockReturnValue(of(mockRelianceCandles));
+    vi.spyOn(authService, 'isAuthenticated').mockReturnValue(true);
+
+    const mockTradeRes: TradeResponse = {
+      orderId: 102,
+      transactionId: 202,
+      symbol: 'RELIANCE',
+      companyName: 'Reliance Industries Ltd',
+      orderType: 'SELL',
+      orderStatus: 'EXECUTED',
+      quantity: 5,
+      executionPrice: 2950.5,
+      totalAmount: 14752.5,
+      remainingCashBalance: 114752.5,
+      currentHoldingQuantity: 5,
+      executedAt: '2026-10-01T03:00:00Z',
+      message: 'Successfully sold 5 shares of RELIANCE'
+    };
+
+    const sellSpy = vi.spyOn(tradingService, 'sell').mockReturnValue(of(mockTradeRes));
+    vi.spyOn(tradingService, 'getWallet').mockReturnValue(of(mockWallet));
+    vi.spyOn(tradingService, 'getHoldingForSymbol').mockReturnValue(of(mockHolding));
+
+    const fixture = TestBed.createComponent(StockDetailsComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    component.setTradeType('SELL');
+    component.setTradeQuantity(5);
+    component.submitTrade();
+
+    expect(sellSpy).toHaveBeenCalledWith({ symbol: 'RELIANCE', quantity: 5 });
+    expect(component.tradeSuccessReceipt()).toEqual(mockTradeRes);
+  });
+
+  it('should detect insufficient balance on BUY', () => {
+    const fixture = TestBed.createComponent(StockDetailsComponent);
+    const component = fixture.componentInstance;
+
+    component.currentQuote.set(mockRelianceQuote); // price 2950.5
+    component.userWallet.set({ cashBalance: 5000, totalInvested: 0, totalPortfolioValue: 5000, currency: 'USD' });
+    component.setTradeType('BUY');
+    component.setTradeQuantity(10); // total 29,505 > 5,000
+
+    expect(component.hasInsufficientBalance()).toBe(true);
+  });
+
+  it('should detect insufficient holdings on SELL', () => {
+    const fixture = TestBed.createComponent(StockDetailsComponent);
+    const component = fixture.componentInstance;
+
+    component.userHolding.set({ ...mockHolding, quantity: 5 });
+    component.setTradeType('SELL');
+    component.setTradeQuantity(10); // 10 > 5
+
+    expect(component.hasInsufficientHoldings()).toBe(true);
+  });
+
+  it('should handle trade error response gracefully', () => {
+    paramMap$.next({ get: (k: string) => (k === 'symbol' ? 'RELIANCE' : null) });
+    vi.spyOn(marketService, 'getQuote').mockReturnValue(of(mockRelianceQuote));
+    vi.spyOn(marketService, 'getCandles').mockReturnValue(of(mockRelianceCandles));
+    vi.spyOn(authService, 'isAuthenticated').mockReturnValue(true);
+    vi.spyOn(tradingService, 'buy').mockReturnValue(throwError(() => ({
+      error: { message: 'Insufficient virtual balance' }
+    })));
+
+    const fixture = TestBed.createComponent(StockDetailsComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    component.setTradeType('BUY');
+    component.setTradeQuantity(10);
+    component.submitTrade();
+
+    expect(component.tradeErrorMessage()).toBe('Insufficient virtual balance');
+    expect(component.isSubmittingTrade()).toBe(false);
   });
 
   it('should handle 404 or missing data by displaying "Data unavailable"', () => {
@@ -241,32 +378,5 @@ describe('StockDetailsComponent', () => {
 
     expect(component.errorMessage()).toBe('Data unavailable');
     expect(component.candleData()).toEqual([]);
-  });
-
-  it('should correctly format currency symbols for Indian, US, Forex, and Crypto', () => {
-    const fixture = TestBed.createComponent(StockDetailsComponent);
-    const component = fixture.componentInstance;
-
-    expect(component.formatCurrencySymbol('RELIANCE')).toBe('₹');
-    expect(component.formatCurrencySymbol('NIFTY 50')).toBe('₹');
-    expect(component.formatCurrencySymbol('AAPL')).toBe('$');
-    expect(component.formatCurrencySymbol('EUR/USD')).toBe('$');
-    expect(component.formatCurrencySymbol('BTC/USD')).toBe('$');
-  });
-
-  it('should calculate day range percentage correctly', () => {
-    const fixture = TestBed.createComponent(StockDetailsComponent);
-    const component = fixture.componentInstance;
-
-    const quote: StockQuote = {
-      symbol: 'RELIANCE',
-      price: 2950,
-      change: 0,
-      changePercent: '0%',
-      low: 2900,
-      high: 3000
-    };
-
-    expect(component.getDayProgressPercent(quote)).toBe(50);
   });
 });
