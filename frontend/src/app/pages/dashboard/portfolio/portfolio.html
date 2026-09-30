@@ -1,0 +1,307 @@
+<div class="portfolio-container">
+  <!-- Header Section -->
+  <header class="portfolio-header">
+    <div class="header-left">
+      <div class="header-title-row">
+        <h1 class="page-title">Portfolio Overview</h1>
+        <span class="user-badge" *ngIf="portfolio() as p">{{ p.userFullName }}</span>
+      </div>
+      <p class="page-subtitle">
+        Real-time tracking of your active asset allocations, valuation, and performance metrics.
+      </p>
+    </div>
+    <div class="header-actions">
+      <button 
+        type="button"
+        class="btn-refresh" 
+        (click)="loadPortfolio()" 
+        [disabled]="isLoading()"
+        title="Refresh portfolio prices">
+        <svg class="refresh-icon" [class.spinning]="isLoading()" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6"></path>
+          <path d="M1 20v-6h6"></path>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>{{ isLoading() ? 'Updating...' : 'Refresh Prices' }}</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Error Banner -->
+  <div class="error-banner glass-card" *ngIf="error()">
+    <div class="error-content">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" class="error-icon">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <div class="error-text">
+        <strong>Error loading portfolio:</strong> {{ error() }}
+      </div>
+    </div>
+    <button class="btn-retry" (click)="loadPortfolio()">Retry</button>
+  </div>
+
+  <!-- Loading State (Initial Skeleton) -->
+  <div class="loading-state" *ngIf="isLoading() && !portfolio()">
+    <div class="loading-spinner"></div>
+    <p>Fetching real-time portfolio data and quotes...</p>
+  </div>
+
+  <!-- Main Content When Data Loaded -->
+  <ng-container *ngIf="portfolio() as p">
+    <!-- Top Summary Metric Cards -->
+    <div class="metrics-grid">
+      <!-- 1. Total Portfolio Value -->
+      <div class="metric-card glass-card highlight-card">
+        <div class="metric-header">
+          <span class="metric-label">Total Portfolio Value</span>
+          <div class="metric-icon-box primary">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="metric-value">${{ p.totalPortfolioValue | number:'1.2-2' }}</div>
+        <div class="metric-footer">
+          <span class="sub-label">Cash + Holdings Equity</span>
+        </div>
+      </div>
+
+      <!-- 2. Available Virtual Cash -->
+      <div class="metric-card glass-card">
+        <div class="metric-header">
+          <span class="metric-label">Available Virtual Cash</span>
+          <div class="metric-icon-box success">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+              <line x1="12" y1="8" x2="12" y2="16"></line>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+          </div>
+        </div>
+        <div class="metric-value">${{ (p.cashBalance !== undefined ? p.cashBalance : (p.availableCash || 0)) | number:'1.2-2' }}</div>
+        <div class="metric-footer">
+          <span class="allocation-badge">{{ p.cashAllocationPercent | number:'1.1-1' }}% of portfolio</span>
+        </div>
+      </div>
+
+      <!-- 3. Total Invested Amount -->
+      <div class="metric-card glass-card">
+        <div class="metric-header">
+          <span class="metric-label">Total Invested</span>
+          <div class="metric-icon-box info">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="metric-value">${{ p.totalInvested | number:'1.2-2' }}</div>
+        <div class="metric-footer">
+          <span class="sub-label">{{ p.totalHoldingsCount }} active holding{{ p.totalHoldingsCount !== 1 ? 's' : '' }}</span>
+        </div>
+      </div>
+
+      <!-- 4. Total Unrealized P&L -->
+      <div class="metric-card glass-card" [ngClass]="{'profit-glow': p.totalUnrealizedPnL > 0, 'loss-glow': p.totalUnrealizedPnL < 0}">
+        <div class="metric-header">
+          <span class="metric-label">Unrealized P&L</span>
+          <div class="metric-icon-box" [ngClass]="p.totalUnrealizedPnL >= 0 ? 'success' : 'danger'">
+            <svg *ngIf="p.totalUnrealizedPnL >= 0" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+              <polyline points="17 6 23 6 23 12"></polyline>
+            </svg>
+            <svg *ngIf="p.totalUnrealizedPnL < 0" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline>
+              <polyline points="17 18 23 18 23 12"></polyline>
+            </svg>
+          </div>
+        </div>
+        <div class="metric-value" [ngClass]="p.totalUnrealizedPnL >= 0 ? 'positive-val' : 'negative-val'">
+          {{ p.totalUnrealizedPnL >= 0 ? '+' : '' }}${{ p.totalUnrealizedPnL | number:'1.2-2' }}
+        </div>
+        <div class="metric-footer">
+          <span class="pnl-pill" [ngClass]="p.totalUnrealizedPnL >= 0 ? 'pill-positive' : 'pill-negative'">
+            {{ p.totalUnrealizedPnLPercent >= 0 ? '+' : '' }}{{ p.totalUnrealizedPnLPercent | number:'1.2-2' }}%
+          </span>
+          <span class="sub-label">Return</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Portfolio Allocation Section -->
+    <div class="allocation-section glass-card" *ngIf="p.holdings.length > 0">
+      <div class="section-header">
+        <h2 class="section-title">Asset Allocation</h2>
+        <span class="section-subtitle">Distribution across cash and active equities</span>
+      </div>
+
+      <!-- Multi-segment Allocation Bar -->
+      <div class="allocation-bar-wrapper">
+        <div class="allocation-bar">
+          <div 
+            class="bar-segment cash-segment" 
+            [style.width.%]="p.cashAllocationPercent"
+            [title]="'Virtual Cash: ' + (p.cashAllocationPercent | number:'1.1-1') + '%'">
+          </div>
+          <div 
+            *ngFor="let h of p.holdings; let i = index"
+            class="bar-segment holding-segment"
+            [ngClass]="'color-' + (i % 6)"
+            [style.width.%]="h.allocationPercent || 0"
+            [title]="h.symbol + ': ' + (h.allocationPercent || 0 | number:'1.1-1') + '%'">
+          </div>
+        </div>
+      </div>
+
+      <!-- Allocation Legend Chips -->
+      <div class="allocation-legend">
+        <div class="legend-item">
+          <span class="legend-dot cash-dot"></span>
+          <span class="legend-name">Cash</span>
+          <span class="legend-pct">{{ p.cashAllocationPercent | number:'1.1-1' }}%</span>
+        </div>
+        <div class="legend-item" *ngFor="let h of p.holdings; let i = index">
+          <span class="legend-dot" [ngClass]="'dot-' + (i % 6)"></span>
+          <span class="legend-name">{{ h.symbol }}</span>
+          <span class="legend-pct">{{ h.allocationPercent || 0 | number:'1.1-1' }}%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Holdings Section -->
+    <div class="holdings-section glass-card">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Active Holdings ({{ p.holdings.length }})</h2>
+          <span class="section-subtitle">Real-time valuation based on live market prices</span>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-holdings" *ngIf="p.holdings.length === 0">
+        <div class="empty-icon-box">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+          </svg>
+        </div>
+        <h3 class="empty-title">No Active Holdings</h3>
+        <p class="empty-desc">
+          You have not purchased any assets yet. Visit the market dashboard to start paper trading.
+        </p>
+        <a routerLink="/dashboard/market" class="btn-primary-action">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <span>Explore Market</span>
+        </a>
+      </div>
+
+      <!-- Holdings Table (Desktop & Tablet) -->
+      <div class="table-responsive" *ngIf="p.holdings.length > 0">
+        <table class="holdings-table">
+          <thead>
+            <tr>
+              <th class="th-symbol">Instrument</th>
+              <th class="th-num">Qty</th>
+              <th class="th-num">Avg Buy Price</th>
+              <th class="th-num">Invested</th>
+              <th class="th-num">Current Market Price</th>
+              <th class="th-num">Current Value</th>
+              <th class="th-num">Unrealized P&L</th>
+              <th class="th-num">Allocation</th>
+              <th class="th-action">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let h of p.holdings" class="holding-row" (click)="navigateToStock(h.symbol)">
+              <!-- Symbol & Name -->
+              <td class="td-symbol">
+                <div class="symbol-info">
+                  <div class="symbol-code-wrap">
+                    <span class="symbol-code">{{ h.symbol }}</span>
+                    <span class="exchange-badge">{{ h.exchange }}</span>
+                  </div>
+                  <span class="company-name" [title]="h.companyName">{{ h.companyName }}</span>
+                </div>
+              </td>
+
+              <!-- Quantity -->
+              <td class="td-num font-mono">
+                {{ h.quantity | number:'1.0-4' }}
+              </td>
+
+              <!-- Avg Buy Price -->
+              <td class="td-num font-mono">
+                {{ getCurrencySymbol(h.currency) }}{{ h.averageBuyPrice | number:'1.2-2' }}
+              </td>
+
+              <!-- Invested Amount -->
+              <td class="td-num font-mono">
+                {{ getCurrencySymbol(h.currency) }}{{ h.totalInvested | number:'1.2-2' }}
+              </td>
+
+              <!-- Current Market Price (Real Price or Unavailable) -->
+              <td class="td-num font-mono">
+                <ng-container *ngIf="h.priceAvailable !== false && h.currentPrice !== null; else priceUnavailable">
+                  <span class="live-price">{{ getCurrencySymbol(h.currency) }}{{ h.currentPrice | number:'1.2-2' }}</span>
+                </ng-container>
+                <ng-template #priceUnavailable>
+                  <span class="price-unavailable-badge" title="Live quote could not be resolved from provider">
+                    Data unavailable
+                  </span>
+                </ng-template>
+              </td>
+
+              <!-- Current Value -->
+              <td class="td-num font-mono">
+                <ng-container *ngIf="h.priceAvailable !== false && h.currentValue !== null; else valUnavailable">
+                  <strong>{{ getCurrencySymbol(h.currency) }}{{ h.currentValue | number:'1.2-2' }}</strong>
+                </ng-container>
+                <ng-template #valUnavailable>
+                  <span class="text-muted">—</span>
+                </ng-template>
+              </td>
+
+              <!-- Unrealized P&L ($ and %) -->
+              <td class="td-num font-mono">
+                <ng-container *ngIf="h.priceAvailable !== false && h.unrealizedPnL !== null; else pnlUnavailable">
+                  <div class="pnl-cell" [ngClass]="(h.unrealizedPnL || 0) >= 0 ? 'text-profit' : 'text-loss'">
+                    <span class="pnl-amount">
+                      {{ (h.unrealizedPnL || 0) >= 0 ? '+' : '' }}{{ getCurrencySymbol(h.currency) }}{{ h.unrealizedPnL | number:'1.2-2' }}
+                    </span>
+                    <span class="pnl-sub">
+                      ({{ (h.unrealizedPnLPercent || 0) >= 0 ? '+' : '' }}{{ h.unrealizedPnLPercent | number:'1.2-2' }}%)
+                    </span>
+                  </div>
+                </ng-container>
+                <ng-template #pnlUnavailable>
+                  <span class="text-muted">—</span>
+                </ng-template>
+              </td>
+
+              <!-- Allocation % -->
+              <td class="td-num">
+                <div class="allocation-cell">
+                  <span class="allocation-text">{{ h.allocationPercent || 0 | number:'1.1-1' }}%</span>
+                  <div class="mini-bar">
+                    <div class="mini-bar-fill" [style.width.%]="h.allocationPercent || 0"></div>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Action button -->
+              <td class="td-action" (click)="$event.stopPropagation()">
+                <a [routerLink]="['/dashboard/stock', h.symbol]" class="btn-trade" title="Trade or view detailed chart">
+                  Trade
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </ng-container>
+</div>

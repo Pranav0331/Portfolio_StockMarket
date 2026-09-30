@@ -154,7 +154,7 @@ class TradingControllerTest {
                 1L, "RELIANCE", "Reliance Industries Ltd", "NSE", "INR",
                 new BigDecimal("10"), new BigDecimal("2900.00"), new BigDecimal("29000.00"),
                 new BigDecimal("3000.00"), new BigDecimal("30000.00"), new BigDecimal("1000.00"),
-                new BigDecimal("3.45")
+                new BigDecimal("3.45"), new BigDecimal("29.41"), true
         );
 
         when(tradingService.getUserHoldings(eq(testUser.getId()))).thenReturn(List.of(holding));
@@ -174,7 +174,7 @@ class TradingControllerTest {
                 1L, "RELIANCE", "Reliance Industries Ltd", "NSE", "INR",
                 new BigDecimal("10"), new BigDecimal("2900.00"), new BigDecimal("29000.00"),
                 new BigDecimal("3000.00"), new BigDecimal("30000.00"), new BigDecimal("1000.00"),
-                new BigDecimal("3.45")
+                new BigDecimal("3.45"), new BigDecimal("29.41"), true
         );
 
         when(tradingService.getUserHoldingForSymbol(eq(testUser.getId()), eq("RELIANCE")))

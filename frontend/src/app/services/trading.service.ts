@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { TradeRequest, TradeResponse, VirtualWallet, UserHolding } from '../models/trading.model';
+import { TradeRequest, TradeResponse, VirtualWallet, UserHolding, PortfolioSummary } from '../models/trading.model';
 
 @Injectable({
   providedIn: 'root'
@@ -49,5 +49,9 @@ export class TradingService {
     return this.http.get<UserHolding>(`${this.baseUrl}/trading/holdings/${encodeURIComponent(symbol)}`).pipe(
       tap(holding => this.currentHolding.set(holding))
     );
+  }
+
+  getPortfolio(): Observable<PortfolioSummary> {
+    return this.http.get<PortfolioSummary>(`${this.baseUrl}/portfolio`);
   }
 }

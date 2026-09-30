@@ -1,7 +1,9 @@
 package com.portfolio.dto.trading;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.math.BigDecimal;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record UserHoldingDto(
         Long holdingId,
         String symbol,
@@ -14,5 +16,7 @@ public record UserHoldingDto(
         BigDecimal currentPrice,
         BigDecimal currentValue,
         BigDecimal unrealizedPnL,
-        BigDecimal unrealizedPnLPercent
+        BigDecimal unrealizedPnLPercent,
+        BigDecimal allocationPercent,
+        Boolean priceAvailable
 ) {}

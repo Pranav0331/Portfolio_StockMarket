@@ -391,7 +391,9 @@ public class TradingService {
                     currentPrice.setScale(4, RoundingMode.HALF_UP),
                     currentValue.setScale(4, RoundingMode.HALF_UP),
                     unrealizedPnL,
-                    unrealizedPnLPercent
+                    unrealizedPnLPercent,
+                    BigDecimal.ZERO,
+                    Boolean.TRUE
             ));
         }
 
@@ -434,7 +436,9 @@ public class TradingService {
                             currentPrice.setScale(4, RoundingMode.HALF_UP),
                             currentValue.setScale(4, RoundingMode.HALF_UP),
                             unrealizedPnL,
-                            unrealizedPnLPercent
+                            unrealizedPnLPercent,
+                            BigDecimal.ZERO,
+                            Boolean.TRUE
                     );
                 });
     }

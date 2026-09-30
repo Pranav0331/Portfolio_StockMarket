@@ -38,8 +38,23 @@ export interface UserHolding {
   quantity: number;
   averageBuyPrice: number;
   totalInvested: number;
-  currentPrice: number;
-  currentValue: number;
-  unrealizedPnL: number;
-  unrealizedPnLPercent: number;
+  currentPrice: number | null;
+  currentValue: number | null;
+  unrealizedPnL: number | null;
+  unrealizedPnLPercent: number | null;
+  allocationPercent?: number;
+  priceAvailable?: boolean;
+}
+
+export interface PortfolioSummary {
+  cashBalance: number;
+  availableCash?: number;
+  totalInvested: number;
+  totalHoldingsMarketValue: number;
+  totalPortfolioValue: number;
+  totalUnrealizedPnL: number;
+  totalUnrealizedPnLPercent: number;
+  totalHoldingsCount: number;
+  cashAllocationPercent: number;
+  holdings: UserHolding[];
 }
