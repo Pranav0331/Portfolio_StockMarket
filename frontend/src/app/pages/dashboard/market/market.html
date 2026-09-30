@@ -1,333 +1,180 @@
 <div class="market-trading-terminal" [class.terminal-fullscreen]="isFullscreen()">
-  <!-- 1. TOP HEADER & GLOBAL SEARCH BAR -->
-  <header class="terminal-header-strip">
-    <div class="terminal-brand-group">
-      <div class="terminal-live-pill">
-        <span class="pulse-beacon"></span>
-        <span class="pill-label">Live Telemetry</span>
+  <!-- =========================================================================
+       1. TOP COMPACT MARKET BAR (Ticker, Search, Tabs)
+       ========================================================================= -->
+  <header class="terminal-top-bar">
+    <!-- Left: Selected Instrument Live Ticker -->
+    <div class="instrument-ticker-strip">
+      <div class="symbol-badge">{{ selectedSymbol() }}</div>
+      <div class="instrument-meta-box">
+        <div class="title-line">
+          <span class="company-name" [title]="selectedCompanyName()">{{ selectedCompanyName() }}</span>
+        </div>
+        <div class="tags-line">
+          <span class="micro-tag">{{ selectedExchange() }}</span>
+          <span class="micro-tag type">{{ selectedType() }}</span>
+          <span class="micro-tag live">
+            <span class="pulse-beacon sm"></span>
+            Live
+          </span>
+        </div>
       </div>
-      <h1 class="terminal-main-heading">Market Terminal</h1>
+
+      <!-- Real Price & Nominal / Percentage Change -->
+      <div class="ticker-price-block">
+        <span class="price-val">
+          {{ currentQuote()?.price != null ? (formatCurrencySymbol(selectedSymbol()) + (currentQuote()!.price | number:'1.2-4')) : '—' }}
+        </span>
+        @if (currentQuote(); as quote) {
+          <div
+            class="delta-pill"
+            [class.positive]="quote.change >= 0"
+            [class.negative]="quote.change < 0"
+          >
+            <span class="delta-arrow">{{ quote.change >= 0 ? '▲' : '▼' }}</span>
+            <span class="delta-num">{{ quote.change >= 0 ? '+' : '' }}{{ quote.change | number:'1.2-4' }}</span>
+            <span class="delta-pct">({{ quote.changePercent }})</span>
+          </div>
+        }
+      </div>
     </div>
 
-    <!-- Global Search -->
-    <div class="terminal-search-wrapper">
-      <form class="terminal-search-form" (ngSubmit)="onSearchSubmit()">
-        <span class="search-lens-icon">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-        </span>
+    <!-- Center: Global Market Search -->
+    <div class="terminal-search-box">
+      <form class="search-form" (ngSubmit)="onSearchSubmit()">
+        <svg class="search-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
         <input
           id="terminal-global-search-input"
           type="text"
           [ngModel]="searchQuery()"
           (ngModelChange)="onSearchInput($event)"
           name="searchQuery"
-          placeholder="Search stocks, forex pairs, crypto (e.g. AAPL, EUR/USD, BTC/USD)..."
-          class="terminal-search-field"
+          placeholder="Search symbol or market..."
+          class="search-input-field"
           autocomplete="off"
         />
         @if (isSearching()) {
-          <div class="search-spin-indicator" title="Searching symbols..."></div>
+          <div class="search-spinner"></div>
         } @else if (searchQuery()) {
-          <button type="button" class="search-clear-btn" (click)="clearSearch()" title="Clear search">
-            ✕
-          </button>
+          <button type="button" class="search-clear-btn" (click)="clearSearch()">✕</button>
         }
       </form>
 
-      <!-- Autocomplete Dropdown -->
+      <!-- Dropdown Results -->
       @if (showDropdown() && searchResults().length > 0) {
-        <div class="search-autocomplete-menu">
-          <div class="autocomplete-header">Matching Market Instruments</div>
-          <div class="autocomplete-items-container">
-            @for (item of searchResults(); track item.symbol) {
-              <button type="button" class="autocomplete-row-btn" (click)="selectSearchResult(item)">
-                <div class="row-left">
-                  <span class="sym-badge">{{ item.symbol }}</span>
-                  <span class="type-pill">{{ item.type || 'Equity' }}</span>
-                </div>
-                <div class="row-right">
-                  <span class="name-text">{{ item.name }}</span>
-                  <span class="sub-text">{{ item.region ? item.region + ' · ' : '' }}{{ item.currency }}</span>
-                </div>
-              </button>
-            }
-          </div>
+        <div class="search-dropdown-panel">
+          @for (item of searchResults(); track item.symbol) {
+            <button type="button" class="search-item-row" (click)="selectSearchResult(item)">
+              <div class="item-left">
+                <span class="item-sym">{{ item.symbol }}</span>
+                <span class="item-type">{{ item.type || 'Equity' }}</span>
+              </div>
+              <div class="item-right">
+                <span class="item-name">{{ item.name }}</span>
+                <span class="item-meta">{{ item.region || item.currency }}</span>
+              </div>
+            </button>
+          }
         </div>
       }
     </div>
 
-    <!-- Twelve Data Live Status -->
-    <div class="provider-status-badge">
-      <span class="status-indicator-dot"></span>
-      <span class="status-provider-text">Twelve Data Stream</span>
+    <!-- Right: Category Nav Tabs & Provider Tag -->
+    <div class="terminal-right-tools">
+      <div class="tabs-segmented">
+        <button
+          type="button"
+          class="tab-btn"
+          [class.active]="activeCategory() === 'all'"
+          (click)="setCategory('all')"
+        >
+          Overview
+        </button>
+        <button
+          type="button"
+          class="tab-btn"
+          [class.active]="activeCategory() === 'stocks'"
+          (click)="setCategory('stocks')"
+        >
+          Stocks
+        </button>
+        <button
+          type="button"
+          class="tab-btn"
+          [class.active]="activeCategory() === 'forex'"
+          (click)="setCategory('forex')"
+        >
+          Forex
+        </button>
+        <button
+          type="button"
+          class="tab-btn"
+          [class.active]="activeCategory() === 'crypto'"
+          (click)="setCategory('crypto')"
+        >
+          Crypto
+        </button>
+      </div>
+
+      <div class="provider-pill">
+        <span class="status-dot-pulse"></span>
+        <span>Twelve Data</span>
+      </div>
     </div>
   </header>
 
-  <!-- 2. CATEGORY TABS & POPULAR CHIPS -->
-  <nav class="terminal-category-nav" aria-label="Market Categories">
-    <div class="category-tabs-group">
-      <button
-        type="button"
-        class="category-tab"
-        [class.active]="activeCategory() === 'all'"
-        (click)="setCategory('all')"
-      >
-        <span>Overview</span>
-      </button>
-
-      <button
-        type="button"
-        class="category-tab"
-        [class.active]="activeCategory() === 'stocks'"
-        (click)="setCategory('stocks')"
-      >
-        <span>Stocks</span>
-      </button>
-
-      <button
-        type="button"
-        class="category-tab"
-        [class.active]="activeCategory() === 'forex'"
-        (click)="setCategory('forex')"
-      >
-        <span>Forex</span>
-      </button>
-
-      <button
-        type="button"
-        class="category-tab"
-        [class.active]="activeCategory() === 'crypto'"
-        (click)="setCategory('crypto')"
-      >
-        <span>Crypto</span>
-      </button>
-    </div>
-
-    <!-- Quick Shortcuts -->
-    <div class="quick-shortcuts-tray">
-      <span class="shortcuts-title">Popular:</span>
-      <div class="shortcuts-row">
-        @for (item of popularShortcuts; track item.symbol) {
-          <button
-            type="button"
-            class="popular-btn"
-            [class.active]="selectedSymbol() === item.symbol"
-            (click)="loadInstrument(item.symbol, item.name, undefined, item.category)"
-          >
-            {{ item.symbol }}
-          </button>
-        }
-      </div>
-    </div>
-  </nav>
-
-  <!-- 3. MAIN TERMINAL (TWO-COLUMN DESKTOP LAYOUT) -->
-  <div class="terminal-workspace-grid">
-    <!-- LEFT / CENTER: MAIN CANDLESTICK CHART & METRICS -->
-    <main class="terminal-chart-viewport">
-      <!-- Instrument Summary Header -->
-      <section class="instrument-header-card">
-        <div class="instrument-identity">
-          <div class="instrument-title-row">
-            <span class="symbol-large-tag">{{ selectedSymbol() }}</span>
-            <h2 class="instrument-name-heading">{{ selectedCompanyName() }}</h2>
-          </div>
-          <div class="instrument-meta-row">
-            <span class="meta-tag exchange-tag">{{ selectedExchange() }}</span>
-            <span class="meta-tag type-tag">{{ selectedType() }}</span>
-            <span class="meta-tag live-tag">
-              <span class="pulse-beacon sm"></span>
-              Live Feed
+  <!-- =========================================================================
+       2. MAIN TRADING TERMINAL WORKSPACE (75-80% Chart | 20-25% Watchlist)
+       ========================================================================= -->
+  <div class="terminal-body-grid">
+    <!-- LEFT / CENTER: DOMINANT CHART VIEWPORT -->
+    <main class="chart-main-pane">
+      <!-- Chart Controls Toolbar Strip -->
+      <div class="chart-toolbar-row">
+        <!-- Live OHLC Telemetry on Hover -->
+        <div class="ohlc-strip">
+          @if (hoveredBar(); as bar) {
+            <span class="ohlc-time-badge">{{ bar.timeStr }}</span>
+            <span class="ohlc-metric"><span class="k">O</span><span class="v">{{ formatCurrencySymbol(selectedSymbol()) }}{{ bar.open | number:'1.2-2' }}</span></span>
+            <span class="ohlc-metric"><span class="k">H</span><span class="v">{{ formatCurrencySymbol(selectedSymbol()) }}{{ bar.high | number:'1.2-2' }}</span></span>
+            <span class="ohlc-metric"><span class="k">L</span><span class="v">{{ formatCurrencySymbol(selectedSymbol()) }}{{ bar.low | number:'1.2-2' }}</span></span>
+            <span class="ohlc-metric" [class.up]="bar.close >= bar.open" [class.down]="bar.close < bar.open">
+              <span class="k">C</span><span class="v">{{ formatCurrencySymbol(selectedSymbol()) }}{{ bar.close | number:'1.2-2' }}</span>
             </span>
-            @if (currentQuote()?.latestTradingDay; as tradingDay) {
-              <span class="meta-tag session-tag">Session: {{ tradingDay }}</span>
+            @if (bar.volume != null && bar.volume > 0) {
+              <span class="ohlc-metric vol"><span class="k">Vol</span><span class="v">{{ bar.volume | number }}</span></span>
             }
-          </div>
-        </div>
-
-        <!-- Price & Change Box -->
-        <div class="instrument-pricing-box">
-          <div class="price-row">
-            <span class="curr-sign">{{ formatCurrencySymbol(selectedSymbol()) }}</span>
-            <span class="price-val">
-              {{ currentQuote()?.price != null ? (currentQuote()!.price | number:'1.2-4') : '—' }}
-            </span>
-          </div>
-
-          @if (currentQuote(); as quote) {
-            <div
-              class="change-indicator-pill"
-              [class.positive]="quote.change >= 0"
-              [class.negative]="quote.change < 0"
-            >
-              @if (quote.change >= 0) {
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <polyline points="18 15 12 9 6 15"></polyline>
-                </svg>
-              } @else {
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              }
-              <span class="delta-val">{{ quote.change >= 0 ? '+' : '' }}{{ quote.change | number:'1.2-4' }}</span>
-              <span class="pct-val">({{ quote.changePercent }})</span>
-            </div>
+          } @else {
+            <span class="ohlc-idle">Hover candles for OHLC telemetry</span>
           }
         </div>
-      </section>
 
-      <!-- Interactive Candlestick Chart Card -->
-      <section class="chart-terminal-card">
-        <!-- Chart Controls Toolbar -->
-        <div class="chart-toolbar-strip">
-          <!-- Left: Live OHLC Readout on Hover -->
-          <div class="ohlc-telemetry-readout">
-            @if (hoveredBar(); as bar) {
-              <span class="ohlc-time">{{ bar.timeStr }}</span>
-              <span class="ohlc-item"><span class="lbl">O:</span> <span class="val">{{ formatCurrencySymbol(selectedSymbol()) }}{{ bar.open | number:'1.2-2' }}</span></span>
-              <span class="ohlc-item"><span class="lbl">H:</span> <span class="val">{{ formatCurrencySymbol(selectedSymbol()) }}{{ bar.high | number:'1.2-2' }}</span></span>
-              <span class="ohlc-item"><span class="lbl">L:</span> <span class="val">{{ formatCurrencySymbol(selectedSymbol()) }}{{ bar.low | number:'1.2-2' }}</span></span>
-              <span class="ohlc-item" [class.positive]="bar.close >= bar.open" [class.negative]="bar.close < bar.open">
-                <span class="lbl">C:</span> <span class="val">{{ formatCurrencySymbol(selectedSymbol()) }}{{ bar.close | number:'1.2-2' }}</span>
-              </span>
-              @if (bar.volume != null && bar.volume > 0) {
-                <span class="ohlc-item vol"><span class="lbl">Vol:</span> <span class="val">{{ bar.volume | number }}</span></span>
-              }
-            } @else {
-              <span class="ohlc-placeholder">Hover over candles for OHLC telemetry</span>
+        <!-- Controls: Intervals, Timeframes, Chart Type, Actions -->
+        <div class="toolbar-controls-cluster">
+          <!-- Intervals -->
+          <div class="segmented-control">
+            @for (iv of intervals; track iv.value) {
+              <button
+                type="button"
+                class="seg-btn"
+                [class.active]="currentInterval() === iv.value"
+                (click)="setInterval(iv.value)"
+                [title]="iv.label + ' Candle Interval'"
+              >
+                {{ iv.label }}
+              </button>
             }
           </div>
 
-          <!-- Right: Controls (Interval, Chart Type, Timeframe, Fullscreen) -->
-          <div class="chart-action-controls">
-            <!-- Chart Intervals -->
-            <div class="control-segmented-group">
-              @for (iv of intervals; track iv.value) {
-                <button
-                  type="button"
-                  class="control-btn"
-                  [class.active]="currentInterval() === iv.value"
-                  (click)="setInterval(iv.value)"
-                  [title]="'Set ' + iv.label + ' candle interval'"
-                >
-                  {{ iv.label }}
-                </button>
-              }
-            </div>
-
-            <!-- Chart Types (Candles, Line, Area) -->
-            <div class="control-segmented-group">
-              <button
-                type="button"
-                class="control-btn"
-                [class.active]="currentChartType() === 'candles'"
-                (click)="setChartType('candles')"
-                title="Candlestick Chart"
-              >
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="9" y1="3" x2="9" y2="21"></line>
-                  <rect x="6" y="7" width="6" height="10" rx="1"></rect>
-                  <line x1="17" y1="6" x2="17" y2="18"></line>
-                  <rect x="14" y="10" width="6" height="5" rx="1"></rect>
-                </svg>
-                <span>Candles</span>
-              </button>
-
-              <button
-                type="button"
-                class="control-btn"
-                [class.active]="currentChartType() === 'line'"
-                (click)="setChartType('line')"
-                title="Line Chart"
-              >
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                </svg>
-                <span>Line</span>
-              </button>
-
-              <button
-                type="button"
-                class="control-btn"
-                [class.active]="currentChartType() === 'area'"
-                (click)="setChartType('area')"
-                title="Mountain Area Chart"
-              >
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M3 20h18L17 7l-5 8-4-4z"></path>
-                </svg>
-                <span>Area</span>
-              </button>
-            </div>
-
-            <!-- Actions: Fit & Fullscreen -->
-            <div class="control-actions-group">
-              <button type="button" class="icon-tool-btn" (click)="fitChart()" title="Fit / Reset Chart View">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <polyline points="9 21 3 21 3 15"></polyline>
-                  <line x1="21" y1="3" x2="14" y2="10"></line>
-                  <line x1="3" y1="21" x2="10" y2="14"></line>
-                </svg>
-              </button>
-
-              <button type="button" class="icon-tool-btn" (click)="toggleFullscreen()" [title]="isFullscreen() ? 'Exit Fullscreen' : 'Fullscreen Terminal'">
-                @if (isFullscreen()) {
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="4 14 10 14 10 20"></polyline>
-                    <polyline points="20 10 14 10 14 4"></polyline>
-                    <line x1="14" y1="10" x2="21" y2="3"></line>
-                    <line x1="3" y1="21" x2="10" y2="14"></line>
-                  </svg>
-                } @else {
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="15 3 21 3 21 9"></polyline>
-                    <polyline points="9 21 3 21 3 15"></polyline>
-                    <line x1="21" y1="3" x2="14" y2="10"></line>
-                    <line x1="3" y1="21" x2="10" y2="14"></line>
-                  </svg>
-                }
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Real Candlestick Chart Canvas Container -->
-        <div class="chart-canvas-box" [class.loading]="isLoadingCandles()">
-          <div #chartContainer class="lightweight-chart-wrapper"></div>
-
-          <!-- Shimmer Overlay when Loading Candles -->
-          @if (isLoadingCandles()) {
-            <div class="chart-loading-overlay">
-              <div class="spinner-ring"></div>
-              <span class="loading-label">Streaming real-time Twelve Data candles...</span>
-            </div>
-          }
-
-          <!-- Error Alert Panel -->
-          @if (errorMessage()) {
-            <div class="chart-error-banner" [class.rate-limit]="isRateLimited()">
-              <div class="error-msg-row">
-                <span class="error-dot"></span>
-                <span>{{ errorMessage() }}</span>
-              </div>
-              <button type="button" class="btn-retry" (click)="loadInstrument(selectedSymbol())">
-                Retry
-              </button>
-            </div>
-          }
-        </div>
-
-        <!-- Timeframe Range Bar Below Chart -->
-        <div class="chart-timeframe-footer">
-          <div class="timeframe-pills">
+          <!-- Timeframe Ranges -->
+          <div class="segmented-control timeframes">
             @for (tf of timeframes; track tf) {
               <button
                 type="button"
-                class="tf-pill-btn"
+                class="seg-btn"
                 [class.active]="currentTimeframe() === tf"
                 (click)="setTimeframe(tf)"
               >
@@ -335,245 +182,255 @@
               </button>
             }
           </div>
-          <div class="timeframe-meta-status">
-            <span class="meta-label">Selected:</span>
-            <span class="meta-val">{{ currentTimeframe() }} Timeframe ({{ currentInterval() }} bars)</span>
+
+          <!-- Chart Types: Candles, Line, Area -->
+          <div class="segmented-control chart-types">
+            <button
+              type="button"
+              class="seg-btn"
+              [class.active]="currentChartType() === 'candles'"
+              (click)="setChartType('candles')"
+              title="Candlesticks"
+            >
+              Candles
+            </button>
+            <button
+              type="button"
+              class="seg-btn"
+              [class.active]="currentChartType() === 'line'"
+              (click)="setChartType('line')"
+              title="Line Chart"
+            >
+              Line
+            </button>
+            <button
+              type="button"
+              class="seg-btn"
+              [class.active]="currentChartType() === 'area'"
+              (click)="setChartType('area')"
+              title="Area Chart"
+            >
+              Area
+            </button>
+          </div>
+
+          <!-- Action Tools: Fit & Fullscreen -->
+          <div class="tools-btn-group">
+            <button type="button" class="tool-btn" (click)="fitChart()" title="Fit / Reset View">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <polyline points="9 21 3 21 3 15"></polyline>
+                <line x1="21" y1="3" x2="14" y2="10"></line>
+                <line x1="3" y1="21" x2="10" y2="14"></line>
+              </svg>
+            </button>
+            <button type="button" class="tool-btn" (click)="toggleFullscreen()" [title]="isFullscreen() ? 'Exit Fullscreen' : 'Fullscreen Terminal'">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <polyline points="9 21 3 21 3 15"></polyline>
+                <line x1="21" y1="3" x2="14" y2="10"></line>
+                <line x1="3" y1="21" x2="10" y2="14"></line>
+              </svg>
+            </button>
           </div>
         </div>
-      </section>
+      </div>
 
-      <!-- Market Session & Detailed Financial Statistics -->
-      <section class="terminal-stats-card">
-        <div class="stats-card-header">
-          <h3 class="stats-card-title">Market Statistics & Session Telemetry</h3>
-          <span class="stats-provider-tag">Twelve Data Verified</span>
-        </div>
+      <!-- HUGE Candlestick + Volume Chart Canvas Container -->
+      <div class="chart-canvas-viewport">
+        <div #chartContainer class="trading-chart-canvas"></div>
 
-        @if (currentQuote(); as quote) {
-          <!-- Day Range Slider -->
-          @if (quote.high && quote.low) {
-            <div class="session-range-container">
-              <div class="range-labels">
-                <span class="bound low">Day Low: {{ formatCurrencySymbol(quote.symbol) }}{{ quote.low | number:'1.2-2' }}</span>
-                <span class="bound center">Day's Session Range</span>
-                <span class="bound high">Day High: {{ formatCurrencySymbol(quote.symbol) }}{{ quote.high | number:'1.2-2' }}</span>
-              </div>
-              <div class="range-track-slider">
-                <div class="range-track-bar" [style.width.%]="getDayProgressPercent(quote)"></div>
-                <div class="range-track-pin" [style.left.%]="getDayProgressPercent(quote)"></div>
-              </div>
-            </div>
-          }
-
-          <!-- Grid of 6 Key Financial Metrics -->
-          <div class="stats-grid-6">
-            <div class="stat-cell">
-              <span class="cell-lbl">Previous Close</span>
-              <span class="cell-val">
-                {{ quote.previousClose != null ? (formatCurrencySymbol(quote.symbol) + (quote.previousClose | number:'1.2-4')) : '—' }}
-              </span>
-            </div>
-
-            <div class="stat-cell">
-              <span class="cell-lbl">Open</span>
-              <span class="cell-val">
-                {{ quote.open != null ? (formatCurrencySymbol(quote.symbol) + (quote.open | number:'1.2-4')) : '—' }}
-              </span>
-            </div>
-
-            <div class="stat-cell">
-              <span class="cell-lbl">Day's High</span>
-              <span class="cell-val positive-green">
-                {{ quote.high != null ? (formatCurrencySymbol(quote.symbol) + (quote.high | number:'1.2-4')) : '—' }}
-              </span>
-            </div>
-
-            <div class="stat-cell">
-              <span class="cell-lbl">Day's Low</span>
-              <span class="cell-val negative-red">
-                {{ quote.low != null ? (formatCurrencySymbol(quote.symbol) + (quote.low | number:'1.2-4')) : '—' }}
-              </span>
-            </div>
-
-            <div class="stat-cell">
-              <span class="cell-lbl">Volume</span>
-              <span class="cell-val">
-                {{ quote.volume != null ? (quote.volume | number) : '—' }}
-              </span>
-            </div>
-
-            <div class="stat-cell">
-              <span class="cell-lbl">Data Provider</span>
-              <div class="provider-pill-badge">
-                <span class="dot-cyan"></span>
-                <span>Twelve Data API</span>
-              </div>
-            </div>
+        <!-- Shimmer Loading Overlay -->
+        @if (isLoadingCandles()) {
+          <div class="terminal-chart-loader">
+            <div class="spinner-core"></div>
+            <span class="loader-text">Streaming real Twelve Data candles...</span>
           </div>
         }
-      </section>
+
+        <!-- Error State -->
+        @if (errorMessage()) {
+          <div class="terminal-error-bar" [class.rate-limit]="isRateLimited()">
+            <div class="err-text">
+              <span class="err-bullet"></span>
+              <span>{{ errorMessage() }}</span>
+            </div>
+            <button type="button" class="err-retry-btn" (click)="loadInstrument(selectedSymbol())">Retry</button>
+          </div>
+        }
+      </div>
+
+      <!-- Compact Bottom Statistics Strip (Single horizontal dense bar) -->
+      <footer class="terminal-stats-strip">
+        <div class="stats-item">
+          <span class="stat-key">OPEN</span>
+          <span class="stat-val">{{ currentQuote()?.open != null ? (formatCurrencySymbol(selectedSymbol()) + (currentQuote()!.open | number:'1.2-4')) : '—' }}</span>
+        </div>
+        <div class="stat-sep">|</div>
+        <div class="stats-item">
+          <span class="stat-key">HIGH</span>
+          <span class="stat-val up-green">{{ currentQuote()?.high != null ? (formatCurrencySymbol(selectedSymbol()) + (currentQuote()!.high | number:'1.2-4')) : '—' }}</span>
+        </div>
+        <div class="stat-sep">|</div>
+        <div class="stats-item">
+          <span class="stat-key">LOW</span>
+          <span class="stat-val down-red">{{ currentQuote()?.low != null ? (formatCurrencySymbol(selectedSymbol()) + (currentQuote()!.low | number:'1.2-4')) : '—' }}</span>
+        </div>
+        <div class="stat-sep">|</div>
+        <div class="stats-item">
+          <span class="stat-key">PREV CLOSE</span>
+          <span class="stat-val">{{ currentQuote()?.previousClose != null ? (formatCurrencySymbol(selectedSymbol()) + (currentQuote()!.previousClose | number:'1.2-4')) : '—' }}</span>
+        </div>
+        <div class="stat-sep">|</div>
+        <div class="stats-item">
+          <span class="stat-key">VOL</span>
+          <span class="stat-val">{{ currentQuote()?.volume != null ? (currentQuote()!.volume | number) : '—' }}</span>
+        </div>
+        <div class="stat-sep">|</div>
+        <div class="stats-item">
+          <span class="stat-key">52W HIGH</span>
+          <span class="stat-val">—</span>
+        </div>
+        <div class="stat-sep">|</div>
+        <div class="stats-item">
+          <span class="stat-key">52W LOW</span>
+          <span class="stat-val">—</span>
+        </div>
+        <div class="stat-sep">|</div>
+        <div class="stats-item">
+          <span class="stat-key">PROVIDER</span>
+          <span class="stat-val brand">Twelve Data REST API</span>
+        </div>
+      </footer>
     </main>
 
-    <!-- RIGHT: TRADINGVIEW-STYLE WATCHLIST PANEL -->
-    <aside class="terminal-watchlist-sidebar" aria-label="Markets Watchlist">
-      <div class="watchlist-terminal-panel">
-        <!-- Watchlist Top Filter Header -->
-        <div class="watchlist-top-bar">
-          <div class="watchlist-title-row">
-            <h3 class="watchlist-title">Watchlist</h3>
-            <span class="pairs-count">{{ filteredWatchlist().length }} Instruments</span>
-          </div>
-
-          <!-- Watchlist Search Input -->
-          <div class="watchlist-search-box">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input
-              type="text"
-              [ngModel]="watchlistSearch()"
-              (ngModelChange)="watchlistSearch.set($event)"
-              placeholder="Filter watchlist..."
-              class="watchlist-search-field"
-            />
-          </div>
+    <!-- RIGHT: COMPACT WATCHLIST PANEL (240-280px wide) -->
+    <aside class="watchlist-compact-pane" aria-label="Watchlist">
+      <div class="watchlist-header-bar">
+        <span class="wl-title">Watchlist</span>
+        <div class="wl-search-box">
+          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            type="text"
+            [ngModel]="watchlistSearch()"
+            (ngModelChange)="watchlistSearch.set($event)"
+            placeholder="Filter..."
+            class="wl-search-input"
+          />
         </div>
+      </div>
 
-        <!-- Watchlist Collapsible Instrument Sections -->
-        <div class="watchlist-scroll-container">
-          <!-- 1. STOCKS SECTION -->
-          @if (activeCategory() === 'all' || activeCategory() === 'stocks') {
-            <div class="watchlist-category-block">
-              <button type="button" class="category-header-btn" (click)="toggleStocksCollapse()">
-                <div class="cat-title">
-                  <span class="cat-dot stock-dot"></span>
-                  <span>Equities & Stocks</span>
-                </div>
-                <span class="arrow-caret" [class.rotated]="isStocksCollapsed()">▼</span>
-              </button>
-
-              @if (!isStocksCollapsed()) {
-                <div class="instrument-rows-list">
-                  @for (item of stockWatchlist(); track item.symbol) {
-                    <div
-                      class="watchlist-row"
-                      [class.active]="selectedSymbol() === item.symbol"
-                      (click)="selectWatchlistItem(item)"
+      <div class="watchlist-scroll-list">
+        <!-- 1. STOCKS -->
+        @if (activeCategory() === 'all' || activeCategory() === 'stocks') {
+          <div class="wl-section">
+            <button type="button" class="wl-section-header" (click)="toggleStocksCollapse()">
+              <span class="wl-caret" [class.rotated]="isStocksCollapsed()">▾</span>
+              <span class="wl-sec-name">STOCKS</span>
+            </button>
+            @if (!isStocksCollapsed()) {
+              @for (item of stockWatchlist(); track item.symbol) {
+                <div
+                  class="wl-row"
+                  [class.active]="selectedSymbol() === item.symbol"
+                  (click)="selectWatchlistItem(item)"
+                >
+                  <div class="wl-left">
+                    <span class="wl-sym">{{ item.symbol }}</span>
+                    <span class="wl-desc">{{ item.name }}</span>
+                  </div>
+                  <div class="wl-right">
+                    <span class="wl-price">
+                      {{ item.price != null ? (item.price | number:'1.2-2') : '—' }}
+                    </span>
+                    <span
+                      class="wl-change"
+                      [class.positive]="(item.change ?? 0) >= 0"
+                      [class.negative]="(item.change ?? 0) < 0"
                     >
-                      <div class="row-info-col">
-                        <span class="sym-text">{{ item.symbol }}</span>
-                        <span class="name-text">{{ item.name }}</span>
-                      </div>
-                      <div class="row-pricing-col">
-                        <span class="price-text">
-                          {{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}
-                        </span>
-                        @if (item.changePercent != null) {
-                          <span
-                            class="delta-badge"
-                            [class.positive]="(item.change ?? 0) >= 0"
-                            [class.negative]="(item.change ?? 0) < 0"
-                          >
-                            {{ (item.change ?? 0) >= 0 ? '+' : '' }}{{ item.changePercent }}
-                          </span>
-                        }
-                      </div>
-                    </div>
-                  }
+                      {{ item.changePercent != null ? item.changePercent : '—' }}
+                    </span>
+                  </div>
                 </div>
               }
-            </div>
-          }
+            }
+          </div>
+        }
 
-          <!-- 2. FOREX SECTION -->
-          @if (activeCategory() === 'all' || activeCategory() === 'forex') {
-            <div class="watchlist-category-block">
-              <button type="button" class="category-header-btn" (click)="toggleForexCollapse()">
-                <div class="cat-title">
-                  <span class="cat-dot forex-dot"></span>
-                  <span>Forex Currency Pairs</span>
-                </div>
-                <span class="arrow-caret" [class.rotated]="isForexCollapsed()">▼</span>
-              </button>
-
-              @if (!isForexCollapsed()) {
-                <div class="instrument-rows-list">
-                  @for (item of forexWatchlist(); track item.symbol) {
-                    <div
-                      class="watchlist-row"
-                      [class.active]="selectedSymbol() === item.symbol"
-                      (click)="selectWatchlistItem(item)"
+        <!-- 2. FOREX -->
+        @if (activeCategory() === 'all' || activeCategory() === 'forex') {
+          <div class="wl-section">
+            <button type="button" class="wl-section-header" (click)="toggleForexCollapse()">
+              <span class="wl-caret" [class.rotated]="isForexCollapsed()">▾</span>
+              <span class="wl-sec-name">FOREX</span>
+            </button>
+            @if (!isForexCollapsed()) {
+              @for (item of forexWatchlist(); track item.symbol) {
+                <div
+                  class="wl-row"
+                  [class.active]="selectedSymbol() === item.symbol"
+                  (click)="selectWatchlistItem(item)"
+                >
+                  <div class="wl-left">
+                    <span class="wl-sym">{{ item.symbol }}</span>
+                    <span class="wl-desc">{{ item.name }}</span>
+                  </div>
+                  <div class="wl-right">
+                    <span class="wl-price">
+                      {{ item.price != null ? (item.price | number:'1.2-4') : '—' }}
+                    </span>
+                    <span
+                      class="wl-change"
+                      [class.positive]="(item.change ?? 0) >= 0"
+                      [class.negative]="(item.change ?? 0) < 0"
                     >
-                      <div class="row-info-col">
-                        <span class="sym-text">{{ item.symbol }}</span>
-                        <span class="name-text">{{ item.name }}</span>
-                      </div>
-                      <div class="row-pricing-col">
-                        <span class="price-text">
-                          {{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-4')) : '—' }}
-                        </span>
-                        @if (item.changePercent != null) {
-                          <span
-                            class="delta-badge"
-                            [class.positive]="(item.change ?? 0) >= 0"
-                            [class.negative]="(item.change ?? 0) < 0"
-                          >
-                            {{ (item.change ?? 0) >= 0 ? '+' : '' }}{{ item.changePercent }}
-                          </span>
-                        }
-                      </div>
-                    </div>
-                  }
+                      {{ item.changePercent != null ? item.changePercent : '—' }}
+                    </span>
+                  </div>
                 </div>
               }
-            </div>
-          }
+            }
+          </div>
+        }
 
-          <!-- 3. CRYPTO SECTION -->
-          @if (activeCategory() === 'all' || activeCategory() === 'crypto') {
-            <div class="watchlist-category-block">
-              <button type="button" class="category-header-btn" (click)="toggleCryptoCollapse()">
-                <div class="cat-title">
-                  <span class="cat-dot crypto-dot"></span>
-                  <span>Cryptocurrencies</span>
-                </div>
-                <span class="arrow-caret" [class.rotated]="isCryptoCollapsed()">▼</span>
-              </button>
-
-              @if (!isCryptoCollapsed()) {
-                <div class="instrument-rows-list">
-                  @for (item of cryptoWatchlist(); track item.symbol) {
-                    <div
-                      class="watchlist-row"
-                      [class.active]="selectedSymbol() === item.symbol"
-                      (click)="selectWatchlistItem(item)"
+        <!-- 3. CRYPTO -->
+        @if (activeCategory() === 'all' || activeCategory() === 'crypto') {
+          <div class="wl-section">
+            <button type="button" class="wl-section-header" (click)="toggleCryptoCollapse()">
+              <span class="wl-caret" [class.rotated]="isCryptoCollapsed()">▾</span>
+              <span class="wl-sec-name">CRYPTO</span>
+            </button>
+            @if (!isCryptoCollapsed()) {
+              @for (item of cryptoWatchlist(); track item.symbol) {
+                <div
+                  class="wl-row"
+                  [class.active]="selectedSymbol() === item.symbol"
+                  (click)="selectWatchlistItem(item)"
+                >
+                  <div class="wl-left">
+                    <span class="wl-sym">{{ item.symbol }}</span>
+                    <span class="wl-desc">{{ item.name }}</span>
+                  </div>
+                  <div class="wl-right">
+                    <span class="wl-price">
+                      {{ item.price != null ? (item.price | number:'1.2-2') : '—' }}
+                    </span>
+                    <span
+                      class="wl-change"
+                      [class.positive]="(item.change ?? 0) >= 0"
+                      [class.negative]="(item.change ?? 0) < 0"
                     >
-                      <div class="row-info-col">
-                        <span class="sym-text">{{ item.symbol }}</span>
-                        <span class="name-text">{{ item.name }}</span>
-                      </div>
-                      <div class="row-pricing-col">
-                        <span class="price-text">
-                          {{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}
-                        </span>
-                        @if (item.changePercent != null) {
-                          <span
-                            class="delta-badge"
-                            [class.positive]="(item.change ?? 0) >= 0"
-                            [class.negative]="(item.change ?? 0) < 0"
-                          >
-                            {{ (item.change ?? 0) >= 0 ? '+' : '' }}{{ item.changePercent }}
-                          </span>
-                        }
-                      </div>
-                    </div>
-                  }
+                      {{ item.changePercent != null ? item.changePercent : '—' }}
+                    </span>
+                  </div>
                 </div>
               }
-            </div>
-          }
-        </div>
+            }
+          </div>
+        }
       </div>
     </aside>
   </div>

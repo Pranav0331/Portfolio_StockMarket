@@ -134,9 +134,9 @@ describe('MarketComponent', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.market-trading-terminal')).toBeTruthy();
     expect(compiled.querySelector('#terminal-global-search-input')).toBeTruthy();
-    expect(compiled.querySelector('.instrument-header-card')).toBeTruthy();
-    expect(compiled.querySelector('.chart-terminal-card')).toBeTruthy();
-    expect(compiled.querySelector('.terminal-watchlist-sidebar')).toBeTruthy();
+    expect(compiled.querySelector('.instrument-ticker-strip')).toBeTruthy();
+    expect(compiled.querySelector('.chart-main-pane')).toBeTruthy();
+    expect(compiled.querySelector('.watchlist-compact-pane')).toBeTruthy();
   });
 
   it('should display instrument header, price and change badge', async () => {
@@ -145,9 +145,9 @@ describe('MarketComponent', () => {
     await fixture.whenStable();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('.symbol-large-tag')?.textContent).toContain('AAPL');
+    expect(compiled.querySelector('.symbol-badge')?.textContent).toContain('AAPL');
     expect(compiled.querySelector('.price-val')?.textContent).toContain('329.40');
-    expect(compiled.querySelector('.change-indicator-pill')?.textContent).toContain('-9.00');
+    expect(compiled.querySelector('.delta-pill')?.textContent).toContain('-9.00');
   });
 
   it('should switch category tabs correctly', () => {

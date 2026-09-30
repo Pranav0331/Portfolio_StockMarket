@@ -558,6 +558,12 @@
   flex-grow: 1;
 }
 
+.dashboard-content-area:has(app-market) {
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+}
+
 /* --------------------------------------------------------------------------
    RESPONSIVE BREAKPOINTS
    -------------------------------------------------------------------------- */
