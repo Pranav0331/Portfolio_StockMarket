@@ -121,7 +121,7 @@
 
       <div class="provider-pill">
         <span class="status-dot-pulse"></span>
-        <span>Twelve Data</span>
+        <span>{{ currentProvider() }}</span>
       </div>
     </div>
   </header>
@@ -327,7 +327,7 @@
         @if (isLoadingCandles()) {
           <div class="terminal-chart-loader">
             <div class="spinner-core"></div>
-            <span class="loader-text">Streaming real Twelve Data candles...</span>
+            <span class="loader-text">Streaming real {{ currentProvider() }} candles...</span>
           </div>
         }
 
@@ -382,7 +382,7 @@
         <div class="stat-sep">|</div>
         <div class="stats-item">
           <span class="stat-key">PROVIDER</span>
-          <span class="stat-val brand">Twelve Data REST API</span>
+          <span class="stat-val brand">{{ currentProvider() }} REST API</span>
         </div>
       </footer>
     </main>
@@ -427,7 +427,7 @@
                   </div>
                   <div class="wl-right">
                     <span class="wl-price">
-                      {{ item.price != null ? (item.price | number:'1.2-2') : '—' }}
+                      {{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}
                     </span>
                     <span
                       class="wl-change"

@@ -99,8 +99,8 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
-                        .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/logout").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/health", "/api/market/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/logout", "/api/upstox/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/health", "/api/market/**", "/api/upstox/**").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // All other endpoints require authentication

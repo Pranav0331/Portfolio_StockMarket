@@ -39,6 +39,7 @@ public class MarketDataService {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final UpstoxService upstoxService;
 
     @Value("${twelvedata.api.key:demo}")
     private String apiKey;
@@ -48,17 +49,24 @@ public class MarketDataService {
 
     @org.springframework.beans.factory.annotation.Autowired
     public MarketDataService(RestTemplateBuilder restTemplateBuilder, ObjectMapper objectMapper,
+                             @org.springframework.beans.factory.annotation.Autowired(required = false) UpstoxService upstoxService,
                              @Value("${twelvedata.api.timeout-ms:25000}") int timeoutMs) {
         this.restTemplate = restTemplateBuilder
                 .connectTimeout(Duration.ofMillis(timeoutMs))
                 .readTimeout(Duration.ofMillis(timeoutMs))
                 .build();
         this.objectMapper = objectMapper;
+        this.upstoxService = upstoxService;
     }
 
     MarketDataService(RestTemplate restTemplate, ObjectMapper objectMapper) {
+        this(restTemplate, objectMapper, null);
+    }
+
+    MarketDataService(RestTemplate restTemplate, ObjectMapper objectMapper, UpstoxService upstoxService) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
+        this.upstoxService = upstoxService;
     }
 
     /**
@@ -158,11 +166,16 @@ public class MarketDataService {
     }
 
     /**
-     * Fetch real-time market quote from Twelve Data
+     * Fetch real-time market quote from Twelve Data (or Upstox for Indian instruments)
      */
     public StockQuoteDto getQuote(String symbol) {
         if (symbol == null || symbol.trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Symbol parameter is required");
+        }
+
+        if (upstoxService != null && upstoxService.isIndianSymbol(symbol) && upstoxService.getAuthStatus().connected()) {
+            log.info("Routing Indian stock quote request for {} to Upstox service", symbol);
+            return upstoxService.getQuote(symbol);
         }
 
         String cleanSymbol = symbol.trim().toUpperCase();
@@ -226,11 +239,16 @@ public class MarketDataService {
     }
 
     /**
-     * Fetch real OHLC Candlestick time series from Twelve Data
+     * Fetch real OHLC Candlestick time series from Twelve Data (or Upstox for Indian instruments)
      */
     public CandleSeriesDto getCandles(String symbol, String interval, Integer outputsize) {
         if (symbol == null || symbol.trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Symbol parameter is required");
+        }
+
+        if (upstoxService != null && upstoxService.isIndianSymbol(symbol) && upstoxService.getAuthStatus().connected()) {
+            log.info("Routing Indian stock candles request for {} to Upstox service", symbol);
+            return upstoxService.getCandles(symbol, interval, outputsize);
         }
 
         String cleanSymbol = symbol.trim().toUpperCase();
@@ -321,6 +339,13 @@ public class MarketDataService {
 
             JsonNode dataNode = root.path("data");
             List<StockSearchItemDto> bestMatches = new ArrayList<>();
+
+            if (upstoxService != null) {
+                StockSearchResponseDto indianMatches = upstoxService.searchSymbols(cleanKeywords);
+                if (indianMatches != null && indianMatches.bestMatches() != null) {
+                    bestMatches.addAll(indianMatches.bestMatches());
+                }
+            }
 
             if (dataNode != null && dataNode.isArray()) {
                 for (JsonNode item : dataNode) {

@@ -38,6 +38,9 @@ class DatabaseLayerTest {
     @Autowired
     private AlertRepository alertRepository;
 
+    @Autowired
+    private UpstoxSessionRepository upstoxSessionRepository;
+
     @Test
     @DisplayName("Verify database starts completely empty with zero seed records")
     void verifyDatabaseStartsEmpty() {
@@ -48,6 +51,7 @@ class DatabaseLayerTest {
         assertThat(transactionRepository.count()).isEqualTo(0);
         assertThat(watchlistRepository.count()).isEqualTo(0);
         assertThat(alertRepository.count()).isEqualTo(0);
+        assertThat(upstoxSessionRepository.count()).isEqualTo(0);
     }
 
     @Test
@@ -159,5 +163,45 @@ class DatabaseLayerTest {
 
         assertThat(alert.getId()).isNotNull();
         assertThat(alertRepository.findByStockIdAndStatus(stock.getId(), AlertStatus.ACTIVE)).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("UpstoxSession entity persists with unique sessionKey constraint")
+    void testUpstoxSessionEntity() {
+        UpstoxSession session = new UpstoxSession(
+                "DEFAULT",
+                "sample-access-token",
+                "sample-ext-token",
+                "John Doe",
+                "JD123",
+                "john@example.com",
+                "individual",
+                "Upstox",
+                true,
+                System.currentTimeMillis()
+        );
+        upstoxSessionRepository.saveAndFlush(session);
+
+        assertThat(session.getId()).isNotNull();
+        assertThat(session.getUpdatedAt()).isNotNull();
+
+        Optional<UpstoxSession> found = upstoxSessionRepository.findBySessionKey("DEFAULT");
+        assertThat(found).isPresent();
+        assertThat(found.get().getUserName()).isEqualTo("John Doe");
+
+        UpstoxSession duplicate = new UpstoxSession(
+                "DEFAULT",
+                "duplicate-token",
+                null,
+                "Other User",
+                "OU456",
+                null,
+                "individual",
+                "Upstox",
+                true,
+                System.currentTimeMillis()
+        );
+        assertThatThrownBy(() -> upstoxSessionRepository.saveAndFlush(duplicate))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 }

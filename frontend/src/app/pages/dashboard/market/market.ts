@@ -98,6 +98,10 @@ export class MarketComponent implements OnInit, OnDestroy {
   readonly selectedType = signal<string>('Stocks');
   readonly currentQuote = signal<StockQuote | null>(null);
 
+  readonly currentProvider = computed(() => {
+    return this.marketService.isIndianSymbol(this.selectedSymbol()) ? 'Upstox' : 'Twelve Data';
+  });
+
   // Loading and Error states
   readonly isLoadingQuote = signal<boolean>(false);
   readonly isLoadingCandles = signal<boolean>(false);
@@ -177,27 +181,43 @@ export class MarketComponent implements OnInit, OnDestroy {
 
   // Popular Market Quick Chips
   readonly popularShortcuts = [
+    { symbol: 'RELIANCE', name: 'Reliance Industries Ltd', category: 'stocks' as const },
+    { symbol: 'TCS', name: 'Tata Consultancy Services', category: 'stocks' as const },
+    { symbol: 'NIFTY 50', name: 'Nifty 50 Index', category: 'stocks' as const },
     { symbol: 'AAPL', name: 'Apple Inc.', category: 'stocks' as const },
-    { symbol: 'MSFT', name: 'Microsoft Corp.', category: 'stocks' as const },
     { symbol: 'NVDA', name: 'Nvidia Corp.', category: 'stocks' as const },
     { symbol: 'EUR/USD', name: 'Euro / USD', category: 'forex' as const },
-    { symbol: 'GBP/USD', name: 'British Pound / USD', category: 'forex' as const },
-    { symbol: 'BTC/USD', name: 'Bitcoin / USD', category: 'crypto' as const },
-    { symbol: 'ETH/USD', name: 'Ethereum / USD', category: 'crypto' as const }
+    { symbol: 'BTC/USD', name: 'Bitcoin / USD', category: 'crypto' as const }
   ];
 
   // Watchlist Catalog
   readonly watchlist = signal<WatchlistItem[]>([
+    // Indian Stocks & Indices (Upstox)
+    { symbol: 'RELIANCE', name: 'Reliance Industries Ltd', category: 'stocks', exchange: 'NSE' },
+    { symbol: 'TCS', name: 'Tata Consultancy Services', category: 'stocks', exchange: 'NSE' },
+    { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', category: 'stocks', exchange: 'NSE' },
+    { symbol: 'INFY', name: 'Infosys Ltd', category: 'stocks', exchange: 'NSE' },
+    { symbol: 'ICICIBANK', name: 'ICICI Bank Ltd', category: 'stocks', exchange: 'NSE' },
+    { symbol: 'SBIN', name: 'State Bank of India', category: 'stocks', exchange: 'NSE' },
+    { symbol: 'TATAMOTORS', name: 'Tata Motors Ltd', category: 'stocks', exchange: 'NSE' },
+    { symbol: 'NIFTY 50', name: 'Nifty 50 Index', category: 'stocks', exchange: 'NSE' },
+    { symbol: 'SENSEX', name: 'BSE Sensex Index', category: 'stocks', exchange: 'BSE' },
+
+    // US Stocks (Twelve Data)
     { symbol: 'AAPL', name: 'Apple Inc.', category: 'stocks', exchange: 'NASDAQ' },
     { symbol: 'MSFT', name: 'Microsoft Corp.', category: 'stocks', exchange: 'NASDAQ' },
     { symbol: 'GOOGL', name: 'Alphabet Inc.', category: 'stocks', exchange: 'NASDAQ' },
     { symbol: 'NVDA', name: 'NVIDIA Corp.', category: 'stocks', exchange: 'NASDAQ' },
     { symbol: 'TSLA', name: 'Tesla Inc.', category: 'stocks', exchange: 'NASDAQ' },
     { symbol: 'AMZN', name: 'Amazon.com Inc.', category: 'stocks', exchange: 'NASDAQ' },
+
+    // Forex (Twelve Data)
     { symbol: 'EUR/USD', name: 'Euro / US Dollar', category: 'forex', exchange: 'Forex' },
     { symbol: 'GBP/USD', name: 'British Pound / USD', category: 'forex', exchange: 'Forex' },
     { symbol: 'USD/JPY', name: 'US Dollar / Yen', category: 'forex', exchange: 'Forex' },
     { symbol: 'AUD/USD', name: 'Australian Dollar / USD', category: 'forex', exchange: 'Forex' },
+
+    // Crypto (Twelve Data)
     { symbol: 'BTC/USD', name: 'Bitcoin / US Dollar', category: 'crypto', exchange: 'Coinbase' },
     { symbol: 'ETH/USD', name: 'Ethereum / US Dollar', category: 'crypto', exchange: 'Coinbase' },
     { symbol: 'SOL/USD', name: 'Solana / US Dollar', category: 'crypto', exchange: 'Binance' }
@@ -1005,7 +1025,7 @@ export class MarketComponent implements OnInit, OnDestroy {
 
   formatCurrencySymbol(symbol?: string | null): string {
     if (!symbol) return '$';
-    if (symbol.endsWith('.BSE') || symbol.endsWith('.NSE')) {
+    if (this.marketService.isIndianSymbol(symbol)) {
       return '₹';
     }
     if (symbol.includes('/')) {
