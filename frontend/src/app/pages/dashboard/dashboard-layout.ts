@@ -95,6 +95,5 @@ export class DashboardLayoutComponent implements OnInit {
   logout(): void {
     this.closeDropdowns();
     this.authService.logout();
-    this.router.navigate(['/login']);
   }
 }

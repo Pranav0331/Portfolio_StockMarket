@@ -340,6 +340,11 @@
   border-color: var(--border-glass-glow);
 }
 
+.logout-topbar-btn:hover {
+  color: var(--accent-rose);
+  border-color: rgba(244, 63, 94, 0.4);
+}
+
 .notif-badge {
   position: absolute;
   top: 9px;

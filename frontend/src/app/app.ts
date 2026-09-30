@@ -1,6 +1,8 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs/operators';
 import { AuthService } from './services/auth.service';
 
 @Component({
@@ -13,6 +15,7 @@ import { AuthService } from './services/auth.service';
 export class App implements OnInit {
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly title = signal('Portfolio StockMarket');
   readonly errorMessage = signal<string | null>(null);
@@ -20,10 +23,31 @@ export class App implements OnInit {
 
   readonly currentTheme = signal<'dark' | 'light'>('dark');
   readonly isMobileMenuOpen = signal<boolean>(false);
+  readonly isDashboardRoute = signal<boolean>(false);
+
+  constructor() {
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((event: NavigationEnd) => {
+        const url = event.urlAfterRedirects || event.url;
+        this.isDashboardRoute.set(url.startsWith('/dashboard'));
+        this.closeMobileMenu();
+      });
+  }
 
   ngOnInit(): void {
     this.initTheme();
+    this.checkInitialRoute();
     this.checkOAuthCallback();
+  }
+
+  private checkInitialRoute(): void {
+    if (this.router.url && this.router.url.startsWith('/dashboard')) {
+      this.isDashboardRoute.set(true);
+    }
   }
 
   private initTheme(): void {
@@ -64,7 +88,7 @@ export class App implements OnInit {
 
   navigateAndScroll(sectionId: string): void {
     this.closeMobileMenu();
-    if (this.router.url === '/' || this.router.url.startsWith('/#')) {
+    if (this.router.url === '/' || this.router.url.startsWith('/#') || this.router.url.startsWith('/?')) {
       if (typeof document !== 'undefined') {
         const element = document.getElementById(sectionId);
         if (element && typeof element.scrollIntoView === 'function') {

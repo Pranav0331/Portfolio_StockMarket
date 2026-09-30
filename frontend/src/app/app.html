@@ -1,255 +1,208 @@
-<div class="app-layout">
-  <!-- Dynamic Ambient Glow Backgrounds -->
-  <div class="ambient-glow ambient-glow-top"></div>
-  <div class="ambient-glow ambient-glow-bottom"></div>
-  <div class="grid-overlay"></div>
+@if (!isDashboardRoute()) {
+  <div class="app-layout">
+    <!-- Dynamic Ambient Glow Backgrounds -->
+    <div class="ambient-glow ambient-glow-top"></div>
+    <div class="ambient-glow ambient-glow-bottom"></div>
+    <div class="grid-overlay"></div>
 
-  <!-- 1. TOP NAVBAR -->
-  <header class="navbar" id="navbar">
-    <div class="navbar-container">
-      <!-- Brand / Logo -->
-      <a routerLink="/" class="brand-link" (click)="navigateAndScroll('hero')">
-        <div class="brand-logo-icon">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
-            <polyline points="16 7 22 7 22 13"></polyline>
-          </svg>
-        </div>
-        <div class="brand-text-wrapper">
-          <span class="brand-title">{{ title() }}</span>
-        </div>
-      </a>
-
-      <!-- Desktop Navigation Links -->
-      <nav class="desktop-nav">
-        <button type="button" class="nav-link" (click)="navigateAndScroll('hero')">Home</button>
-        <button type="button" class="nav-link" (click)="navigateAndScroll('features')">Features</button>
-        <button type="button" class="nav-link" (click)="navigateAndScroll('how-it-works')">How It Works</button>
-        <button type="button" class="nav-link" (click)="navigateAndScroll('system-health')">System & API</button>
-      </nav>
-
-      <!-- Right Side Controls & Actions -->
-      <div class="nav-actions">
-        <!-- Theme Toggle -->
-        <button 
-          id="theme-toggle-btn"
-          type="button" 
-          class="icon-btn theme-toggle" 
-          (click)="toggleTheme()" 
-          [attr.aria-label]="'Switch to ' + (currentTheme() === 'dark' ? 'light' : 'dark') + ' theme'"
-          [title]="'Switch to ' + (currentTheme() === 'dark' ? 'light' : 'dark') + ' theme'"
-        >
-          @if (currentTheme() === 'dark') {
-            <!-- Sun Icon for switching to Light -->
-            <svg class="theme-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="5"></circle>
-              <line x1="12" y1="1" x2="12" y2="3"></line>
-              <line x1="12" y1="21" x2="12" y2="23"></line>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-              <line x1="1" y1="12" x2="3" y2="12"></line>
-              <line x1="21" y1="12" x2="23" y2="12"></line>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    <!-- 1. PUBLIC TOP NAVBAR (LOGGED OUT ONLY) -->
+    <header class="navbar" id="navbar">
+      <div class="navbar-container">
+        <!-- Brand / Logo -->
+        <a routerLink="/" class="brand-link" (click)="navigateAndScroll('hero')">
+          <div class="brand-logo-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+              <polyline points="16 7 22 7 22 13"></polyline>
             </svg>
-          } @else {
-            <!-- Moon Icon for switching to Dark -->
-            <svg class="theme-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-          }
-        </button>
+          </div>
+          <div class="brand-text-wrapper">
+            <span class="brand-title">{{ title() }}</span>
+          </div>
+        </a>
 
-        <!-- Authentication States -->
-        @if (!authService.currentUser()) {
+        <!-- Desktop Navigation Links -->
+        <nav class="desktop-nav">
+          <button type="button" class="nav-link" (click)="navigateAndScroll('hero')">Home</button>
+          <button type="button" class="nav-link" (click)="navigateAndScroll('features')">Features</button>
+          <button type="button" class="nav-link" (click)="navigateAndScroll('how-it-works')">How It Works</button>
+          <button type="button" class="nav-link" (click)="navigateAndScroll('system-health')">System & API</button>
+        </nav>
+
+        <!-- Right Side Controls & Actions -->
+        <div class="nav-actions">
+          <!-- Theme Toggle -->
+          <button 
+            id="theme-toggle-btn"
+            type="button" 
+            class="icon-btn theme-toggle" 
+            (click)="toggleTheme()" 
+            [attr.aria-label]="'Switch to ' + (currentTheme() === 'dark' ? 'light' : 'dark') + ' theme'"
+            [title]="'Switch to ' + (currentTheme() === 'dark' ? 'light' : 'dark') + ' theme'"
+          >
+            @if (currentTheme() === 'dark') {
+              <!-- Sun Icon for switching to Light -->
+              <svg class="theme-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+              </svg>
+            } @else {
+              <!-- Moon Icon for switching to Dark -->
+              <svg class="theme-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+              </svg>
+            }
+          </button>
+
+          <!-- Public Authentication Actions -->
           <a routerLink="/login" class="btn btn-glass-login" id="nav-login-btn">
             Login
           </a>
 
-          <button 
-            id="google-login-btn"
-            type="button"
-            class="btn btn-glass-login btn-google-nav" 
-            (click)="loginWithGoogle()"
-          >
-            <svg class="google-svg" viewBox="0 0 24 24" width="16" height="16">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-            </svg>
-            <span>Continue with Google</span>
-          </button>
-
-          <a routerLink="/signup" class="btn btn-primary btn-signup">
+          <a routerLink="/signup" class="btn btn-primary btn-signup" id="nav-signup-btn">
             <span>Sign Up</span>
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <line x1="5" y1="12" x2="19" y2="12"></line>
               <polyline points="12 5 19 12 12 19"></polyline>
             </svg>
           </a>
-        } @else {
-          <!-- Authenticated Profile Pill & Dashboard Link -->
-          <a routerLink="/dashboard" class="btn btn-primary btn-dash-link">
-            <span>Dashboard</span>
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
+
+          <!-- Mobile Hamburger Toggle -->
+          <button 
+            type="button" 
+            class="mobile-menu-btn" 
+            (click)="toggleMobileMenu()" 
+            aria-label="Toggle Navigation Menu"
+          >
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              @if (!isMobileMenuOpen()) {
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              } @else {
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              }
             </svg>
-          </a>
-
-          <div class="user-profile-badge" id="auth-user-profile">
-            <div class="user-avatar-circle">
-              {{ authService.currentUser()?.name?.charAt(0)?.toUpperCase() || 'U' }}
-            </div>
-            <div class="user-info-text">
-              <span class="user-name">{{ authService.currentUser()?.name }}</span>
-              <span class="user-email">{{ authService.currentUser()?.email }}</span>
-            </div>
-            <button id="logout-btn" type="button" class="btn-logout" (click)="logout()" title="Log out">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-              </svg>
-            </button>
-          </div>
-        }
-
-        <!-- Mobile Hamburger Toggle -->
-        <button 
-          type="button" 
-          class="mobile-menu-btn" 
-          (click)="toggleMobileMenu()" 
-          aria-label="Toggle Navigation Menu"
-        >
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            @if (!isMobileMenuOpen()) {
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            } @else {
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            }
-          </svg>
-        </button>
+          </button>
+        </div>
       </div>
-    </div>
 
-    <!-- Mobile Drawer Navigation -->
-    @if (isMobileMenuOpen()) {
-      <div class="mobile-nav-drawer">
-        <button type="button" class="mobile-nav-item" (click)="navigateAndScroll('hero')">Home</button>
-        <button type="button" class="mobile-nav-item" (click)="navigateAndScroll('features')">Features</button>
-        <button type="button" class="mobile-nav-item" (click)="navigateAndScroll('how-it-works')">How It Works</button>
-        <button type="button" class="mobile-nav-item" (click)="navigateAndScroll('system-health')">System & API</button>
-        
-        <div class="mobile-drawer-actions">
-          @if (!authService.currentUser()) {
+      <!-- Mobile Drawer Navigation -->
+      @if (isMobileMenuOpen()) {
+        <div class="mobile-nav-drawer">
+          <button type="button" class="mobile-nav-item" (click)="navigateAndScroll('hero')">Home</button>
+          <button type="button" class="mobile-nav-item" (click)="navigateAndScroll('features')">Features</button>
+          <button type="button" class="mobile-nav-item" (click)="navigateAndScroll('how-it-works')">How It Works</button>
+          <button type="button" class="mobile-nav-item" (click)="navigateAndScroll('system-health')">System & API</button>
+          
+          <div class="mobile-drawer-actions">
             <a routerLink="/login" class="btn btn-glass-login w-full" (click)="closeMobileMenu()">
               Login
             </a>
-            <button type="button" class="btn btn-glass-login w-full" (click)="loginWithGoogle(); closeMobileMenu()">
-              Continue with Google
-            </button>
             <a routerLink="/signup" class="btn btn-primary w-full" (click)="closeMobileMenu()">
               Sign Up Free
             </a>
-          } @else {
-            <button type="button" class="btn btn-secondary w-full" (click)="logout(); closeMobileMenu()">
-              Log Out ({{ authService.currentUser()?.email }})
-            </button>
-          }
+          </div>
+        </div>
+      }
+    </header>
+
+    <!-- Notification Banner (OAuth or errors) -->
+    @if (oauthMessage()) {
+      <div class="notification-banner success" id="oauth-success-msg">
+        <div class="notification-content">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          <span>{{ oauthMessage() }}</span>
         </div>
       </div>
     }
-  </header>
 
-  <!-- Notification Banner (OAuth or errors) -->
-  @if (oauthMessage()) {
-    <div class="notification-banner success" id="oauth-success-msg">
-      <div class="notification-content">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-          <polyline points="22 4 12 14.01 9 11.01"></polyline>
-        </svg>
-        <span>{{ oauthMessage() }}</span>
+    @if (errorMessage() && errorMessage()?.includes('Google')) {
+      <div class="notification-banner error" id="oauth-error-msg">
+        <div class="notification-content">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span>{{ errorMessage() }}</span>
+        </div>
       </div>
-    </div>
-  }
+    }
 
-  @if (errorMessage() && errorMessage()?.includes('Google')) {
-    <div class="notification-banner error" id="oauth-error-msg">
-      <div class="notification-content">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-        <span>{{ errorMessage() }}</span>
-      </div>
-    </div>
-  }
+    <main class="main-content">
+      <router-outlet></router-outlet>
+    </main>
 
-  <main class="main-content">
-    <router-outlet></router-outlet>
-  </main>
+    <!-- 6. FOOTER -->
+    <footer class="app-footer" id="footer">
+      <div class="footer-container">
+        <div class="footer-top">
+          <div class="footer-brand-col">
+            <a routerLink="/" class="brand-link" (click)="navigateAndScroll('hero')">
+              <div class="brand-logo-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                  <polyline points="16 7 22 7 22 13"></polyline>
+                </svg>
+              </div>
+              <span class="brand-title">{{ title() }}</span>
+            </a>
+            <p class="footer-tagline">
+              Precision investment management, portfolio analytics, and stock market intelligence built for modern investors.
+            </p>
+          </div>
 
-  <!-- 6. FOOTER -->
-  <footer class="app-footer" id="footer">
-    <div class="footer-container">
-      <div class="footer-top">
-        <div class="footer-brand-col">
-          <a routerLink="/" class="brand-link" (click)="navigateAndScroll('hero')">
-            <div class="brand-logo-icon">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
-                <polyline points="16 7 22 7 22 13"></polyline>
-              </svg>
+          <div class="footer-links-grid">
+            <div class="footer-col">
+              <span class="footer-heading">Platform</span>
+              <button type="button" class="footer-link" (click)="navigateAndScroll('hero')">Home</button>
+              <button type="button" class="footer-link" (click)="navigateAndScroll('features')">Features</button>
+              <button type="button" class="footer-link" (click)="navigateAndScroll('how-it-works')">How It Works</button>
+              <button type="button" class="footer-link" (click)="navigateAndScroll('system-health')">System Status</button>
             </div>
-            <span class="brand-title">{{ title() }}</span>
-          </a>
-          <p class="footer-tagline">
-            Precision investment management, portfolio analytics, and stock market intelligence built for modern investors.
-          </p>
+
+            <div class="footer-col">
+              <span class="footer-heading">Account</span>
+              <a routerLink="/login" class="footer-link">Login</a>
+              <a routerLink="/signup" class="footer-link">Create Account</a>
+              <button type="button" class="footer-link" (click)="loginWithGoogle()">Google Sign In</button>
+            </div>
+
+            <div class="footer-col">
+              <span class="footer-heading">Security & Tech</span>
+              <span class="footer-static-link">Google OAuth 2.0</span>
+              <span class="footer-static-link">Spring Boot 3.4</span>
+              <span class="footer-static-link">Angular Standalone</span>
+              <span class="footer-static-link">MySQL Persistence</span>
+            </div>
+          </div>
         </div>
 
-        <div class="footer-links-grid">
-          <div class="footer-col">
-            <span class="footer-heading">Platform</span>
-            <button type="button" class="footer-link" (click)="navigateAndScroll('hero')">Home</button>
-            <button type="button" class="footer-link" (click)="navigateAndScroll('features')">Features</button>
-            <button type="button" class="footer-link" (click)="navigateAndScroll('how-it-works')">How It Works</button>
-            <button type="button" class="footer-link" (click)="navigateAndScroll('system-health')">System Status</button>
+        <div class="footer-bottom">
+          <div class="footer-copyright">
+            © 2026 Portfolio StockMarket. All rights reserved.
           </div>
-
-          <div class="footer-col">
-            <span class="footer-heading">Account</span>
-            <a routerLink="/login" class="footer-link">Login</a>
-            <a routerLink="/signup" class="footer-link">Create Account</a>
-            <button type="button" class="footer-link" (click)="loginWithGoogle()">Google Sign In</button>
-          </div>
-
-          <div class="footer-col">
-            <span class="footer-heading">Security & Tech</span>
-            <span class="footer-static-link">Google OAuth 2.0</span>
-            <span class="footer-static-link">Spring Boot 3.4</span>
-            <span class="footer-static-link">Angular Standalone</span>
-            <span class="footer-static-link">MySQL Persistence</span>
+          <div class="footer-status-badge">
+            <span class="status-live-dot"></span>
+            <span>All Systems Operational</span>
           </div>
         </div>
       </div>
-
-      <div class="footer-bottom">
-        <div class="footer-copyright">
-          © 2026 Portfolio StockMarket. All rights reserved.
-        </div>
-        <div class="footer-status-badge">
-          <span class="status-live-dot"></span>
-          <span>All Systems Operational</span>
-        </div>
-      </div>
-    </div>
-  </footer>
-</div>
+    </footer>
+  </div>
+} @else {
+  <!-- AUTHENTICATED APP SHELL (NO PUBLIC NAVBAR / FOOTER) -->
+  <router-outlet></router-outlet>
+}

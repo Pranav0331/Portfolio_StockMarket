@@ -48,7 +48,7 @@ public class MarketDataService {
 
     @org.springframework.beans.factory.annotation.Autowired
     public MarketDataService(RestTemplateBuilder restTemplateBuilder, ObjectMapper objectMapper,
-                             @Value("${twelvedata.api.timeout-ms:10000}") int timeoutMs) {
+                             @Value("${twelvedata.api.timeout-ms:25000}") int timeoutMs) {
         this.restTemplate = restTemplateBuilder
                 .connectTimeout(Duration.ofMillis(timeoutMs))
                 .readTimeout(Duration.ofMillis(timeoutMs))

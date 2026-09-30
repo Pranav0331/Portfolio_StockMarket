@@ -378,7 +378,7 @@ export class MarketComponent implements OnInit, OnDestroy {
 
         this.chart = createChart(container, {
           width: container.clientWidth || 800,
-          height: container.clientHeight || 460,
+          height: container.clientHeight || 560,
           layout: {
             background: { type: ColorType.Solid, color: bgColor },
             textColor: textColor,
@@ -391,20 +391,44 @@ export class MarketComponent implements OnInit, OnDestroy {
           crosshair: {
             mode: CrosshairMode.Normal,
             vertLine: {
-              color: '#6366f1',
+              color: '#818cf8',
               width: 1,
               style: 3,
-              labelBackgroundColor: '#6366f1'
+              visible: true,
+              labelVisible: true,
+              labelBackgroundColor: '#4f46e5'
             },
             horzLine: {
-              color: '#6366f1',
+              color: '#818cf8',
               width: 1,
               style: 3,
-              labelBackgroundColor: '#6366f1'
+              visible: true,
+              labelVisible: true,
+              labelBackgroundColor: '#4f46e5'
+            }
+          },
+          handleScroll: {
+            mouseWheel: true,
+            pressedMouseMove: true,
+            horzTouchDrag: true,
+            vertTouchDrag: true
+          },
+          handleScale: {
+            mouseWheel: true,
+            pinch: true,
+            axisPressedMouseMove: {
+              time: true,
+              price: true
+            },
+            axisDoubleClickReset: {
+              time: true,
+              price: true
             }
           },
           rightPriceScale: {
             borderColor: borderColor,
+            visible: true,
+            autoScale: true,
             scaleMargins: {
               top: 0.08,
               bottom: 0.22
@@ -414,8 +438,12 @@ export class MarketComponent implements OnInit, OnDestroy {
             borderColor: borderColor,
             timeVisible: true,
             secondsVisible: false,
-            fixLeftEdge: true,
-            fixRightEdge: true
+            fixLeftEdge: false,
+            fixRightEdge: false,
+            shiftVisibleRangeOnNewBar: true,
+            rightOffset: 12,
+            barSpacing: 10,
+            minBarSpacing: 0.5
           }
         });
 
@@ -617,6 +645,7 @@ export class MarketComponent implements OnInit, OnDestroy {
   fitChart(): void {
     if (this.chart) {
       this.chart.timeScale().fitContent();
+      this.chart.priceScale('right').applyOptions({ autoScale: true });
     }
   }
 
@@ -687,16 +716,24 @@ export class MarketComponent implements OnInit, OnDestroy {
     this.isCryptoCollapsed.update(v => !v);
   }
 
+  retryFetch(): void {
+    this.errorMessage.set(null);
+    this.isRateLimited.set(false);
+    this.loadInstrument(this.selectedSymbol());
+  }
+
   private refreshWatchlistQuotes(): void {
-    const topSymbols = ['AAPL', 'MSFT', 'NVDA', 'EUR/USD', 'GBP/USD', 'BTC/USD', 'ETH/USD'];
-    topSymbols.forEach(sym => {
-      this.marketService.getQuote(sym).pipe(
-        catchError(() => of(null))
-      ).subscribe(quote => {
-        if (quote) {
-          this.updateWatchlistItem(sym, quote.price, quote.change, quote.changePercent);
-        }
-      });
+    const topSymbols = ['MSFT', 'NVDA', 'EUR/USD', 'BTC/USD'];
+    topSymbols.forEach((sym, idx) => {
+      setTimeout(() => {
+        this.marketService.getQuote(sym).pipe(
+          catchError(() => of(null))
+        ).subscribe(quote => {
+          if (quote) {
+            this.updateWatchlistItem(sym, quote.price, quote.change, quote.changePercent);
+          }
+        });
+      }, (idx + 1) * 2000);
     });
   }
 

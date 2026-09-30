@@ -214,15 +214,20 @@
             </button>
           </div>
 
-          <!-- Action Tools: Fit & Fullscreen -->
+          <!-- Action Tools: Fit / Reset & Fullscreen -->
           <div class="tools-btn-group">
-            <button type="button" class="tool-btn" (click)="fitChart()" title="Fit / Reset View">
+            <button 
+              type="button" 
+              class="tool-btn reset-btn" 
+              id="chart-reset-btn" 
+              (click)="fitChart()" 
+              title="Reset / Fit Chart View"
+            >
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="15 3 21 3 21 9"></polyline>
-                <polyline points="9 21 3 21 3 15"></polyline>
-                <line x1="21" y1="3" x2="14" y2="10"></line>
-                <line x1="3" y1="21" x2="10" y2="14"></line>
+                <polyline points="1 4 1 10 7 10"></polyline>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
               </svg>
+              <span>Reset</span>
             </button>
             <button type="button" class="tool-btn" (click)="toggleFullscreen()" [title]="isFullscreen() ? 'Exit Fullscreen' : 'Fullscreen Terminal'">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
@@ -255,7 +260,7 @@
               <span class="err-bullet"></span>
               <span>{{ errorMessage() }}</span>
             </div>
-            <button type="button" class="err-retry-btn" (click)="loadInstrument(selectedSymbol())">Retry</button>
+            <button type="button" class="err-retry-btn" (click)="retryFetch()">Retry</button>
           </div>
         }
       </div>

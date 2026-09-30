@@ -41,15 +41,14 @@ describe('App', () => {
     expect(compiled.querySelector('.brand-title')?.textContent).toContain('Portfolio StockMarket');
   });
 
-  it('should render Google OAuth login button and Login/Signup links when not authenticated', async () => {
+  it('should render Login and Signup links in public navbar and not Continue with Google in navbar', async () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    const googleBtn = compiled.querySelector('#google-login-btn');
-    expect(googleBtn).toBeTruthy();
-    expect(googleBtn?.textContent).toContain('Continue with Google');
     expect(compiled.querySelector('#nav-login-btn')).toBeTruthy();
+    expect(compiled.querySelector('#nav-signup-btn')).toBeTruthy();
+    expect(compiled.querySelector('#google-login-btn')).toBeNull();
   });
 
   it('should toggle theme and persist to localStorage', async () => {
@@ -68,37 +67,30 @@ describe('App', () => {
     expect(localStorage.getItem('portfolio_theme')).toBe('dark');
   });
 
-  it('should render user profile when authenticated', async () => {
-    authService.setSession({
-      id: 1,
-      email: 'oauthuser@example.com',
-      name: 'Google User',
-      role: 'ROLE_USER',
-      token: 'jwt-token-xyz'
-    });
-
+  it('should switch to authenticated shell without public navbar when isDashboardRoute is true', async () => {
     const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
     fixture.detectChanges();
     await fixture.whenStable();
+
+    app.isDashboardRoute.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
     const compiled = fixture.nativeElement as HTMLElement;
-    const profile = compiled.querySelector('#auth-user-profile');
-    expect(profile).toBeTruthy();
-    expect(compiled.querySelector('.user-name')?.textContent).toContain('Google User');
-    expect(compiled.querySelector('.user-email')?.textContent).toContain('oauthuser@example.com');
+    // When on dashboard route, public navbar and footer are not rendered
+    expect(compiled.querySelector('#navbar')).toBeNull();
+    expect(compiled.querySelector('#footer')).toBeNull();
+    // Only router-outlet is present
+    expect(compiled.querySelector('router-outlet')).toBeTruthy();
   });
 
-  it('should invoke loginWithGoogle when button clicked', async () => {
+  it('should delegate loginWithGoogle method to authService', () => {
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance;
     const authSpy = vi.spyOn(authService, 'loginWithGoogle').mockImplementation(() => {});
 
-    fixture.detectChanges();
-    await fixture.whenStable();
-
-    const compiled = fixture.nativeElement as HTMLElement;
-    const googleBtn = compiled.querySelector('#google-login-btn') as HTMLButtonElement;
-    googleBtn?.click();
-
+    app.loginWithGoogle();
     expect(authSpy).toHaveBeenCalled();
   });
 });

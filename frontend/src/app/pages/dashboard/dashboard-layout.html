@@ -16,7 +16,7 @@
     (click)="$event.stopPropagation()"
   >
     <div class="sidebar-header">
-      <a routerLink="/" class="sidebar-brand">
+      <a routerLink="/dashboard" class="sidebar-brand">
         <div class="brand-logo-icon">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
@@ -355,13 +355,6 @@
                 <span>Account Settings</span>
               </a>
 
-              <a routerLink="/" class="menu-item" (click)="closeDropdowns()">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                </svg>
-                <span>Landing Page</span>
-              </a>
-
               <div class="dropdown-divider"></div>
 
               <button type="button" class="menu-item logout-item" (click)="logout()">
@@ -375,6 +368,21 @@
             </div>
           }
         </div>
+
+        <!-- Topbar Logout Action -->
+        <button 
+          id="dashboard-topbar-logout-btn"
+          type="button" 
+          class="icon-btn logout-topbar-btn" 
+          (click)="logout()" 
+          title="Log out"
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </button>
       </div>
     </header>
 

@@ -21,25 +21,15 @@
 
       <!-- CTA Buttons -->
       <div class="hero-cta-group">
-        @if (!authService.currentUser()) {
-          <a routerLink="/signup" class="btn btn-primary btn-hero-lg">
-            <span>Get Started</span>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
-          </a>
-        } @else {
-          <a routerLink="/dashboard" class="btn btn-primary btn-hero-lg">
-            <span>Go to Dashboard</span>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
-          </a>
-        }
+        <a routerLink="/signup" class="btn btn-primary btn-hero-lg" id="hero-get-started-btn">
+          <span>Get Started</span>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
         
-        <button type="button" class="btn btn-glass-secondary btn-hero-lg" (click)="scrollToSection('features')">
+        <button type="button" class="btn btn-glass-secondary btn-hero-lg" id="hero-explore-market-btn" (click)="scrollToSection('features')">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -174,18 +164,36 @@
     </div>
   </section>
 
-  <!-- 3. FEATURES SECTION -->
+  <!-- 3. FEATURES SECTION (4 CORE CAPABILITIES) -->
   <section class="section features-section" id="features">
     <div class="section-header">
       <div class="section-tag">COMPREHENSIVE CAPABILITIES</div>
       <h2 class="section-title">Designed for Modern Investment Strategy</h2>
       <p class="section-subtitle">
-        Everything you need to oversee your positions, manage risk factors, track lifecycle orders, and analyze market trends.
+        Everything you need to monitor market movements, evaluate risk exposure, track multi-asset holdings, and authenticate securely.
       </p>
     </div>
 
     <div class="features-grid">
-      <!-- Feature 1: Portfolio Tracking -->
+      <!-- Feature 1: Real-time market tracking -->
+      <div class="feature-card">
+        <div class="feature-icon-box icon-cyan">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"></path>
+            <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+          </svg>
+        </div>
+        <h3 class="feature-name">Real-Time Market Tracking</h3>
+        <p class="feature-desc">
+          Continuous market intelligence, multi-asset telemetry, sector rotation trends, interactive candlestick charting, and cross-market price action observability.
+        </p>
+        <div class="feature-bullet-list">
+          <span class="feature-bullet">• Live price & volume telemetry</span>
+          <span class="feature-bullet">• Multi-interval candlestick feeds</span>
+        </div>
+      </div>
+
+      <!-- Feature 2: Portfolio management -->
       <div class="feature-card">
         <div class="feature-icon-box icon-indigo">
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -193,7 +201,7 @@
             <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
           </svg>
         </div>
-        <h3 class="feature-name">Portfolio Tracking</h3>
+        <h3 class="feature-name">Portfolio Management</h3>
         <p class="feature-desc">
           Gain a unified view of your equity positions, diversified asset allocations, benchmark comparisons, and historical performance trajectories without fragmentation.
         </p>
@@ -203,94 +211,38 @@
         </div>
       </div>
 
-      <!-- Feature 2: Market Monitoring -->
-      <div class="feature-card">
-        <div class="feature-icon-box icon-cyan">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 3v18h18"></path>
-            <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
-          </svg>
-        </div>
-        <h3 class="feature-name">Market Monitoring</h3>
-        <p class="feature-desc">
-          Stay ahead of macro shifts with continuous market intelligence, index indicators, sector rotation trends, and multi-exchange observability.
-        </p>
-        <div class="feature-bullet-list">
-          <span class="feature-bullet">• Real-time market telemetry</span>
-          <span class="feature-bullet">• Sector & index health indicators</span>
-        </div>
-      </div>
-
-      <!-- Feature 3: Watchlist -->
+      <!-- Feature 3: Risk/analytics -->
       <div class="feature-card">
         <div class="feature-icon-box icon-emerald">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
-          </svg>
-        </div>
-        <h3 class="feature-name">Watchlist</h3>
-        <p class="feature-desc">
-          Build custom watchlist boards with smart triggers, volatility bands, and key movement alerts tailored to your investment mandate.
-        </p>
-        <div class="feature-bullet-list">
-          <span class="feature-bullet">• Dynamic multi-list categorization</span>
-          <span class="feature-bullet">• Custom alert condition thresholds</span>
-        </div>
-      </div>
-
-      <!-- Feature 4: Trading & Orders -->
-      <div class="feature-card">
-        <div class="feature-icon-box icon-rose">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="17 1 21 5 17 9"></polyline>
-            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
-            <polyline points="7 23 3 19 7 15"></polyline>
-            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
-          </svg>
-        </div>
-        <h3 class="feature-name">Trading & Orders</h3>
-        <p class="feature-desc">
-          Track order executions, manage limit/market order states, structure trade sizes, and maintain granular audit logs across all trading activities.
-        </p>
-        <div class="feature-bullet-list">
-          <span class="feature-bullet">• Order lifecycle management</span>
-          <span class="feature-bullet">• Position sizing & allocation audits</span>
-        </div>
-      </div>
-
-      <!-- Feature 5: Transactions -->
-      <div class="feature-card">
-        <div class="feature-icon-box icon-indigo">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-            <line x1="1" y1="10" x2="23" y2="10"></line>
-          </svg>
-        </div>
-        <h3 class="feature-name">Transactions</h3>
-        <p class="feature-desc">
-          A comprehensive financial ledger capturing deposits, withdrawals, dividend distributions, corporate actions, and fee reconciliations.
-        </p>
-        <div class="feature-bullet-list">
-          <span class="feature-bullet">• Immutable audit trails</span>
-          <span class="feature-bullet">• Automated tax-lot accounting</span>
-        </div>
-      </div>
-
-      <!-- Feature 6: Risk & Analysis -->
-      <div class="feature-card">
-        <div class="feature-icon-box icon-cyan">
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
           </svg>
         </div>
-        <h3 class="feature-name">Risk & Analysis</h3>
+        <h3 class="feature-name">Risk & Analytics</h3>
         <p class="feature-desc">
-          Institutional-grade risk assessment: Value at Risk (VaR), Sharpe ratios, maximum drawdown evaluation, and historical stress scenarios.
+          Institutional-grade risk assessment: Parametric Value at Risk (VaR), Sharpe ratios, beta sensitivity, maximum drawdown evaluation, and stress scenarios.
         </p>
         <div class="feature-bullet-list">
           <span class="feature-bullet">• Parametric risk metrics & stress testing</span>
-          <span class="feature-bullet">• Correlation & volatility analytics</span>
+          <span class="feature-bullet">• Volatility & correlation analytics</span>
+        </div>
+      </div>
+
+      <!-- Feature 4: Secure authentication -->
+      <div class="feature-card">
+        <div class="feature-icon-box icon-rose">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </div>
+        <h3 class="feature-name">Secure Authentication</h3>
+        <p class="feature-desc">
+          Enterprise Google OAuth 2.0 and JWT token authentication, role-based access control, cryptographic session storage, and encrypted communication channels.
+        </p>
+        <div class="feature-bullet-list">
+          <span class="feature-bullet">• Google OAuth 2.0 & signed JWT</span>
+          <span class="feature-bullet">• Protected endpoints & encrypted stores</span>
         </div>
       </div>
     </div>

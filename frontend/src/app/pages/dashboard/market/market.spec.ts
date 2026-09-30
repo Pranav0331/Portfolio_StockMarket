@@ -235,4 +235,20 @@ describe('MarketComponent', () => {
     expect(component.isRateLimited()).toBe(true);
     expect(component.errorMessage()).toContain('rate limit');
   });
+
+  it('should render Reset / Fit button and invoke fitChart on click', async () => {
+    const fixture = TestBed.createComponent(MarketComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const fitSpy = vi.spyOn(component, 'fitChart');
+    const compiled = fixture.nativeElement as HTMLElement;
+    const resetBtn = compiled.querySelector('#chart-reset-btn') as HTMLButtonElement;
+    expect(resetBtn).toBeTruthy();
+    expect(resetBtn.textContent).toContain('Reset');
+
+    resetBtn.click();
+    expect(fitSpy).toHaveBeenCalled();
+  });
 });
