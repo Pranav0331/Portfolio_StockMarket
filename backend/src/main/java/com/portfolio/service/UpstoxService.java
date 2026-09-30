@@ -144,9 +144,19 @@ public class UpstoxService {
     }
 
     private static void mapInstrument(String ticker, String instrumentKey, String name, String type) {
-        INSTRUMENT_MAP.put(ticker.toUpperCase(Locale.ROOT), instrumentKey);
-        INSTRUMENT_MAP.put(ticker.toUpperCase(Locale.ROOT) + ".NSE", instrumentKey);
-        INSTRUMENT_MAP.put("NSE:" + ticker.toUpperCase(Locale.ROOT), instrumentKey);
+        String upper = ticker.toUpperCase(Locale.ROOT);
+        INSTRUMENT_MAP.put(upper, instrumentKey);
+        INSTRUMENT_MAP.put(upper.replace(" ", ""), instrumentKey);
+        INSTRUMENT_MAP.put(upper.replace(" ", "_"), instrumentKey);
+        INSTRUMENT_MAP.put(upper.replace(" ", "-"), instrumentKey);
+        INSTRUMENT_MAP.put(upper + ".NSE", instrumentKey);
+        INSTRUMENT_MAP.put(upper + ".BSE", instrumentKey);
+        INSTRUMENT_MAP.put("NSE:" + upper, instrumentKey);
+        INSTRUMENT_MAP.put("BSE:" + upper, instrumentKey);
+        INSTRUMENT_MAP.put("NSE_INDEX|" + upper, instrumentKey);
+        INSTRUMENT_MAP.put("BSE_INDEX|" + upper, instrumentKey);
+        INSTRUMENT_MAP.put("NSE_EQ|" + upper, instrumentKey);
+        INSTRUMENT_MAP.put("BSE_EQ|" + upper, instrumentKey);
         POPULAR_INDIAN_STOCKS.add(new StockSearchItemDto(ticker, name, type, "India", "INR", null));
     }
 
@@ -580,7 +590,8 @@ public class UpstoxService {
             }
 
             String exchange = instrumentKey.startsWith("NSE") ? "NSE" : "BSE";
-            return new CandleSeriesDto(symbol.toUpperCase(Locale.ROOT), normalizedInterval, "INR", exchange, "EQUITY", candles);
+            String type = instrumentKey.contains("INDEX") ? "INDEX" : "EQUITY";
+            return new CandleSeriesDto(symbol.toUpperCase(Locale.ROOT), normalizedInterval, "INR", exchange, type, candles);
 
         } catch (HttpStatusCodeException e) {
             log.error("Upstox candles API error HTTP {}: {}", e.getStatusCode(), e.getResponseBodyAsString());

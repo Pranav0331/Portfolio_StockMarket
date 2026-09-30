@@ -193,6 +193,36 @@ class UpstoxServiceTest {
     }
 
     @Test
+    @DisplayName("5b. Fetch index historical candles for BANK NIFTY, NIFTY IT, NIFTY AUTO")
+    void testGetIndexCandles() {
+        upstoxService.setAccessToken("test-access-token", "Rajesh Sharma", "RS1234");
+
+        String candlesJson = """
+                {
+                    "status": "success",
+                    "data": {
+                        "candles": [
+                            ["2026-09-30T15:30:00+05:30", 52100.0, 52400.0, 52050.0, 52350.0, 0, 0],
+                            ["2026-09-30T15:00:00+05:30", 51900.0, 52150.0, 51850.0, 52080.0, 0, 0]
+                        ]
+                    }
+                }
+                """;
+
+        mockServer.expect(requestTo(containsString("/historical-candle/")))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(candlesJson, MediaType.APPLICATION_JSON));
+
+        CandleSeriesDto bankNifty = upstoxService.getCandles("BANK NIFTY", "5min", 100);
+        mockServer.verify();
+
+        assertThat(bankNifty).isNotNull();
+        assertThat(bankNifty.getSymbol()).isEqualTo("BANK NIFTY");
+        assertThat(bankNifty.getType()).isEqualTo("INDEX");
+        assertThat(bankNifty.getCandles()).hasSize(2);
+    }
+
+    @Test
     @DisplayName("6. Search Indian symbols in catalog")
     void testSearchIndianSymbols() {
         StockSearchResponseDto results = upstoxService.searchSymbols("NIFTY");
@@ -213,6 +243,12 @@ class UpstoxServiceTest {
         assertThat(upstoxService.resolveInstrumentKey("NIFTY BANK")).isEqualTo("NSE_INDEX|Nifty Bank");
         assertThat(upstoxService.resolveInstrumentKey("NSE_EQ|BANK NIFTY")).isEqualTo("NSE_INDEX|Nifty Bank");
         assertThat(upstoxService.resolveInstrumentKey("NSE_INDEX|BANK NIFTY")).isEqualTo("NSE_INDEX|Nifty Bank");
+        assertThat(upstoxService.resolveInstrumentKey("NIFTY IT")).isEqualTo("NSE_INDEX|Nifty IT");
+        assertThat(upstoxService.resolveInstrumentKey("NIFTYIT")).isEqualTo("NSE_INDEX|Nifty IT");
+        assertThat(upstoxService.resolveInstrumentKey("NSE_EQ|NIFTY IT")).isEqualTo("NSE_INDEX|Nifty IT");
+        assertThat(upstoxService.resolveInstrumentKey("NIFTY AUTO")).isEqualTo("NSE_INDEX|Nifty Auto");
+        assertThat(upstoxService.resolveInstrumentKey("NIFTYAUTO")).isEqualTo("NSE_INDEX|Nifty Auto");
+        assertThat(upstoxService.resolveInstrumentKey("NSE_EQ|NIFTY AUTO")).isEqualTo("NSE_INDEX|Nifty Auto");
         assertThat(upstoxService.resolveInstrumentKey("NSE_EQ|INE040A01034")).isEqualTo("NSE_EQ|INE040A01034");
     }
 
