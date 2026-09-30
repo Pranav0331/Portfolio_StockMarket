@@ -107,6 +107,10 @@ describe('MarketComponent', () => {
   };
 
   beforeEach(async () => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear();
+    }
+
     await TestBed.configureTestingModule({
       imports: [MarketComponent],
       providers: [
@@ -362,5 +366,93 @@ describe('MarketComponent', () => {
     fixture.detectChanges();
     expect(component.activeIndicators().length).toBe(0);
   });
+
+  it('should filter watchlist items by search query', () => {
+    const fixture = TestBed.createComponent(MarketComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    component.watchlistSearch.set('RELIANCE');
+    expect(component.stockWatchlist().length).toBe(1);
+    expect(component.stockWatchlist()[0].symbol).toBe('RELIANCE');
+
+    component.watchlistSearch.set('Apple');
+    expect(component.stockWatchlist().length).toBe(1);
+    expect(component.stockWatchlist()[0].symbol).toBe('AAPL');
+
+    component.watchlistSearch.set('non-existent-xyz');
+    expect(component.filteredWatchlist().length).toBe(0);
+  });
+
+  it('should toggle and persist collapsible sections in localStorage', () => {
+    const fixture = TestBed.createComponent(MarketComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(component.isStocksCollapsed()).toBe(false);
+    component.toggleStocksCollapse();
+    expect(component.isStocksCollapsed()).toBe(true);
+
+    component.toggleForexCollapse();
+    expect(component.isForexCollapsed()).toBe(true);
+
+    component.toggleCryptoCollapse();
+    expect(component.isCryptoCollapsed()).toBe(true);
+  });
+
+  it('should reorder watchlist items via drag and drop and persist order', () => {
+    const fixture = TestBed.createComponent(MarketComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    const initialFirst = component.watchlist()[0];
+    const initialSecond = component.watchlist()[1];
+
+    // Start dragging second item
+    const mockDragStartEvent = {
+      dataTransfer: {
+        effectAllowed: '',
+        setData: vi.fn()
+      }
+    } as unknown as DragEvent;
+
+    component.onDragStart(mockDragStartEvent, initialSecond);
+    expect(component.draggedItem()?.symbol).toBe(initialSecond.symbol);
+
+    // Drop second item above first item
+    component.dragOverPosition.set('above');
+    const mockDropEvent = {
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn()
+    } as unknown as DragEvent;
+
+    component.onDrop(mockDropEvent, initialFirst);
+
+    // Verify reordering
+    expect(component.watchlist()[0].symbol).toBe(initialSecond.symbol);
+    expect(component.watchlist()[1].symbol).toBe(initialFirst.symbol);
+  });
+
+  it('should render compact TradingView columns (Symbol, Last, Chg, Chg%)', () => {
+    const fixture = TestBed.createComponent(MarketComponent);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const header = compiled.querySelector('.wl-columns-header');
+    expect(header).toBeTruthy();
+    expect(header?.textContent).toContain('Symbol');
+    expect(header?.textContent).toContain('Last');
+    expect(header?.textContent).toContain('Chg');
+    expect(header?.textContent).toContain('Chg%');
+
+    const firstRow = compiled.querySelector('.wl-row');
+    expect(firstRow).toBeTruthy();
+    expect(firstRow?.querySelector('.wl-drag-grip')).toBeTruthy();
+    expect(firstRow?.querySelector('.col-sym')).toBeTruthy();
+    expect(firstRow?.querySelector('.col-last')).toBeTruthy();
+    expect(firstRow?.querySelector('.col-chg')).toBeTruthy();
+    expect(firstRow?.querySelector('.col-pct')).toBeTruthy();
+  });
 });
+
 

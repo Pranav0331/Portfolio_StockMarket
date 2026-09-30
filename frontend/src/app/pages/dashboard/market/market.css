@@ -381,7 +381,7 @@
    ========================================================================= */
 .terminal-body-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 260px;
+  grid-template-columns: minmax(0, 1fr) 330px;
   gap: 0.5rem;
   flex: 1;
   min-height: 0;
@@ -684,7 +684,7 @@
 }
 
 /* ==========================================================================
-   3. RIGHT COMPACT WATCHLIST PANEL (240-280px wide)
+   3. RIGHT COMPACT TRADINGVIEW-STYLE WATCHLIST PANEL (330px wide)
    ========================================================================== */
 .watchlist-compact-pane {
   display: flex;
@@ -698,30 +698,51 @@
   box-sizing: border-box;
 }
 
+/* 1. Top Header Bar */
 .watchlist-header-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.45rem;
-  padding: 0.4rem 0.55rem;
+  gap: 0.5rem;
+  padding: 0.45rem 0.65rem;
   border-bottom: 1px solid var(--border-glass);
   background: var(--bg-surface-elevated);
   flex-shrink: 0;
 }
 
+.wl-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .wl-title {
   font-size: 0.78rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.wl-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.05rem 0.35rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent-primary);
+  border: 1px solid rgba(99, 102, 241, 0.25);
 }
 
 .wl-search-box {
   position: relative;
   display: flex;
   align-items: center;
-  max-width: 120px;
+  flex: 1;
+  max-width: 160px;
 }
 
 .wl-search-box svg {
@@ -733,27 +754,87 @@
 
 .wl-search-input {
   width: 100%;
-  padding: 0.2rem 0.4rem 0.2rem 1.4rem;
+  padding: 0.22rem 1.4rem 0.22rem 1.4rem;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: 3px;
-  font-size: 0.7rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
   color: var(--text-primary);
   outline: none;
+  transition: all var(--transition-fast);
 }
 
 .wl-search-input:focus {
   border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
 }
 
+.wl-clear-btn {
+  position: absolute;
+  right: 0.35rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 0.1rem;
+}
+
+.wl-clear-btn:hover {
+  color: var(--text-primary);
+}
+
+/* 2. Compact Columns Header Bar (Symbol | Last | Chg | Chg%) */
+.wl-columns-header {
+  display: grid;
+  grid-template-columns: 105px 1fr 60px 64px;
+  align-items: center;
+  padding: 0.3rem 0.65rem;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.wl-columns-header .col-last,
+.wl-columns-header .col-chg,
+.wl-columns-header .col-pct {
+  text-align: right;
+}
+
+/* 3. Independent Scrollable List */
 .watchlist-scroll-list {
-  flex: 1;
+  flex: 1 1 0;
   overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
 }
 
+.watchlist-scroll-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.watchlist-scroll-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.watchlist-scroll-list::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 2px;
+}
+
+.watchlist-scroll-list::-webkit-scrollbar-thumb:hover {
+  background: var(--border-glass-glow);
+}
+
+/* Collapsible Section Header */
 .wl-section {
-  border-bottom: 1px solid var(--border-glass);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .wl-section-header {
@@ -761,20 +842,28 @@
   align-items: center;
   gap: 0.35rem;
   width: 100%;
-  padding: 0.35rem 0.55rem;
-  background: var(--bg-surface);
+  padding: 0.32rem 0.65rem;
+  background: var(--bg-surface-elevated);
   border: none;
   border-bottom: 1px solid var(--border-subtle);
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   color: var(--text-muted);
   text-align: left;
   cursor: pointer;
+  user-select: none;
+  transition: background var(--transition-fast);
+}
+
+.wl-section-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
 }
 
 .wl-caret {
   font-size: 0.65rem;
+  color: var(--text-muted);
   transition: transform var(--transition-fast);
 }
 
@@ -782,76 +871,224 @@
   transform: rotate(-90deg);
 }
 
+.wl-sec-name {
+  font-weight: 800;
+}
+
+.wl-sec-count {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* TradingView Style Compact Table Rows */
 .wl-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 105px 1fr 60px 64px;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.45rem 0.65rem;
+  padding: 0.28rem 0.65rem;
   border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
-  transition: background var(--transition-fast);
-  min-height: 44px;
+  user-select: none;
+  transition: background var(--transition-fast), border var(--transition-fast);
+  min-height: 36px;
+  height: 38px;
   box-sizing: border-box;
+  position: relative;
 }
 
 .wl-row:hover {
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(99, 102, 241, 0.06);
 }
 
 .wl-row.active {
-  background: rgba(99, 102, 241, 0.15);
+  background: rgba(99, 102, 241, 0.14);
   border-left: 3px solid var(--accent-primary);
+  box-shadow: inset 3px 0 0 var(--accent-primary);
 }
 
-.wl-left {
+/* Drag & Drop Visual Feedback */
+.wl-row.is-dragging {
+  opacity: 0.35;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px dashed var(--accent-primary);
+}
+
+.wl-row.drag-over-above::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-primary);
+  box-shadow: 0 0 6px var(--accent-primary);
+  z-index: 10;
+}
+
+.wl-row.drag-over-below::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-primary);
+  box-shadow: 0 0 6px var(--accent-primary);
+  z-index: 10;
+}
+
+/* Cells */
+.wl-cell {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.wl-cell.col-sym {
+  gap: 0.35rem;
+}
+
+.wl-drag-grip {
+  font-size: 0.72rem;
+  letter-spacing: -1px;
+  color: var(--text-muted);
+  opacity: 0.3;
+  cursor: grab;
+  cursor: -webkit-grab;
+  padding: 0 0.1rem;
+  transition: opacity var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.wl-row:hover .wl-drag-grip {
+  opacity: 0.9;
+  color: var(--text-secondary);
+}
+
+.sym-text-group {
   display: flex;
   flex-direction: column;
-  gap: 0.05rem;
   overflow: hidden;
+  line-height: 1.15;
 }
 
 .wl-sym {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 800;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .wl-desc {
-  font-size: 0.64rem;
+  font-size: 0.6rem;
   color: var(--text-muted);
-  max-width: 110px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 500;
+  text-transform: uppercase;
 }
 
-.wl-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.05rem;
+.wl-cell.col-last {
+  justify-content: flex-end;
 }
 
 .wl-price {
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   font-weight: 700;
   font-family: var(--font-mono);
   color: var(--text-primary);
+  text-align: right;
+  white-space: nowrap;
 }
 
-.wl-change {
-  font-size: 0.64rem;
+.wl-cell.col-chg {
+  justify-content: flex-end;
+}
+
+.wl-change-val {
+  font-size: 0.7rem;
   font-weight: 700;
   font-family: var(--font-mono);
   color: var(--text-muted);
+  text-align: right;
+  white-space: nowrap;
 }
 
-.wl-change.positive {
+.wl-change-val.positive {
   color: var(--accent-emerald);
 }
 
-.wl-change.negative {
+.wl-change-val.negative {
   color: var(--accent-rose);
+}
+
+.wl-cell.col-pct {
+  justify-content: flex-end;
+}
+
+.wl-pct-pill {
+  display: inline-block;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  background: var(--bg-surface-elevated);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.wl-pct-pill.positive {
+  background: rgba(16, 185, 129, 0.14);
+  color: var(--accent-emerald);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.wl-pct-pill.negative {
+  background: rgba(244, 63, 94, 0.14);
+  color: var(--accent-rose);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+}
+
+/* Empty State */
+.wl-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  text-align: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+}
+
+.wl-empty-state p {
+  font-size: 0.74rem;
+  margin: 0;
+}
+
+.wl-empty-state strong {
+  color: var(--text-primary);
+}
+
+.wl-reset-filter-btn {
+  margin-top: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.wl-reset-filter-btn:hover {
+  background: var(--accent-primary);
+  color: #fff;
 }
 
 /* ==========================================================================

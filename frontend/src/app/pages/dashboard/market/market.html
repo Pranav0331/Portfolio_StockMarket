@@ -387,50 +387,105 @@
       </footer>
     </main>
 
-    <!-- RIGHT: COMPACT WATCHLIST PANEL (240-280px wide) -->
+    <!-- RIGHT: COMPACT TRADINGVIEW-STYLE WATCHLIST PANEL (Fixed right pane) -->
     <aside class="watchlist-compact-pane" aria-label="Watchlist">
+      <!-- 1. Pinned Top Watchlist Bar -->
       <div class="watchlist-header-bar">
-        <span class="wl-title">Watchlist</span>
+        <div class="wl-title-wrap">
+          <span class="wl-title">Watchlist</span>
+          <span class="wl-badge">{{ filteredWatchlist().length }}</span>
+        </div>
         <div class="wl-search-box">
           <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
           <input
+            id="watchlist-filter-input"
             type="text"
             [ngModel]="watchlistSearch()"
             (ngModelChange)="watchlistSearch.set($event)"
-            placeholder="Filter..."
+            placeholder="Filter watchlist..."
             class="wl-search-input"
+            autocomplete="off"
           />
+          @if (watchlistSearch()) {
+            <button type="button" class="wl-clear-btn" (click)="watchlistSearch.set('')" title="Clear filter">✕</button>
+          }
         </div>
       </div>
 
+      <!-- 2. Pinned Compact Columns Header Strip -->
+      <div class="wl-columns-header">
+        <div class="col-header col-sym">Symbol</div>
+        <div class="col-header col-last">Last</div>
+        <div class="col-header col-chg">Chg</div>
+        <div class="col-header col-pct">Chg%</div>
+      </div>
+
+      <!-- 3. Independent Scrollable Watchlist Content -->
       <div class="watchlist-scroll-list">
-        <!-- 1. STOCKS -->
-        @if (activeCategory() === 'all' || activeCategory() === 'stocks') {
+        <!-- Empty State when filtering -->
+        @if (filteredWatchlist().length === 0) {
+          <div class="wl-empty-state">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <p>No symbols match "<strong>{{ watchlistSearch() }}</strong>"</p>
+            <button type="button" class="wl-reset-filter-btn" (click)="watchlistSearch.set('')">Reset Filter</button>
+          </div>
+        }
+
+        <!-- 1. STOCKS SECTION -->
+        @if ((activeCategory() === 'all' || activeCategory() === 'stocks') && stockWatchlist().length > 0) {
           <div class="wl-section">
             <button type="button" class="wl-section-header" (click)="toggleStocksCollapse()">
               <span class="wl-caret" [class.rotated]="isStocksCollapsed()">▾</span>
               <span class="wl-sec-name">STOCKS</span>
+              <span class="wl-sec-count">({{ stockWatchlist().length }})</span>
             </button>
             @if (!isStocksCollapsed()) {
               @for (item of stockWatchlist(); track item.symbol) {
                 <div
                   class="wl-row"
                   [class.active]="selectedSymbol() === item.symbol"
+                  [class.is-dragging]="draggedItem()?.symbol === item.symbol"
+                  [class.drag-over-above]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
+                  [class.drag-over-below]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
+                  draggable="true"
+                  (dragstart)="onDragStart($event, item)"
+                  (dragover)="onDragOver($event, item)"
+                  (dragleave)="onDragLeave($event)"
+                  (drop)="onDrop($event, item)"
+                  (dragend)="onDragEnd()"
                   (click)="selectWatchlistItem(item)"
+                  [title]="item.name + ' (' + (item.exchange || 'Stock') + ')'"
                 >
-                  <div class="wl-left">
-                    <span class="wl-sym">{{ item.symbol }}</span>
-                    <span class="wl-desc">{{ item.name }}</span>
+                  <div class="wl-cell col-sym">
+                    <span class="wl-drag-grip" title="Drag to reorder">⋮⋮</span>
+                    <div class="sym-text-group">
+                      <span class="wl-sym">{{ item.symbol }}</span>
+                      <span class="wl-desc">{{ item.exchange || 'Stock' }}</span>
+                    </div>
                   </div>
-                  <div class="wl-right">
+                  <div class="wl-cell col-last">
                     <span class="wl-price">
                       {{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}
                     </span>
+                  </div>
+                  <div class="wl-cell col-chg">
                     <span
-                      class="wl-change"
+                      class="wl-change-val"
+                      [class.positive]="(item.change ?? 0) >= 0"
+                      [class.negative]="(item.change ?? 0) < 0"
+                    >
+                      {{ item.change != null ? ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-2')) : '—' }}
+                    </span>
+                  </div>
+                  <div class="wl-cell col-pct">
+                    <span
+                      class="wl-pct-pill"
                       [class.positive]="(item.change ?? 0) >= 0"
                       [class.negative]="(item.change ?? 0) < 0"
                     >
@@ -443,30 +498,55 @@
           </div>
         }
 
-        <!-- 2. FOREX -->
-        @if (activeCategory() === 'all' || activeCategory() === 'forex') {
+        <!-- 2. FOREX SECTION -->
+        @if ((activeCategory() === 'all' || activeCategory() === 'forex') && forexWatchlist().length > 0) {
           <div class="wl-section">
             <button type="button" class="wl-section-header" (click)="toggleForexCollapse()">
               <span class="wl-caret" [class.rotated]="isForexCollapsed()">▾</span>
               <span class="wl-sec-name">FOREX</span>
+              <span class="wl-sec-count">({{ forexWatchlist().length }})</span>
             </button>
             @if (!isForexCollapsed()) {
               @for (item of forexWatchlist(); track item.symbol) {
                 <div
                   class="wl-row"
                   [class.active]="selectedSymbol() === item.symbol"
+                  [class.is-dragging]="draggedItem()?.symbol === item.symbol"
+                  [class.drag-over-above]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
+                  [class.drag-over-below]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
+                  draggable="true"
+                  (dragstart)="onDragStart($event, item)"
+                  (dragover)="onDragOver($event, item)"
+                  (dragleave)="onDragLeave($event)"
+                  (drop)="onDrop($event, item)"
+                  (dragend)="onDragEnd()"
                   (click)="selectWatchlistItem(item)"
+                  [title]="item.name + ' (Forex)'"
                 >
-                  <div class="wl-left">
-                    <span class="wl-sym">{{ item.symbol }}</span>
-                    <span class="wl-desc">{{ item.name }}</span>
+                  <div class="wl-cell col-sym">
+                    <span class="wl-drag-grip" title="Drag to reorder">⋮⋮</span>
+                    <div class="sym-text-group">
+                      <span class="wl-sym">{{ item.symbol }}</span>
+                      <span class="wl-desc">Forex</span>
+                    </div>
                   </div>
-                  <div class="wl-right">
+                  <div class="wl-cell col-last">
                     <span class="wl-price">
                       {{ item.price != null ? (item.price | number:'1.2-4') : '—' }}
                     </span>
+                  </div>
+                  <div class="wl-cell col-chg">
                     <span
-                      class="wl-change"
+                      class="wl-change-val"
+                      [class.positive]="(item.change ?? 0) >= 0"
+                      [class.negative]="(item.change ?? 0) < 0"
+                    >
+                      {{ item.change != null ? ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-4')) : '—' }}
+                    </span>
+                  </div>
+                  <div class="wl-cell col-pct">
+                    <span
+                      class="wl-pct-pill"
                       [class.positive]="(item.change ?? 0) >= 0"
                       [class.negative]="(item.change ?? 0) < 0"
                     >
@@ -479,30 +559,55 @@
           </div>
         }
 
-        <!-- 3. CRYPTO -->
-        @if (activeCategory() === 'all' || activeCategory() === 'crypto') {
+        <!-- 3. CRYPTO SECTION -->
+        @if ((activeCategory() === 'all' || activeCategory() === 'crypto') && cryptoWatchlist().length > 0) {
           <div class="wl-section">
             <button type="button" class="wl-section-header" (click)="toggleCryptoCollapse()">
               <span class="wl-caret" [class.rotated]="isCryptoCollapsed()">▾</span>
               <span class="wl-sec-name">CRYPTO</span>
+              <span class="wl-sec-count">({{ cryptoWatchlist().length }})</span>
             </button>
             @if (!isCryptoCollapsed()) {
               @for (item of cryptoWatchlist(); track item.symbol) {
                 <div
                   class="wl-row"
                   [class.active]="selectedSymbol() === item.symbol"
+                  [class.is-dragging]="draggedItem()?.symbol === item.symbol"
+                  [class.drag-over-above]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
+                  [class.drag-over-below]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
+                  draggable="true"
+                  (dragstart)="onDragStart($event, item)"
+                  (dragover)="onDragOver($event, item)"
+                  (dragleave)="onDragLeave($event)"
+                  (drop)="onDrop($event, item)"
+                  (dragend)="onDragEnd()"
                   (click)="selectWatchlistItem(item)"
+                  [title]="item.name + ' (Crypto)'"
                 >
-                  <div class="wl-left">
-                    <span class="wl-sym">{{ item.symbol }}</span>
-                    <span class="wl-desc">{{ item.name }}</span>
+                  <div class="wl-cell col-sym">
+                    <span class="wl-drag-grip" title="Drag to reorder">⋮⋮</span>
+                    <div class="sym-text-group">
+                      <span class="wl-sym">{{ item.symbol }}</span>
+                      <span class="wl-desc">Crypto</span>
+                    </div>
                   </div>
-                  <div class="wl-right">
+                  <div class="wl-cell col-last">
                     <span class="wl-price">
-                      {{ item.price != null ? (item.price | number:'1.2-2') : '—' }}
+                      {{ item.price != null ? ('$' + (item.price | number:'1.2-2')) : '—' }}
                     </span>
+                  </div>
+                  <div class="wl-cell col-chg">
                     <span
-                      class="wl-change"
+                      class="wl-change-val"
+                      [class.positive]="(item.change ?? 0) >= 0"
+                      [class.negative]="(item.change ?? 0) < 0"
+                    >
+                      {{ item.change != null ? ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-2')) : '—' }}
+                    </span>
+                  </div>
+                  <div class="wl-cell col-pct">
+                    <span
+                      class="wl-pct-pill"
                       [class.positive]="(item.change ?? 0) >= 0"
                       [class.negative]="(item.change ?? 0) < 0"
                     >

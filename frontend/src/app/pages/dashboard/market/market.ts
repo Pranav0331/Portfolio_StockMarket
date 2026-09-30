@@ -223,6 +223,11 @@ export class MarketComponent implements OnInit, OnDestroy {
     { symbol: 'SOL/USD', name: 'Solana / US Dollar', category: 'crypto', exchange: 'Binance' }
   ]);
 
+  // Watchlist Drag and Drop State
+  readonly draggedItem = signal<{ symbol: string; category: string } | null>(null);
+  readonly dragOverTarget = signal<string | null>(null);
+  readonly dragOverPosition = signal<'above' | 'below' | null>(null);
+
   // Filtered Watchlist based on Category and Search
   readonly filteredWatchlist = computed(() => {
     const cat = this.activeCategory();
@@ -240,6 +245,10 @@ export class MarketComponent implements OnInit, OnDestroy {
   readonly stockWatchlist = computed(() => this.filteredWatchlist().filter(w => w.category === 'stocks'));
   readonly forexWatchlist = computed(() => this.filteredWatchlist().filter(w => w.category === 'forex'));
   readonly cryptoWatchlist = computed(() => this.filteredWatchlist().filter(w => w.category === 'crypto'));
+
+  readonly stockCount = computed(() => this.watchlist().filter(w => w.category === 'stocks').length);
+  readonly forexCount = computed(() => this.watchlist().filter(w => w.category === 'forex').length);
+  readonly cryptoCount = computed(() => this.watchlist().filter(w => w.category === 'crypto').length);
 
   // Lightweight Charts Instances
   private chart: IChartApi | null = null;
@@ -309,6 +318,9 @@ export class MarketComponent implements OnInit, OnDestroy {
         }
       }
     });
+
+    // Load persisted watchlist reordering and collapsed state
+    this.loadSavedWatchlistState();
 
     // Handle query params e.g. /dashboard/market?symbol=BTC/USD
     this.queryParamSub = this.route.queryParams.subscribe((params) => {
@@ -982,14 +994,159 @@ export class MarketComponent implements OnInit, OnDestroy {
 
   toggleStocksCollapse(): void {
     this.isStocksCollapsed.update(v => !v);
+    this.saveCollapsedState();
   }
 
   toggleForexCollapse(): void {
     this.isForexCollapsed.update(v => !v);
+    this.saveCollapsedState();
   }
 
   toggleCryptoCollapse(): void {
     this.isCryptoCollapsed.update(v => !v);
+    this.saveCollapsedState();
+  }
+
+  // =========================================================================
+  // WATCHLIST DRAG & DROP REORDERING AND LOCAL STORAGE PERSISTENCE
+  // =========================================================================
+
+  private static readonly STORAGE_KEY_WATCHLIST_ORDER = 'portfolio_market_watchlist_order';
+  private static readonly STORAGE_KEY_COLLAPSED = 'portfolio_market_watchlist_collapsed';
+
+  private loadSavedWatchlistState(): void {
+    if (typeof localStorage === 'undefined') return;
+
+    try {
+      // 1. Restore collapsed sections
+      const savedCollapsed = localStorage.getItem(MarketComponent.STORAGE_KEY_COLLAPSED);
+      if (savedCollapsed) {
+        const parsed = JSON.parse(savedCollapsed);
+        if (parsed.stocks !== undefined) this.isStocksCollapsed.set(parsed.stocks);
+        if (parsed.forex !== undefined) this.isForexCollapsed.set(parsed.forex);
+        if (parsed.crypto !== undefined) this.isCryptoCollapsed.set(parsed.crypto);
+      }
+
+      // 2. Restore custom watchlist ordering
+      const savedOrder = localStorage.getItem(MarketComponent.STORAGE_KEY_WATCHLIST_ORDER);
+      if (savedOrder) {
+        const orderArray: string[] = JSON.parse(savedOrder);
+        if (Array.isArray(orderArray) && orderArray.length > 0) {
+          const currentList = [...this.watchlist()];
+          const orderMap = new Map<string, number>();
+          orderArray.forEach((sym, idx) => orderMap.set(sym.toUpperCase(), idx));
+
+          currentList.sort((a, b) => {
+            const idxA = orderMap.has(a.symbol.toUpperCase()) ? orderMap.get(a.symbol.toUpperCase())! : 999;
+            const idxB = orderMap.has(b.symbol.toUpperCase()) ? orderMap.get(b.symbol.toUpperCase())! : 999;
+            return idxA - idxB;
+          });
+
+          this.watchlist.set(currentList);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load saved watchlist state:', e);
+    }
+  }
+
+  private saveWatchlistOrder(): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const order = this.watchlist().map(w => w.symbol);
+      localStorage.setItem(MarketComponent.STORAGE_KEY_WATCHLIST_ORDER, JSON.stringify(order));
+    } catch (e) {
+      console.warn('Failed to save watchlist order:', e);
+    }
+  }
+
+  private saveCollapsedState(): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const state = {
+        stocks: this.isStocksCollapsed(),
+        forex: this.isForexCollapsed(),
+        crypto: this.isCryptoCollapsed()
+      };
+      localStorage.setItem(MarketComponent.STORAGE_KEY_COLLAPSED, JSON.stringify(state));
+    } catch (e) {
+      console.warn('Failed to save collapsed state:', e);
+    }
+  }
+
+  onDragStart(event: DragEvent, item: WatchlistItem): void {
+    this.draggedItem.set({ symbol: item.symbol, category: item.category });
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', item.symbol);
+    }
+  }
+
+  onDragOver(event: DragEvent, targetItem: WatchlistItem): void {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+
+    const dragged = this.draggedItem();
+    if (!dragged || dragged.symbol === targetItem.symbol) {
+      this.dragOverTarget.set(null);
+      this.dragOverPosition.set(null);
+      return;
+    }
+
+    const targetElement = (event.currentTarget || event.target) as HTMLElement;
+    const rect = targetElement.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const position = event.clientY < midY ? 'above' : 'below';
+
+    this.dragOverTarget.set(targetItem.symbol);
+    this.dragOverPosition.set(position);
+  }
+
+  onDragLeave(event: DragEvent): void {
+    const related = event.relatedTarget as HTMLElement;
+    const current = event.currentTarget as HTMLElement;
+    if (!current || !related || !current.contains(related)) {
+      this.dragOverTarget.set(null);
+      this.dragOverPosition.set(null);
+    }
+  }
+
+  onDrop(event: DragEvent, targetItem: WatchlistItem): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const dragged = this.draggedItem();
+    const position = this.dragOverPosition() || 'below';
+
+    this.dragOverTarget.set(null);
+    this.dragOverPosition.set(null);
+    this.draggedItem.set(null);
+
+    if (!dragged || dragged.symbol === targetItem.symbol) return;
+
+    const list = [...this.watchlist()];
+    const fromIndex = list.findIndex(w => w.symbol.toUpperCase() === dragged.symbol.toUpperCase());
+    if (fromIndex === -1) return;
+
+    const [movedItem] = list.splice(fromIndex, 1);
+    const toIndex = list.findIndex(w => w.symbol.toUpperCase() === targetItem.symbol.toUpperCase());
+    if (toIndex === -1) {
+      list.push(movedItem);
+    } else {
+      const insertIndex = position === 'above' ? toIndex : toIndex + 1;
+      list.splice(insertIndex, 0, movedItem);
+    }
+
+    this.watchlist.set(list);
+    this.saveWatchlistOrder();
+  }
+
+  onDragEnd(): void {
+    this.draggedItem.set(null);
+    this.dragOverTarget.set(null);
+    this.dragOverPosition.set(null);
   }
 
   retryFetch(): void {
