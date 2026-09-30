@@ -98,16 +98,19 @@ export class App implements OnInit {
       if (error) {
         this.errorMessage.set(`Google Authentication Failed: ${error}`);
       } else if (token && email) {
-        this.authService.handleOAuthCallback({
+        const success = this.authService.handleOAuthCallback({
           token,
           id: id || undefined,
           email,
           name: name || undefined,
           role: role || undefined
         });
-        this.oauthMessage.set(`Successfully authenticated as ${email} via Google OAuth 2.0`);
-        // Clean URL query params
-        window.history.replaceState({}, document.title, window.location.pathname);
+        if (success) {
+          this.oauthMessage.set(`Successfully authenticated as ${email} via Google OAuth 2.0`);
+          // Clean URL query params
+          window.history.replaceState({}, document.title, window.location.pathname);
+          this.router.navigate(['/dashboard']);
+        }
       }
     }
   }

@@ -1,6 +1,6 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { HealthService } from '../../services/health.service';
 import { HealthStatus } from '../../models/health.model';
@@ -12,13 +12,20 @@ import { HealthStatus } from '../../models/health.model';
   templateUrl: './home.html',
   styleUrl: './home.css'
 })
-export class HomeComponent {
+export class HomeComponent implements OnInit {
   readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
   private readonly healthService = inject(HealthService);
 
   readonly healthStatus = signal<HealthStatus | null>(null);
   readonly errorMessage = signal<string | null>(null);
   readonly isLoading = signal<boolean>(false);
+
+  ngOnInit(): void {
+    if (this.authService.isAuthenticated()) {
+      this.router.navigate(['/dashboard']);
+    }
+  }
 
   loginWithGoogle(): void {
     this.authService.loginWithGoogle();

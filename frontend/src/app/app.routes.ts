@@ -11,13 +11,29 @@ import { OrdersComponent } from './pages/dashboard/orders/orders';
 import { TransactionsComponent } from './pages/dashboard/transactions/transactions';
 import { AlertsComponent } from './pages/dashboard/alerts/alerts';
 import { SettingsComponent } from './pages/dashboard/settings/settings';
-import { authGuard } from './guards/auth.guard';
+import { authGuard, rootGuard, guestGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
-  { path: '', component: HomeComponent },
-  { path: 'login', component: LoginComponent },
-  { path: 'signup', component: SignupComponent },
-  { path: 'market', redirectTo: 'dashboard/market', pathMatch: 'full' },
+  { 
+    path: '', 
+    component: HomeComponent, 
+    canActivate: [rootGuard] 
+  },
+  { 
+    path: 'login', 
+    component: LoginComponent, 
+    canActivate: [guestGuard] 
+  },
+  { 
+    path: 'signup', 
+    component: SignupComponent, 
+    canActivate: [guestGuard] 
+  },
+  { 
+    path: 'market', 
+    redirectTo: 'dashboard/market', 
+    pathMatch: 'full' 
+  },
   {
     path: 'dashboard',
     component: DashboardLayoutComponent,

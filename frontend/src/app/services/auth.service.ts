@@ -1,5 +1,6 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthUser, LoginRequest, RegisterRequest, AuthResponse } from '../models/auth.model';
@@ -10,16 +11,18 @@ export type { AuthUser, LoginRequest, RegisterRequest, AuthResponse };
   providedIn: 'root'
 })
 export class AuthService {
+  private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
   private readonly baseUrl = environment.apiUrl;
   private readonly backendUrl = 'http://localhost:8080';
 
   readonly currentUser = signal<AuthUser | null>(null);
 
-  constructor(private readonly http: HttpClient) {
+  constructor() {
     this.loadStoredUser();
   }
 
-  private loadStoredUser(): void {
+  loadStoredUser(): void {
     if (typeof localStorage === 'undefined') return;
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
@@ -31,6 +34,26 @@ export class AuthService {
         this.clearSession();
       }
     }
+  }
+
+  isAuthenticated(): boolean {
+    if (this.currentUser()) {
+      return true;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const token = localStorage.getItem('token');
+      const userStr = localStorage.getItem('user');
+      if (token && userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          this.currentUser.set({ ...user, token });
+          return true;
+        } catch {
+          this.clearSession();
+        }
+      }
+    }
+    return false;
   }
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
@@ -98,8 +121,14 @@ export class AuthService {
 
   logout(): void {
     this.http.post(`${this.baseUrl}/auth/logout`, {}).subscribe({
-      next: () => this.clearSession(),
-      error: () => this.clearSession()
+      next: () => {
+        this.clearSession();
+        this.router.navigate(['/']);
+      },
+      error: () => {
+        this.clearSession();
+        this.router.navigate(['/']);
+      }
     });
   }
 }

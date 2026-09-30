@@ -21,13 +21,23 @@
 
       <!-- CTA Buttons -->
       <div class="hero-cta-group">
-        <a routerLink="/signup" class="btn btn-primary btn-hero-lg">
-          <span>Get Started</span>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-            <polyline points="12 5 19 12 12 19"></polyline>
-          </svg>
-        </a>
+        @if (!authService.currentUser()) {
+          <a routerLink="/signup" class="btn btn-primary btn-hero-lg">
+            <span>Get Started</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </a>
+        } @else {
+          <a routerLink="/dashboard" class="btn btn-primary btn-hero-lg">
+            <span>Go to Dashboard</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </a>
+        }
         
         <button type="button" class="btn btn-glass-secondary btn-hero-lg" (click)="scrollToSection('features')">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
