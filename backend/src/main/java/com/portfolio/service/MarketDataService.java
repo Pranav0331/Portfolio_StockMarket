@@ -39,8 +39,8 @@ public class MarketDataService {
     public MarketDataService(RestTemplateBuilder restTemplateBuilder, ObjectMapper objectMapper,
                              @Value("${alphavantage.api.timeout-ms:10000}") int timeoutMs) {
         this.restTemplate = restTemplateBuilder
-                .setConnectTimeout(Duration.ofMillis(timeoutMs))
-                .setReadTimeout(Duration.ofMillis(timeoutMs))
+                .connectTimeout(Duration.ofMillis(timeoutMs))
+                .readTimeout(Duration.ofMillis(timeoutMs))
                 .build();
         this.objectMapper = objectMapper;
     }
