@@ -1,0 +1,560 @@
+<div class="alerts-page-container">
+  <!-- Page Header -->
+  <header class="page-header">
+    <div class="header-titles">
+      <div class="title-row">
+        <div class="header-icon-box">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+        </div>
+        <h1 class="page-title">Price Alerts</h1>
+      </div>
+      <p class="page-subtitle">
+        Real-time price threshold triggers powered by live market feeds. Alerts evaluate against real-time Upstox &amp; Twelve Data prices.
+      </p>
+    </div>
+
+    <div class="header-actions">
+      <button
+        type="button"
+        class="btn btn-secondary refresh-btn"
+        (click)="refreshAlerts()"
+        [disabled]="isRefreshing() || isLoading()"
+        title="Evaluate all active alerts against live prices">
+        <svg [class.spin]="isRefreshing()" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6"></path>
+          <path d="M1 20v-6h6"></path>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>{{ isRefreshing() ? 'Evaluating...' : 'Check Live Prices' }}</span>
+      </button>
+
+      <button
+        type="button"
+        class="btn btn-primary create-btn"
+        (click)="openCreateModal()">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Create Alert</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Summary Cards -->
+  <section class="summary-grid" *ngIf="alertsData()">
+    <div class="summary-card total-card">
+      <div class="summary-icon total-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <div class="summary-info">
+        <span class="summary-label">Total Alerts</span>
+        <span class="summary-val">{{ totalCount() }}</span>
+      </div>
+    </div>
+
+    <div class="summary-card active-card">
+      <div class="summary-icon active-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      </div>
+      <div class="summary-info">
+        <span class="summary-label">Active Monitoring</span>
+        <span class="summary-val text-emerald">{{ activeCount() }}</span>
+      </div>
+    </div>
+
+    <div class="summary-card triggered-card">
+      <div class="summary-icon triggered-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+      </div>
+      <div class="summary-info">
+        <span class="summary-label">Triggered</span>
+        <span class="summary-val text-amber">{{ triggeredCount() }}</span>
+      </div>
+    </div>
+
+    <div class="summary-card disabled-card">
+      <div class="summary-icon disabled-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+        </svg>
+      </div>
+      <div class="summary-info">
+        <span class="summary-label">Paused / Inactive</span>
+        <span class="summary-val text-muted">{{ disabledCount() }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Filter & Controls Toolbar -->
+  <div class="toolbar-glass">
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input
+        type="text"
+        placeholder="Filter by symbol, company, or note..."
+        [ngModel]="filterQuery()"
+        (ngModelChange)="filterQuery.set($event)"
+        class="search-input" />
+      <button
+        *ngIf="filterQuery()"
+        type="button"
+        class="clear-search-btn"
+        (click)="filterQuery.set('')">✕</button>
+    </div>
+
+    <div class="filter-groups">
+      <div class="status-pills">
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="statusFilter() === 'ALL'"
+          (click)="statusFilter.set('ALL')">
+          All ({{ totalCount() }})
+        </button>
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="statusFilter() === 'ACTIVE'"
+          (click)="statusFilter.set('ACTIVE')">
+          Active ({{ activeCount() }})
+        </button>
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="statusFilter() === 'TRIGGERED'"
+          (click)="statusFilter.set('TRIGGERED')">
+          Triggered ({{ triggeredCount() }})
+        </button>
+        <button
+          type="button"
+          class="pill-btn"
+          [class.active]="statusFilter() === 'DISABLED'"
+          (click)="statusFilter.set('DISABLED')">
+          Paused ({{ disabledCount() }})
+        </button>
+      </div>
+
+      <div class="condition-select-wrap">
+        <select
+          class="condition-select"
+          [ngModel]="conditionFilter()"
+          (ngModelChange)="conditionFilter.set($event)">
+          <option value="ALL">All Conditions</option>
+          <option value="ABOVE">▲ Above Target</option>
+          <option value="BELOW">▼ Below Target</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State Skeleton -->
+  <div class="loading-state" *ngIf="isLoading() && !alertsData()">
+    <div class="skeleton-card" *ngFor="let i of [1, 2, 3]"></div>
+  </div>
+
+  <!-- Error State Banner -->
+  <div class="error-banner" *ngIf="error()">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+      <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    <span>{{ error() }}</span>
+    <button type="button" class="btn btn-sm btn-secondary" (click)="loadAlerts()">Retry</button>
+  </div>
+
+  <!-- Empty State (No alerts at all) -->
+  <div class="empty-state-panel" *ngIf="!isLoading() && alertsData() && totalCount() === 0">
+    <div class="empty-icon-wrap">
+      <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--accent-primary)" stroke-width="1.5">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+      </svg>
+    </div>
+    <h3 class="empty-heading">No Price Alerts Configured</h3>
+    <p class="empty-subtext">
+      Stay on top of market moves. Create threshold alerts for Indian stocks, US equities, Forex, or Crypto to get triggered when real prices hit your targets.
+    </p>
+    <div class="empty-quick-add">
+      <span class="quick-add-label">Quick set alert for:</span>
+      <div class="quick-chips">
+        <button
+          *ngFor="let q of quickSymbols.slice(0, 5)"
+          type="button"
+          class="quick-chip"
+          (click)="openCreateModal(q.symbol)">
+          + {{ q.symbol }}
+        </button>
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary" (click)="openCreateModal()">
+      + Set Your First Alert
+    </button>
+  </div>
+
+  <!-- Filter Empty State (No matching alerts) -->
+  <div class="empty-state-panel" *ngIf="!isLoading() && alertsData() && totalCount() > 0 && filteredAlerts().length === 0">
+    <div class="empty-icon-wrap">
+      <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </div>
+    <h3 class="empty-heading">No matching alerts found</h3>
+    <p class="empty-subtext">Try changing your search query or reset your status/condition filters.</p>
+    <button type="button" class="btn btn-secondary" (click)="filterQuery.set(''); statusFilter.set('ALL'); conditionFilter.set('ALL')">
+      Reset Filters
+    </button>
+  </div>
+
+  <!-- Alerts Grid Cards -->
+  <section class="alerts-grid" *ngIf="!isLoading() && filteredAlerts().length > 0">
+    <div
+      *ngFor="let alert of filteredAlerts()"
+      class="alert-card"
+      [class.status-active]="alert.status === 'ACTIVE'"
+      [class.status-triggered]="alert.status === 'TRIGGERED'"
+      [class.status-disabled]="alert.status === 'DISABLED'">
+      
+      <!-- Card Top Header -->
+      <div class="card-header">
+        <div class="symbol-col">
+          <div class="symbol-badge-row">
+            <span class="symbol-text" (click)="navigateToStock(alert.symbol)">{{ alert.symbol }}</span>
+            <span class="exchange-badge">{{ alert.exchange }}</span>
+            <span class="provider-badge" [class.upstox]="alert.provider === 'Upstox'">{{ alert.provider }}</span>
+          </div>
+          <span class="company-text" [title]="alert.companyName">{{ alert.companyName }}</span>
+        </div>
+
+        <div class="status-toggle-col">
+          <span
+            class="status-pill"
+            [class.pill-active]="alert.status === 'ACTIVE'"
+            [class.pill-triggered]="alert.status === 'TRIGGERED'"
+            [class.pill-disabled]="alert.status === 'DISABLED'">
+            <span class="status-dot"></span>
+            {{ alert.status }}
+          </span>
+
+          <label class="toggle-switch" title="Toggle active/pause status" (click)="$event.stopPropagation()">
+            <input
+              type="checkbox"
+              [checked]="alert.status === 'ACTIVE'"
+              (change)="toggleAlert(alert, $event)" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Trigger Price & Condition Display -->
+      <div class="target-section">
+        <div class="target-box">
+          <span class="section-label">Target Trigger Condition</span>
+          <div class="condition-row">
+            <span
+              class="condition-pill"
+              [class.cond-above]="alert.conditionType === 'ABOVE'"
+              [class.cond-below]="alert.conditionType === 'BELOW'">
+              {{ getConditionIcon(alert.conditionType) }} {{ alert.conditionType }}
+            </span>
+            <span class="target-val">
+              {{ alert.currency === 'INR' ? '₹' : '$' }}{{ alert.targetPrice | number:'1.2-4' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="current-box">
+          <span class="section-label">Live Market Price</span>
+          <div class="current-price-row">
+            <ng-container *ngIf="alert.priceAvailable && alert.currentPrice !== null">
+              <span class="live-val">
+                {{ alert.currency === 'INR' ? '₹' : '$' }}{{ alert.currentPrice | number:'1.2-4' }}
+              </span>
+              <span
+                class="dist-pill"
+                *ngIf="getDistancePercent(alert.currentPrice, alert.targetPrice) as dist"
+                [class.dist-positive]="dist >= 0"
+                [class.dist-negative]="dist < 0">
+                {{ dist >= 0 ? '+' : '' }}{{ dist | number:'1.2-2' }}%
+              </span>
+            </ng-container>
+            <ng-container *ngIf="!alert.priceAvailable || alert.currentPrice === null">
+              <span class="data-unavailable-badge">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                Market data unavailable
+              </span>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trigger Banner (When TRIGGERED) -->
+      <div class="triggered-banner" *ngIf="alert.status === 'TRIGGERED'">
+        <div class="triggered-icon-box">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+        </div>
+        <div class="triggered-text-wrap">
+          <span class="triggered-title">Condition Met &amp; Triggered!</span>
+          <span class="triggered-meta">
+            Triggered at {{ alert.currency === 'INR' ? '₹' : '$' }}{{ (alert.triggeredPrice || alert.targetPrice) | number:'1.2-4' }}
+            <ng-container *ngIf="alert.triggeredAt">
+              • {{ alert.triggeredAt | date:'medium' }}
+            </ng-container>
+          </span>
+        </div>
+      </div>
+
+      <!-- Notes display if present -->
+      <div class="notes-wrap" *ngIf="alert.notes">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+        </svg>
+        <span class="notes-text">{{ alert.notes }}</span>
+      </div>
+
+      <!-- Card Footer Actions -->
+      <div class="card-footer">
+        <div class="footer-left-links">
+          <button type="button" class="link-action-btn" (click)="navigateToStock(alert.symbol)" title="View Stock Details">
+            Quotes
+          </button>
+          <button type="button" class="link-action-btn" (click)="navigateToTechnical(alert.symbol)" title="View Technical Chart">
+            Technical
+          </button>
+        </div>
+
+        <div class="footer-right-actions">
+          <button
+            type="button"
+            class="action-btn edit-action"
+            (click)="openEditModal(alert)"
+            title="Edit Alert Settings">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            Edit
+          </button>
+
+          <button
+            type="button"
+            class="action-btn delete-action"
+            (click)="promptDelete(alert.id, $event)"
+            title="Delete Alert">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Create / Edit Alert Modal Dialog -->
+  <div class="modal-backdrop" *ngIf="isModalOpen()" (click)="closeModal()">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon-badge">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+          </div>
+          <h2 class="modal-title">{{ isEditing() ? 'Edit Price Alert' : 'Create Price Alert' }}</h2>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Error alert in modal -->
+        <div class="modal-error-box" *ngIf="formError()">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span>{{ formError() }}</span>
+        </div>
+
+        <!-- Symbol Field (Disabled when editing) -->
+        <div class="form-group">
+          <label class="form-label" for="alertSymbolInput">
+            Symbol / Ticker <span class="required">*</span>
+          </label>
+          <div class="symbol-input-wrap">
+            <input
+              id="alertSymbolInput"
+              type="text"
+              class="form-input"
+              [disabled]="isEditing()"
+              [placeholder]="isEditing() ? formSymbol() : 'e.g. RELIANCE, AAPL, EUR/USD, BTC/USD'"
+              [ngModel]="formSymbol()"
+              (ngModelChange)="onSymbolSearch($event)"
+              autocomplete="off" />
+            <span class="searching-spinner" *ngIf="isSearchingSymbols()">⏳</span>
+          </div>
+
+          <!-- Autocomplete Suggestion Dropdown -->
+          <div class="autocomplete-dropdown" *ngIf="searchSuggestions().length > 0 && !isEditing()">
+            <div
+              *ngFor="let s of searchSuggestions()"
+              class="autocomplete-item"
+              (click)="selectSuggestion(s)">
+              <div class="item-left">
+                <span class="item-symbol">{{ s.symbol }}</span>
+                <span class="item-name">{{ s.name }}</span>
+              </div>
+              <span class="item-exchange">{{ s.region || s.type }}</span>
+
+            </div>
+          </div>
+
+          <!-- Quick chips when creating -->
+          <div class="quick-symbol-chips" *ngIf="!isEditing() && !formSymbol()">
+            <span class="chip-label">Quick select:</span>
+            <button
+              *ngFor="let q of quickSymbols"
+              type="button"
+              class="chip-btn"
+              (click)="selectQuickSymbol(q.symbol)">
+              {{ q.symbol }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Price Preview Card -->
+        <div class="preview-card" *ngIf="previewPrice() !== null">
+          <div class="preview-left">
+            <span class="preview-label">Live Market Price:</span>
+            <span class="preview-val">${{ previewPrice() | number:'1.2-4' }}</span>
+          </div>
+          <span class="preview-note">Real-time quote preview</span>
+        </div>
+
+        <!-- Condition Toggle -->
+        <div class="form-group">
+          <label class="form-label">Alert Trigger Condition <span class="required">*</span></label>
+          <div class="condition-btn-group">
+            <button
+              type="button"
+              class="cond-toggle-btn"
+              [class.active-above]="formCondition() === 'ABOVE'"
+              (click)="formCondition.set('ABOVE')">
+              <span class="cond-icon">▲</span>
+              <div class="cond-info">
+                <span class="cond-title">Price Rises ABOVE</span>
+                <span class="cond-desc">Triggers when market price &ge; target</span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              class="cond-toggle-btn"
+              [class.active-below]="formCondition() === 'BELOW'"
+              (click)="formCondition.set('BELOW')">
+              <span class="cond-icon">▼</span>
+              <div class="cond-info">
+                <span class="cond-title">Price Drops BELOW</span>
+                <span class="cond-desc">Triggers when market price &le; target</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Target Price Field -->
+        <div class="form-group">
+          <label class="form-label" for="alertTargetPriceInput">
+            Target Price <span class="required">*</span>
+          </label>
+          <div class="price-input-wrap">
+            <input
+              id="alertTargetPriceInput"
+              type="number"
+              step="0.01"
+              min="0.0001"
+              class="form-input price-input"
+              placeholder="0.00"
+              [ngModel]="formTargetPrice()"
+              (ngModelChange)="formTargetPrice.set($event)" />
+          </div>
+          <span class="form-hint">Set the price threshold that should trigger this notification rule.</span>
+        </div>
+
+        <!-- Notes / Memo Field -->
+        <div class="form-group">
+          <label class="form-label" for="alertNotesInput">Notes / Strategy Memo (Optional)</label>
+          <input
+            id="alertNotesInput"
+            type="text"
+            class="form-input"
+            maxlength="250"
+            placeholder="e.g. 52-week breakout, earnings take-profit, stop-loss mark"
+            [ngModel]="formNotes()"
+            (ngModelChange)="formNotes.set($event)" />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeModal()" [disabled]="isSubmitting()">
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="saveAlert()"
+          [disabled]="isSubmitting()">
+          <span *ngIf="isSubmitting()">Saving...</span>
+          <span *ngIf="!isSubmitting()">{{ isEditing() ? 'Update Alert' : 'Set Alert' }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal Dialog -->
+  <div class="modal-backdrop" *ngIf="deleteConfirmId() !== null" (click)="cancelDelete()">
+    <div class="modal-dialog modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title text-rose">Delete Price Alert</h3>
+        <button type="button" class="modal-close-btn" (click)="cancelDelete()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="delete-msg">
+          Are you sure you want to delete this price alert? This action cannot be undone.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="cancelDelete()">Cancel</button>
+        <button type="button" class="btn btn-danger" (click)="executeDelete(deleteConfirmId()!)">
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

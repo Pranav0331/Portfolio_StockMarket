@@ -46,6 +46,12 @@ public class Alert {
     @Column(name = "triggered_at")
     private Instant triggeredAt;
 
+    @Column(name = "triggered_price", precision = 19, scale = 4)
+    private BigDecimal triggeredPrice;
+
+    @Column(name = "notes", length = 255)
+    private String notes;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -53,6 +59,7 @@ public class Alert {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
 
     public Alert() {}
 
@@ -62,6 +69,15 @@ public class Alert {
         this.targetPrice = targetPrice;
         this.conditionType = conditionType;
     }
+
+    public Alert(User user, Stock stock, BigDecimal targetPrice, AlertCondition conditionType, String notes) {
+        this.user = user;
+        this.stock = stock;
+        this.targetPrice = targetPrice;
+        this.conditionType = conditionType;
+        this.notes = notes;
+    }
+
 
     public Long getId() {
         return id;
@@ -119,6 +135,22 @@ public class Alert {
         this.triggeredAt = triggeredAt;
     }
 
+    public BigDecimal getTriggeredPrice() {
+        return triggeredPrice;
+    }
+
+    public void setTriggeredPrice(BigDecimal triggeredPrice) {
+        this.triggeredPrice = triggeredPrice;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -135,3 +167,4 @@ public class Alert {
         this.updatedAt = updatedAt;
     }
 }
+
