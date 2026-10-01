@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { StockQuote, StockSearchResponse, MarketPrice, CandleSeries } from '../models/market.model';
+import { StockQuote, StockSearchResponse, MarketPrice, CandleSeries, FundamentalData } from '../models/market.model';
 
 @Injectable({
   providedIn: 'root'
@@ -96,6 +96,15 @@ export class MarketService {
   searchSymbols(keywords: string): Observable<StockSearchResponse> {
     const params = new HttpParams().set('keywords', keywords.trim());
     return this.http.get<StockSearchResponse>(`${this.baseUrl}/market/search`, { params });
+  }
+
+  /**
+   * Fetch fundamental data and company overview from Spring Boot backend
+   */
+  getFundamentals(symbol: string): Observable<FundamentalData> {
+    const cleanSymbol = symbol.trim().toUpperCase();
+    const params = new HttpParams().set('symbol', cleanSymbol);
+    return this.http.get<FundamentalData>(`${this.baseUrl}/market/fundamentals`, { params });
   }
 
   /**

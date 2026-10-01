@@ -2,6 +2,7 @@ package com.portfolio.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.portfolio.dto.market.CandleSeriesDto;
+import com.portfolio.dto.market.FundamentalDataDto;
 import com.portfolio.dto.market.MarketPriceDto;
 import com.portfolio.dto.market.StockQuoteDto;
 import com.portfolio.dto.market.StockSearchResponseDto;
@@ -283,5 +284,83 @@ class MarketDataServiceTest {
         assertThat(result.bestMatches()).hasSize(1);
         assertThat(result.bestMatches().get(0).symbol()).isEqualTo("BTC/USD");
         assertThat(result.bestMatches().get(0).name()).isEqualTo("Bitcoin / US Dollar");
+    }
+
+    @Test
+    @DisplayName("8. Successfully parse Twelve Data company profile and statistics for Fundamentals")
+    void testGetFundamentalsTwelveDataSuccess() {
+        String profileJson = """
+                {
+                    "symbol": "AAPL",
+                    "name": "Apple Inc",
+                    "exchange": "NASDAQ",
+                    "sector": "Technology",
+                    "industry": "Consumer Electronics",
+                    "CEO": "Mr. Tim Cook",
+                    "website": "https://www.apple.com",
+                    "description": "Apple Inc. designs, manufactures, and markets smartphones, personal computers, tablets, wearables, and accessories."
+                }
+                """;
+
+        String statsJson = """
+                {
+                    "meta": {
+                        "symbol": "AAPL",
+                        "name": "Apple Inc.",
+                        "currency": "USD",
+                        "exchange": "NASDAQ"
+                    },
+                    "statistics": {
+                        "valuations_metrics": {
+                            "market_capitalization": 3000000000000,
+                            "trailing_pe": 30.5
+                        },
+                        "financials": {
+                            "return_on_equity_ttm": 1.45,
+                            "income_statement": {
+                                "diluted_eps_ttm": 6.42,
+                                "revenue_ttm": 383285000000,
+                                "net_income_to_common_ttm": 96995000000
+                            }
+                        },
+                        "dividends_and_splits": {
+                            "trailing_annual_dividend_yield": 0.0055
+                        },
+                        "stock_price_summary": {
+                            "fifty_two_week_high": 237.23,
+                            "fifty_two_week_low": 164.08
+                        }
+                    }
+                }
+                """;
+
+        mockServer.expect(requestTo(containsString("/profile?symbol=AAPL")))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(profileJson, MediaType.APPLICATION_JSON));
+
+        mockServer.expect(requestTo(containsString("/statistics?symbol=AAPL")))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(statsJson, MediaType.APPLICATION_JSON));
+
+        FundamentalDataDto data = marketDataService.getFundamentals("AAPL");
+
+        mockServer.verify();
+        assertThat(data).isNotNull();
+        assertThat(data.symbol()).isEqualTo("AAPL");
+        assertThat(data.companyName()).isEqualTo("Apple Inc");
+        assertThat(data.exchange()).isEqualTo("NASDAQ");
+        assertThat(data.currency()).isEqualTo("USD");
+        assertThat(data.provider()).isEqualTo("Twelve Data");
+        assertThat(data.sector()).isEqualTo("Technology");
+        assertThat(data.industry()).isEqualTo("Consumer Electronics");
+        assertThat(data.marketCap()).isEqualByComparingTo(new BigDecimal("3000000000000"));
+        assertThat(data.peRatio()).isEqualByComparingTo(new BigDecimal("30.5"));
+        assertThat(data.eps()).isEqualByComparingTo(new BigDecimal("6.42"));
+        assertThat(data.roe()).isEqualByComparingTo(new BigDecimal("1.45"));
+        assertThat(data.revenue()).isEqualByComparingTo(new BigDecimal("383285000000"));
+        assertThat(data.netIncome()).isEqualByComparingTo(new BigDecimal("96995000000"));
+        assertThat(data.dividendYield()).isEqualByComparingTo(new BigDecimal("0.0055"));
+        assertThat(data.fiftyTwoWeekHigh()).isEqualByComparingTo(new BigDecimal("237.23"));
+        assertThat(data.fiftyTwoWeekLow()).isEqualByComparingTo(new BigDecimal("164.08"));
     }
 }

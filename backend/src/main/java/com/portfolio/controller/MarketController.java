@@ -1,6 +1,7 @@
 package com.portfolio.controller;
 
 import com.portfolio.dto.market.CandleSeriesDto;
+import com.portfolio.dto.market.FundamentalDataDto;
 import com.portfolio.dto.market.MarketPriceDto;
 import com.portfolio.dto.market.StockQuoteDto;
 import com.portfolio.dto.market.StockSearchResponseDto;
@@ -43,6 +44,12 @@ public class MarketController {
             @RequestParam(value = "outputsize", required = false) Integer outputsize) {
         CandleSeriesDto candles = marketDataService.getCandles(symbol, interval, outputsize);
         return ResponseEntity.ok(candles);
+    }
+
+    @GetMapping("/fundamentals")
+    public ResponseEntity<FundamentalDataDto> getFundamentals(@RequestParam("symbol") String symbol) {
+        FundamentalDataDto data = marketDataService.getFundamentals(symbol);
+        return ResponseEntity.ok(data);
     }
 
     @GetMapping("/search")

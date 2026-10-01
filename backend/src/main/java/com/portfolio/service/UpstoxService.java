@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.portfolio.dto.market.CandleDto;
 import com.portfolio.dto.market.CandleSeriesDto;
+import com.portfolio.dto.market.FundamentalDataDto;
 import com.portfolio.dto.market.StockQuoteDto;
 import com.portfolio.dto.market.StockSearchItemDto;
 import com.portfolio.dto.market.StockSearchResponseDto;
@@ -550,6 +551,69 @@ public class UpstoxService {
             log.error("Unexpected error processing Upstox quote for {}: {}", symbol, e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error reading Upstox quote response");
         }
+    }
+
+    /**
+     * Fetch fundamental information for Indian stocks/indices from Upstox
+     */
+    public FundamentalDataDto getFundamentals(String symbol) {
+        if (symbol == null || symbol.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Symbol parameter is required");
+        }
+
+        String cleanSymbol = symbol.trim().toUpperCase(Locale.ROOT);
+        String instrumentKey = resolveInstrumentKey(cleanSymbol);
+        String exchange = instrumentKey.startsWith("NSE") ? "NSE" : "BSE";
+
+        // Find standard company name from curated map or fallback to clean symbol
+        String companyName = POPULAR_INDIAN_STOCKS.stream()
+                .filter(s -> s.symbol().equalsIgnoreCase(cleanSymbol) || s.name().equalsIgnoreCase(cleanSymbol))
+                .map(StockSearchItemDto::name)
+                .findFirst()
+                .orElse(cleanSymbol);
+
+        BigDecimal fiftyTwoWeekHigh = null;
+        BigDecimal fiftyTwoWeekLow = null;
+        Long lastUpdated = System.currentTimeMillis();
+
+        try {
+            StockQuoteDto quote = getQuote(cleanSymbol);
+            if (quote != null) {
+                if (quote.name() != null && !quote.name().equalsIgnoreCase(cleanSymbol)) {
+                    companyName = quote.name();
+                }
+                if (quote.timestamp() != null) {
+                    lastUpdated = quote.timestamp();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not fetch real-time quote for Upstox fundamentals ({}): {}", cleanSymbol, e.getMessage());
+        }
+
+        // Upstox basic tier provides quotes and candles, but does not provide SEC-style balance sheets
+        // Strictly return null for unsupported financial statements without inventing fake values
+        return new FundamentalDataDto(
+                cleanSymbol,
+                companyName,
+                exchange,
+                "INR",
+                "Upstox",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null, // marketCap (unavailable from Upstox basic quote)
+                null, // peRatio (unavailable from Upstox basic quote)
+                null, // eps (unavailable from Upstox basic quote)
+                null, // roe (unavailable from Upstox basic quote)
+                null, // revenue (unavailable from Upstox basic quote)
+                null, // netIncome (unavailable from Upstox basic quote)
+                null, // dividendYield (unavailable from Upstox basic quote)
+                fiftyTwoWeekHigh,
+                fiftyTwoWeekLow,
+                lastUpdated
+        );
     }
 
     /**

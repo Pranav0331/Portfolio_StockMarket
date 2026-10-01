@@ -60,6 +60,10 @@
         </svg>
       </button>
 
+      <a [routerLink]="['/dashboard/fundamental', symbol()]" class="btn-action-link" title="Open Fundamental Analysis">
+        Fundamental
+      </a>
+
       <a [routerLink]="['/dashboard/stock', symbol()]" class="btn-action-link" title="Open Stock Details">
         Details
       </a>

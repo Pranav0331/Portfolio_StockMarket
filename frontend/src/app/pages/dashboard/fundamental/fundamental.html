@@ -1,0 +1,301 @@
+<div class="fundamental-container">
+  <!-- Top Navigation & Symbol Bar -->
+  <header class="fundamental-header glass-card">
+    <div class="header-left">
+      <div class="symbol-title-row">
+        <div class="symbol-badge-box">
+          <span class="symbol-text">{{ symbol() }}</span>
+          <span class="exchange-tag">{{ fundamentalData()?.exchange || (marketService.isIndianSymbol(symbol()) ? 'NSE' : 'US') }}</span>
+        </div>
+        <span class="company-title">{{ fundamentalData()?.companyName || currentQuote()?.name || symbol() }}</span>
+      </div>
+
+      <div class="price-quote-strip" *ngIf="currentQuote() as q">
+        <span class="real-price">{{ getCurrencySymbol(fundamentalData()?.currency) }}{{ q.price | number:'1.2-4' }}</span>
+        <span class="change-pill" [ngClass]="(q.change || 0) >= 0 ? 'pill-positive' : 'pill-negative'">
+          {{ (q.change || 0) >= 0 ? '+' : '' }}{{ q.change | number:'1.2-2' }}
+          ({{ q.changePercent || '0.00%' }})
+        </span>
+      </div>
+    </div>
+
+    <!-- Symbol Switcher & Search -->
+    <div class="header-center">
+      <div class="symbol-search-box">
+        <svg class="search-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input 
+          type="text" 
+          class="symbol-input" 
+          placeholder="Switch symbol (e.g. AAPL, RELIANCE, TSLA)..." 
+          [value]="searchQuery()" 
+          (input)="onSearchInput($event)"
+          (keydown.enter)="onSearchEnter()">
+        <button class="btn-go" (click)="onSearchEnter()">Go</button>
+      </div>
+    </div>
+
+    <!-- Provider badge & Action Buttons -->
+    <div class="header-actions">
+      <div class="meta-badge-group">
+        <span class="provider-badge" [title]="'Real financial data powered by ' + (fundamentalData()?.provider || (marketService.isIndianSymbol(symbol()) ? 'Upstox' : 'Twelve Data'))">
+          <span class="live-dot"></span>
+          {{ fundamentalData()?.provider || (marketService.isIndianSymbol(symbol()) ? 'Upstox' : 'Twelve Data') }}
+        </span>
+      </div>
+
+      <button 
+        type="button" 
+        class="btn-refresh" 
+        (click)="refreshData()" 
+        [disabled]="isLoading()"
+        title="Refresh fundamental metrics">
+        <svg class="refresh-icon" [class.spinning]="isLoading()" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6"></path>
+          <path d="M1 20v-6h6"></path>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+      </button>
+
+      <a [routerLink]="['/dashboard/technical', symbol()]" class="btn-action-link" title="Open Technical Analysis">
+        Technical
+      </a>
+
+      <a [routerLink]="['/dashboard/stock', symbol()]" class="btn-action-link" title="Open Stock Details">
+        Details
+      </a>
+    </div>
+  </header>
+
+  <!-- Error Banner -->
+  <div class="error-banner glass-card" *ngIf="errorMessage()">
+    <div class="error-content">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" class="error-icon">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <div class="error-text">
+        <strong>Fundamental Data Error:</strong> {{ errorMessage() }}
+      </div>
+    </div>
+    <button class="btn-retry" (click)="loadFundamentalData(symbol())">Retry</button>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state glass-card" *ngIf="isLoading() && !fundamentalData()">
+    <div class="loading-spinner"></div>
+    <p>Loading real fundamental metrics and company overview for {{ symbol() }}...</p>
+  </div>
+
+  <!-- Content Section -->
+  <div class="fundamental-content" *ngIf="fundamentalData() as fd">
+    <!-- Company Profile Card -->
+    <div class="profile-card glass-card">
+      <div class="card-header-bar">
+        <div class="header-title-wrap">
+          <h2 class="card-title">Company Profile & Overview</h2>
+          <span class="meta-tag" *ngIf="fd.sector">{{ fd.sector }}</span>
+          <span class="meta-subtag" *ngIf="fd.industry">{{ fd.industry }}</span>
+        </div>
+        <div class="profile-links" *ngIf="fd.website">
+          <a [href]="fd.website" target="_blank" rel="noopener noreferrer" class="link-website">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+            {{ fd.website }}
+          </a>
+        </div>
+      </div>
+
+      <div class="profile-grid">
+        <div class="profile-item" *ngIf="fd.ceo">
+          <span class="profile-label">Chief Executive Officer (CEO)</span>
+          <span class="profile-value">{{ fd.ceo }}</span>
+        </div>
+        <div class="profile-item">
+          <span class="profile-label">Primary Exchange</span>
+          <span class="profile-value">{{ fd.exchange || 'N/A' }}</span>
+        </div>
+        <div class="profile-item">
+          <span class="profile-label">Reporting Currency</span>
+          <span class="profile-value">{{ fd.currency || 'USD' }}</span>
+        </div>
+        <div class="profile-item">
+          <span class="profile-label">Data Provider</span>
+          <span class="profile-value">{{ fd.provider || 'Real Market Provider' }}</span>
+        </div>
+      </div>
+
+      <div class="profile-description" *ngIf="fd.description">
+        <h3 class="desc-heading">Business Summary</h3>
+        <p class="desc-text">{{ fd.description }}</p>
+      </div>
+    </div>
+
+    <!-- Key Fundamental Metrics Grid -->
+    <div class="metrics-section-heading">
+      <h2>Key Financial & Valuation Metrics</h2>
+      <span class="metrics-sub">Real financial figures from {{ fd.provider || 'market provider' }}</span>
+    </div>
+
+    <div class="metrics-cards-grid">
+      <!-- 1. Market Capitalization -->
+      <div class="metric-card glass-card">
+        <div class="metric-card-top">
+          <span class="metric-title">Market Capitalization</span>
+          <span class="metric-badge">Valuation</span>
+        </div>
+        <div class="metric-value-wrap">
+          <span class="metric-main-val font-mono" *ngIf="fd.marketCap !== null && fd.marketCap !== undefined; else noMarketCap">
+            {{ formatLargeNumber(fd.marketCap, fd.currency) }}
+          </span>
+          <ng-template #noMarketCap>
+            <span class="unavailable-tag">Data unavailable</span>
+          </ng-template>
+        </div>
+        <span class="metric-footnote">Total market value of outstanding shares</span>
+      </div>
+
+      <!-- 2. P/E Ratio -->
+      <div class="metric-card glass-card">
+        <div class="metric-card-top">
+          <span class="metric-title">P/E Ratio (Price to Earnings)</span>
+          <span class="metric-badge">Ratio</span>
+        </div>
+        <div class="metric-value-wrap">
+          <span class="metric-main-val font-mono" *ngIf="fd.peRatio !== null && fd.peRatio !== undefined; else noPeRatio">
+            {{ formatRatio(fd.peRatio, 'x') }}
+          </span>
+          <ng-template #noPeRatio>
+            <span class="unavailable-tag">Data unavailable</span>
+          </ng-template>
+        </div>
+        <span class="metric-footnote">Trailing / Forward Price to Earnings</span>
+      </div>
+
+      <!-- 3. EPS (Earnings Per Share) -->
+      <div class="metric-card glass-card">
+        <div class="metric-card-top">
+          <span class="metric-title">EPS (Earnings Per Share)</span>
+          <span class="metric-badge">Profitability</span>
+        </div>
+        <div class="metric-value-wrap">
+          <span class="metric-main-val font-mono" *ngIf="fd.eps !== null && fd.eps !== undefined; else noEps">
+            {{ getCurrencySymbol(fd.currency) }}{{ fd.eps | number:'1.2-2' }}
+          </span>
+          <ng-template #noEps>
+            <span class="unavailable-tag">Data unavailable</span>
+          </ng-template>
+        </div>
+        <span class="metric-footnote">Diluted TTM earnings per share</span>
+      </div>
+
+      <!-- 4. ROE (Return on Equity) -->
+      <div class="metric-card glass-card">
+        <div class="metric-card-top">
+          <span class="metric-title">ROE (Return on Equity)</span>
+          <span class="metric-badge">Management Efficiency</span>
+        </div>
+        <div class="metric-value-wrap">
+          <span class="metric-main-val font-mono" *ngIf="fd.roe !== null && fd.roe !== undefined; else noRoe">
+            {{ formatPercent(fd.roe) }}
+          </span>
+          <ng-template #noRoe>
+            <span class="unavailable-tag">Data unavailable</span>
+          </ng-template>
+        </div>
+        <span class="metric-footnote">Net income as percentage of shareholder equity</span>
+      </div>
+
+      <!-- 5. Revenue (TTM) -->
+      <div class="metric-card glass-card">
+        <div class="metric-card-top">
+          <span class="metric-title">Revenue (TTM)</span>
+          <span class="metric-badge">Income</span>
+        </div>
+        <div class="metric-value-wrap">
+          <span class="metric-main-val font-mono" *ngIf="fd.revenue !== null && fd.revenue !== undefined; else noRevenue">
+            {{ formatLargeNumber(fd.revenue, fd.currency) }}
+          </span>
+          <ng-template #noRevenue>
+            <span class="unavailable-tag">Data unavailable</span>
+          </ng-template>
+        </div>
+        <span class="metric-footnote">Trailing twelve months total revenue</span>
+      </div>
+
+      <!-- 6. Net Income (TTM) -->
+      <div class="metric-card glass-card">
+        <div class="metric-card-top">
+          <span class="metric-title">Net Income (TTM)</span>
+          <span class="metric-badge">Profit</span>
+        </div>
+        <div class="metric-value-wrap">
+          <span class="metric-main-val font-mono" *ngIf="fd.netIncome !== null && fd.netIncome !== undefined; else noNetIncome">
+            {{ formatLargeNumber(fd.netIncome, fd.currency) }}
+          </span>
+          <ng-template #noNetIncome>
+            <span class="unavailable-tag">Data unavailable</span>
+          </ng-template>
+        </div>
+        <span class="metric-footnote">Bottom-line profit after tax and expenses</span>
+      </div>
+
+      <!-- 7. Dividend Yield -->
+      <div class="metric-card glass-card">
+        <div class="metric-card-top">
+          <span class="metric-title">Dividend Yield</span>
+          <span class="metric-badge">Income</span>
+        </div>
+        <div class="metric-value-wrap">
+          <span class="metric-main-val font-mono" *ngIf="fd.dividendYield !== null && fd.dividendYield !== undefined; else noDivYield">
+            {{ formatPercent(fd.dividendYield) }}
+          </span>
+          <ng-template #noDivYield>
+            <span class="unavailable-tag">Data unavailable</span>
+          </ng-template>
+        </div>
+        <span class="metric-footnote">Annual dividend payout ratio per share price</span>
+      </div>
+
+      <!-- 8. 52-Week High -->
+      <div class="metric-card glass-card">
+        <div class="metric-card-top">
+          <span class="metric-title">52-Week High</span>
+          <span class="metric-badge">Price Range</span>
+        </div>
+        <div class="metric-value-wrap">
+          <span class="metric-main-val font-mono color-high" *ngIf="fd.fiftyTwoWeekHigh !== null && fd.fiftyTwoWeekHigh !== undefined; else no52High">
+            {{ getCurrencySymbol(fd.currency) }}{{ fd.fiftyTwoWeekHigh | number:'1.2-2' }}
+          </span>
+          <ng-template #no52High>
+            <span class="unavailable-tag">Data unavailable</span>
+          </ng-template>
+        </div>
+        <span class="metric-footnote">Highest trading price in past 52 weeks</span>
+      </div>
+
+      <!-- 9. 52-Week Low -->
+      <div class="metric-card glass-card">
+        <div class="metric-card-top">
+          <span class="metric-title">52-Week Low</span>
+          <span class="metric-badge">Price Range</span>
+        </div>
+        <div class="metric-value-wrap">
+          <span class="metric-main-val font-mono color-low" *ngIf="fd.fiftyTwoWeekLow !== null && fd.fiftyTwoWeekLow !== undefined; else no52Low">
+            {{ getCurrencySymbol(fd.currency) }}{{ fd.fiftyTwoWeekLow | number:'1.2-2' }}
+          </span>
+          <ng-template #no52Low>
+            <span class="unavailable-tag">Data unavailable</span>
+          </ng-template>
+        </div>
+        <span class="metric-footnote">Lowest trading price in past 52 weeks</span>
+      </div>
+    </div>
+  </div>
+</div>

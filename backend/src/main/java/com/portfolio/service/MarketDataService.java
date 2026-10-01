@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.portfolio.dto.market.CandleDto;
 import com.portfolio.dto.market.CandleSeriesDto;
+import com.portfolio.dto.market.FundamentalDataDto;
 import com.portfolio.dto.market.MarketPriceDto;
 import com.portfolio.dto.market.StockQuoteDto;
 import com.portfolio.dto.market.StockSearchItemDto;
@@ -28,6 +29,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class MarketDataService {
@@ -474,5 +476,169 @@ public class MarketDataService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * Fetch fundamental company analysis and financial metrics from Upstox (for Indian stocks)
+     * or Twelve Data (for US/Global stocks)
+     */
+    public FundamentalDataDto getFundamentals(String symbol) {
+        if (symbol == null || symbol.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Symbol parameter is required");
+        }
+
+        String cleanSymbol = symbol.trim().toUpperCase(Locale.ROOT);
+
+        // Indian symbols routing to Upstox
+        if (upstoxService != null && upstoxService.isIndianSymbol(cleanSymbol) && upstoxService.getAuthStatus().connected()) {
+            log.info("Routing Indian fundamental request for {} to Upstox service", cleanSymbol);
+            return upstoxService.getFundamentals(cleanSymbol);
+        }
+
+        // US / Global instruments via Twelve Data
+        log.info("Fetching Twelve Data fundamentals for symbol: {}", cleanSymbol);
+
+        String statsUrl = String.format("%s/statistics?symbol=%s&apikey=%s", baseUrl, cleanSymbol, apiKey);
+        String profileUrl = String.format("%s/profile?symbol=%s&apikey=%s", baseUrl, cleanSymbol, apiKey);
+
+        String companyName = cleanSymbol;
+        String exchange = null;
+        String currency = "USD";
+        String sector = null;
+        String industry = null;
+        String description = null;
+        String ceo = null;
+        String website = null;
+
+        BigDecimal marketCap = null;
+        BigDecimal peRatio = null;
+        BigDecimal eps = null;
+        BigDecimal roe = null;
+        BigDecimal revenue = null;
+        BigDecimal netIncome = null;
+        BigDecimal dividendYield = null;
+        BigDecimal fiftyTwoWeekHigh = null;
+        BigDecimal fiftyTwoWeekLow = null;
+        Long lastUpdated = System.currentTimeMillis();
+
+        // 1. Fetch Company Profile
+        try {
+            ResponseEntity<String> profileResp = restTemplate.getForEntity(profileUrl, String.class);
+            if (profileResp.getBody() != null && !profileResp.getBody().trim().isEmpty()) {
+                JsonNode pNode = objectMapper.readTree(profileResp.getBody());
+                if (!pNode.has("code") || pNode.path("code").asInt() == 200) {
+                    if (pNode.has("name") && !pNode.path("name").asText().trim().isEmpty()) {
+                        companyName = pNode.path("name").asText();
+                    }
+                    if (pNode.has("exchange") && !pNode.path("exchange").asText().trim().isEmpty()) {
+                        exchange = pNode.path("exchange").asText();
+                    }
+                    if (pNode.has("sector") && !pNode.path("sector").asText().trim().isEmpty()) {
+                        sector = pNode.path("sector").asText();
+                    }
+                    if (pNode.has("industry") && !pNode.path("industry").asText().trim().isEmpty()) {
+                        industry = pNode.path("industry").asText();
+                    }
+                    if (pNode.has("description") && !pNode.path("description").asText().trim().isEmpty()) {
+                        description = pNode.path("description").asText();
+                    }
+                    if (pNode.has("CEO") && !pNode.path("CEO").asText().trim().isEmpty()) {
+                        ceo = pNode.path("CEO").asText();
+                    }
+                    if (pNode.has("website") && !pNode.path("website").asText().trim().isEmpty()) {
+                        website = pNode.path("website").asText();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Twelve Data profile request warning for {}: {}", cleanSymbol, e.getMessage());
+        }
+
+        // 2. Fetch Financial Statistics
+        try {
+            ResponseEntity<String> statsResp = restTemplate.getForEntity(statsUrl, String.class);
+            if (statsResp.getBody() != null && !statsResp.getBody().trim().isEmpty()) {
+                JsonNode sRoot = objectMapper.readTree(statsResp.getBody());
+                if (!sRoot.has("code") || sRoot.path("code").asInt() == 200) {
+                    JsonNode metaNode = sRoot.path("meta");
+                    if (metaNode.has("name") && companyName.equals(cleanSymbol)) {
+                        companyName = metaNode.path("name").asText(cleanSymbol);
+                    }
+                    if (metaNode.has("exchange") && exchange == null) {
+                        exchange = metaNode.path("exchange").asText(null);
+                    }
+                    if (metaNode.has("currency")) {
+                        currency = metaNode.path("currency").asText("USD");
+                    }
+
+                    JsonNode statsNode = sRoot.path("statistics");
+                    if (statsNode.isObject()) {
+                        JsonNode valNode = statsNode.path("valuations_metrics");
+                        marketCap = parseBigDecimal(valNode.path("market_capitalization").asText(null));
+                        peRatio = parseBigDecimal(valNode.path("trailing_pe").asText(null));
+                        if (peRatio == null) {
+                            peRatio = parseBigDecimal(valNode.path("forward_pe").asText(null));
+                        }
+
+                        JsonNode finNode = statsNode.path("financials");
+                        roe = parseBigDecimal(finNode.path("return_on_equity_ttm").asText(null));
+
+                        JsonNode incNode = finNode.path("income_statement");
+                        eps = parseBigDecimal(incNode.path("diluted_eps_ttm").asText(null));
+                        revenue = parseBigDecimal(incNode.path("revenue_ttm").asText(null));
+                        netIncome = parseBigDecimal(incNode.path("net_income_to_common_ttm").asText(null));
+
+                        JsonNode divNode = statsNode.path("dividends_and_splits");
+                        dividendYield = parseBigDecimal(divNode.path("trailing_annual_dividend_yield").asText(null));
+                        if (dividendYield == null) {
+                            dividendYield = parseBigDecimal(divNode.path("forward_annual_dividend_yield").asText(null));
+                        }
+
+                        JsonNode summaryNode = statsNode.path("stock_price_summary");
+                        fiftyTwoWeekHigh = parseBigDecimal(summaryNode.path("fifty_two_week_high").asText(null));
+                        fiftyTwoWeekLow = parseBigDecimal(summaryNode.path("fifty_two_week_low").asText(null));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Twelve Data statistics request warning for {}: {}", cleanSymbol, e.getMessage());
+        }
+
+        // 3. Fallback to quote if 52w high/low or company name is still missing
+        if (fiftyTwoWeekHigh == null || fiftyTwoWeekLow == null) {
+            try {
+                StockQuoteDto q = getQuote(cleanSymbol);
+                if (q != null) {
+                    if (companyName.equals(cleanSymbol) && q.name() != null) {
+                        companyName = q.name();
+                    }
+                    if (fiftyTwoWeekHigh == null) fiftyTwoWeekHigh = q.high();
+                    if (fiftyTwoWeekLow == null) fiftyTwoWeekLow = q.low();
+                }
+            } catch (Exception ignored) {}
+        }
+
+        return new FundamentalDataDto(
+                cleanSymbol,
+                companyName,
+                exchange != null ? exchange : "US",
+                currency,
+                "Twelve Data",
+                sector,
+                industry,
+                description,
+                ceo,
+                website,
+                marketCap,
+                peRatio,
+                eps,
+                roe,
+                revenue,
+                netIncome,
+                dividendYield,
+                fiftyTwoWeekHigh,
+                fiftyTwoWeekLow,
+                lastUpdated
+        );
     }
 }

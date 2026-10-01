@@ -2,6 +2,7 @@ package com.portfolio.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.portfolio.dto.market.CandleSeriesDto;
+import com.portfolio.dto.market.FundamentalDataDto;
 import com.portfolio.dto.market.StockQuoteDto;
 import com.portfolio.dto.market.StockSearchResponseDto;
 import com.portfolio.dto.upstox.UpstoxAuthStatusDto;
@@ -347,5 +348,54 @@ class UpstoxServiceTest {
         verify(upstoxSessionRepository).save(existing);
         assertThat(existing.getIsActive()).isFalse();
         assertThat(upstoxService.getAuthStatus().connected()).isFalse();
+    }
+
+    @Test
+    @DisplayName("13. Fetch Upstox fundamentals for Indian stock and return null for unsupported metrics")
+    void testUpstoxFundamentalsSuccess() {
+        upstoxService.setAccessToken("test-token", "Trader", "USER1");
+
+        String quoteJson = """
+                {
+                    "status": "success",
+                    "data": {
+                        "NSE_EQ:RELIANCE": {
+                            "symbol": "RELIANCE",
+                            "trading_symbol": "RELIANCE",
+                            "last_price": 2980.50,
+                            "net_change": 15.20,
+                            "ohlc": {
+                                "open": 2970.00,
+                                "high": 2990.00,
+                                "low": 2965.00,
+                                "close": 2965.30
+                            },
+                            "timestamp": "2026-09-30T15:30:00+05:30"
+                        }
+                    }
+                }
+                """;
+
+        mockServer.expect(requestTo(containsString("/market-quote/quotes?instrument_key=")))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(quoteJson, MediaType.APPLICATION_JSON));
+
+        FundamentalDataDto data = upstoxService.getFundamentals("RELIANCE");
+
+        mockServer.verify();
+        assertThat(data).isNotNull();
+        assertThat(data.symbol()).isEqualTo("RELIANCE");
+        assertThat(data.companyName()).isEqualTo("Reliance Industries Ltd");
+        assertThat(data.exchange()).isEqualTo("NSE");
+        assertThat(data.currency()).isEqualTo("INR");
+        assertThat(data.provider()).isEqualTo("Upstox");
+        // Verify unsupported balance sheet metrics are explicitly null without fake values
+        assertThat(data.marketCap()).isNull();
+        assertThat(data.peRatio()).isNull();
+        assertThat(data.eps()).isNull();
+        assertThat(data.roe()).isNull();
+        assertThat(data.revenue()).isNull();
+        assertThat(data.netIncome()).isNull();
+        assertThat(data.dividendYield()).isNull();
     }
 }

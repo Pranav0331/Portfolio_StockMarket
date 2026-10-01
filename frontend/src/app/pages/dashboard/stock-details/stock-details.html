@@ -23,6 +23,14 @@
         Provider: <strong>{{ currentProvider() }}</strong>
       </span>
 
+      <a [routerLink]="['/dashboard/technical', symbol()]" class="action-icon-btn" title="Technical Analysis">
+        <span>Technical</span>
+      </a>
+
+      <a [routerLink]="['/dashboard/fundamental', symbol()]" class="action-icon-btn" title="Fundamental Analysis">
+        <span>Fundamental</span>
+      </a>
+
       <button
         type="button"
         class="action-icon-btn"
