@@ -1,0 +1,418 @@
+<div class="risk-page-container">
+  <!-- PAGE HEADER -->
+  <div class="risk-header glass-card">
+    <div class="risk-header-left">
+      <div class="title-with-badge">
+        <h1 class="page-title">Portfolio Risk Management</h1>
+        <span class="badge-source">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          Real Market Risk Engine
+        </span>
+      </div>
+      <p class="page-subtitle">
+        Real-time risk exposure, portfolio volatility, value at risk, drawdowns, and asset concentration calculated directly from live holdings and real historical market candles.
+      </p>
+    </div>
+
+    <div class="risk-header-actions">
+      @if (riskData()?.calculationTimestamp) {
+        <div class="timestamp-box">
+          <span class="ts-label">Calculated:</span>
+          <span class="ts-val">{{ riskData()?.calculationTimestamp | date:'mediumTime' }}</span>
+        </div>
+      }
+
+      <button 
+        type="button" 
+        class="btn-refresh" 
+        (click)="refreshRisk()" 
+        [disabled]="isLoading()"
+        title="Refresh Risk Analytics"
+      >
+        <svg [class.spinning]="isLoading()" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6"></path>
+          <path d="M1 20v-6h6"></path>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>{{ isLoading() ? 'Calculating...' : 'Refresh Risk' }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- LOADING SKELETON STATE -->
+  @if (isLoading() && !riskData()) {
+    <div class="loading-state glass-card">
+      <div class="spinner"></div>
+      <h3>Calculating Deterministic Risk Metrics...</h3>
+      <p>Fetching real user holdings and historical price candles from backend</p>
+    </div>
+  }
+
+  <!-- ERROR STATE -->
+  @if (error() && !isLoading()) {
+    <div class="error-banner glass-card">
+      <div class="error-icon">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <div class="error-content">
+        <h4>Unable to Load Risk Metrics</h4>
+        <p>{{ error() }}</p>
+      </div>
+      <button type="button" class="btn-retry" (click)="refreshRisk()">Try Again</button>
+    </div>
+  }
+
+  <!-- MAIN RISK DASHBOARD CONTENT -->
+  @if (riskData(); as r) {
+    <!-- EMPTY PORTFOLIO STATE -->
+    @if (r.emptyPortfolio) {
+      <div class="empty-portfolio-card glass-card">
+        <div class="empty-icon-wrapper">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+          </svg>
+        </div>
+        <h2>No Active Equity Holdings</h2>
+        <p class="empty-desc">
+          Your portfolio currently has no active stock holdings to calculate risk metrics. Your virtual cash balance of 
+          <strong>${{ r.exposure.cashBalance | number:'1.2-2' }}</strong> is 100% liquid and unexposed to market volatility.
+        </p>
+        <div class="empty-actions">
+          <a routerLink="/dashboard/market" class="btn-primary-action">Explore Market</a>
+          <a routerLink="/dashboard/portfolio" class="btn-secondary-action">View Portfolio</a>
+        </div>
+      </div>
+    } @else {
+      <!-- TOP METRICS GRID -->
+      <div class="metrics-grid">
+        <!-- 1. Portfolio Exposure Card -->
+        <div class="metric-card glass-card">
+          <div class="metric-header">
+            <span class="metric-title">Portfolio Exposure</span>
+            <div class="metric-icon blue">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 6v6l4 2"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="metric-value-row">
+            <span class="metric-big-val">${{ r.exposure.totalPortfolioValue | number:'1.2-2' }}</span>
+          </div>
+          <div class="exposure-breakdown">
+            <div class="exposure-bar-wrap">
+              <div class="exp-bar equity" [style.width.%]="r.exposure.equityAllocationPercent" title="Equity: {{ r.exposure.equityAllocationPercent }}%"></div>
+              <div class="exp-bar cash" [style.width.%]="r.exposure.cashAllocationPercent" title="Cash: {{ r.exposure.cashAllocationPercent }}%"></div>
+            </div>
+            <div class="exp-labels">
+              <span class="exp-label"><span class="dot equity"></span>Equity: ${{ r.exposure.equityMarketValue | number:'1.2-2' }} ({{ r.exposure.equityAllocationPercent }}%)</span>
+              <span class="exp-label"><span class="dot cash"></span>Cash: ${{ r.exposure.cashBalance | number:'1.2-2' }} ({{ r.exposure.cashAllocationPercent }}%)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Value at Risk (VaR 95%) Card -->
+        <div class="metric-card glass-card">
+          <div class="metric-header">
+            <span class="metric-title">1-Day VaR (95% Conf.)</span>
+            <div class="metric-icon orange">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </div>
+          </div>
+          <div class="metric-value-row">
+            <span class="metric-big-val">${{ r.exposure.var95DailyAmount | number:'1.2-2' }}</span>
+            <span class="metric-sub-tag danger">{{ r.exposure.var95DailyPercent }}% of Equity</span>
+          </div>
+          <p class="metric-footnote">
+            Maximum expected single-day loss under normal market conditions at a 95% confidence interval.
+          </p>
+        </div>
+
+        <!-- 3. Annualized Volatility Card -->
+        <div class="metric-card glass-card">
+          <div class="metric-header">
+            <span class="metric-title">Annualized Volatility (σ)</span>
+            <div class="metric-icon purple">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+            </div>
+          </div>
+          <div class="metric-value-row">
+            <span class="metric-big-val">{{ r.annualizedVolatilityPercent }}%</span>
+            <span class="badge-status" [ngClass]="getRiskRatingBadgeClass(r.annualizedVolatilityPercent < 20 ? 'Low Risk' : (r.annualizedVolatilityPercent <= 40 ? 'Moderate Risk' : 'High Risk'))">
+              {{ r.annualizedVolatilityPercent < 20 ? 'Low' : (r.annualizedVolatilityPercent <= 40 ? 'Moderate' : 'High') }} Volatility
+            </span>
+          </div>
+          <p class="metric-footnote">
+            Annualized standard deviation derived deterministically from daily asset return variance (&radic;252).
+          </p>
+        </div>
+
+        <!-- 4. Max Drawdown Card -->
+        <div class="metric-card glass-card">
+          <div class="metric-header">
+            <span class="metric-title">Maximum Drawdown</span>
+            <div class="metric-icon red">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline>
+                <polyline points="17 18 23 18 23 12"></polyline>
+              </svg>
+            </div>
+          </div>
+          <div class="metric-value-row">
+            <span class="metric-big-val danger">-{{ r.maxDrawdownPercent }}%</span>
+            <span class="metric-sub-tag">Peak-to-Trough</span>
+          </div>
+          <p class="metric-footnote">
+            Largest peak-to-trough historical decline observed in active holdings time series.
+          </p>
+        </div>
+      </div>
+
+      <!-- MIDDLE SECTION: CONCENTRATION & BETA ANALYSIS -->
+      <div class="risk-middle-grid">
+        <!-- Diversification & Concentration Card -->
+        <div class="concentration-card glass-card">
+          <div class="card-header-flex">
+            <div>
+              <h3 class="card-title">Diversification & Concentration (HHI)</h3>
+              <p class="card-sub">Herfindahl-Hirschman Index and holding concentration metrics</p>
+            </div>
+            <span class="badge-status" [ngClass]="getDiversificationBadgeClass(r.diversificationRating)">
+              {{ r.diversificationRating }}
+            </span>
+          </div>
+
+          <div class="hhi-meter-section">
+            <div class="hhi-scale-labels">
+              <span>0 (Diversified)</span>
+              <span>1500 (Moderate)</span>
+              <span>2500 (Concentrated)</span>
+              <span>10000</span>
+            </div>
+            <div class="hhi-track">
+              <div class="hhi-fill" [style.width]="getHhiMeterWidth(r.herfindahlHirschmanIndex)"></div>
+            </div>
+            <div class="hhi-value-pill">
+              HHI Score: <strong>{{ r.herfindahlHirschmanIndex }}</strong>
+            </div>
+          </div>
+
+          <div class="concentration-stats-grid">
+            <div class="c-stat-box">
+              <span class="c-stat-lbl">Top Holding Exposure</span>
+              <span class="c-stat-val">{{ r.top1HoldingWeightPercent }}%</span>
+            </div>
+            <div class="c-stat-box">
+              <span class="c-stat-lbl">Top 3 Holdings Exposure</span>
+              <span class="c-stat-val">{{ r.top3HoldingWeightPercent }}%</span>
+            </div>
+            <div class="c-stat-box">
+              <span class="c-stat-lbl">Effective Asset Count (N_eff)</span>
+              <span class="c-stat-val">{{ r.effectiveNumberOfAssets }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Benchmark & Market Sensitivity Card -->
+        <div class="benchmark-card glass-card">
+          <div class="card-header-flex">
+            <div>
+              <h3 class="card-title">Benchmark Sensitivity (Beta)</h3>
+              <p class="card-sub">Market correlation vs benchmark index</p>
+            </div>
+            <span class="badge-source">
+              {{ r.benchmarkAvailable ? r.benchmarkSymbol : 'Benchmark: ' + r.benchmarkSymbol }}
+            </span>
+          </div>
+
+          <div class="beta-content">
+            @if (r.benchmarkAvailable && r.portfolioBeta !== null) {
+              <div class="beta-highlight">
+                <span class="beta-big">{{ r.portfolioBeta }}</span>
+                <div class="beta-desc-block">
+                  <span class="beta-title">Portfolio Beta (&beta;)</span>
+                  <span class="beta-subtitle">
+                    {{ r.portfolioBeta > 1.1 ? 'Aggressive / High Market Sensitivity' : (r.portfolioBeta < 0.9 ? 'Defensive / Lower Market Sensitivity' : 'Market Neutral / Synchronized') }}
+                  </span>
+                </div>
+              </div>
+              <div class="beta-info-row">
+                <span>Covariance / Benchmark Variance calculated from real daily historical candles vs {{ r.benchmarkSymbol }}.</span>
+              </div>
+            } @else {
+              <div class="insufficient-data-box">
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <div class="insufficient-info">
+                  <strong>Data unavailable for Benchmark Beta</strong>
+                  <p>Insufficient simultaneous historical trading sessions available for benchmark alignment.</p>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORICAL RISK CHART -->
+      <div class="risk-chart-card glass-card">
+        <div class="chart-header-flex">
+          <div>
+            <h3 class="card-title">Historical Portfolio Risk & Drawdown Series</h3>
+            <p class="card-sub">Interactive historical peak-to-trough drawdown (%) and rolling 15-day volatility (%)</p>
+          </div>
+          <div class="chart-controls">
+            <button 
+              type="button" 
+              class="btn-chart-tab" 
+              [class.active]="selectedMetric() === 'both'"
+              (click)="setMetricView('both')"
+            >
+              Combined
+            </button>
+            <button 
+              type="button" 
+              class="btn-chart-tab" 
+              [class.active]="selectedMetric() === 'drawdown'"
+              (click)="setMetricView('drawdown')"
+            >
+              Drawdown (%)
+            </button>
+            <button 
+              type="button" 
+              class="btn-chart-tab" 
+              [class.active]="selectedMetric() === 'volatility'"
+              (click)="setMetricView('volatility')"
+            >
+              Volatility (%)
+            </button>
+          </div>
+        </div>
+
+        <div class="chart-legend-row">
+          <span class="legend-item"><span class="legend-dot red"></span>Historical Drawdown (Peak-to-trough %)</span>
+          <span class="legend-item"><span class="legend-dot cyan"></span>Rolling Annualized Volatility (%)</span>
+        </div>
+
+        @if (r.historicalRiskSeries && r.historicalRiskSeries.length >= 2) {
+          <div #riskChartContainer class="risk-chart-container"></div>
+        } @else {
+          <div class="no-chart-data">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            <h4>Insufficient Historical Data for Time Series Chart</h4>
+            <p>At least 2 historical trading sessions are required across all holdings to project a portfolio value index.</p>
+          </div>
+        }
+      </div>
+
+      <!-- HOLDING-WISE RISK BREAKDOWN TABLE -->
+      <div class="risk-table-card glass-card">
+        <div class="card-header-flex">
+          <div>
+            <h3 class="card-title">Position-Wise Risk Breakdown</h3>
+            <p class="card-sub">Individual volatility, drawdown, value-at-risk, and risk ratings for active positions</p>
+          </div>
+          <span class="badge-count">{{ r.holdings.length }} Active Holdings</span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="risk-table">
+            <thead>
+              <tr>
+                <th>Holding</th>
+                <th>Quantity</th>
+                <th>Current Price</th>
+                <th>Position Value</th>
+                <th>Weight</th>
+                <th>Annual Volatility (&sigma;)</th>
+                <th>Max Drawdown</th>
+                <th>1-Day VaR (95%)</th>
+                <th>Unrealized P&L</th>
+                <th>Risk Rating</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (h of r.holdings; track h.holdingId) {
+                <tr class="risk-row" (click)="navigateToStock(h.symbol)">
+                  <td class="symbol-col">
+                    <div class="stock-title-cell">
+                      <span class="stock-symbol-text">{{ h.symbol }}</span>
+                      <span class="stock-company-sub">{{ h.companyName }}</span>
+                      <span class="badge-exchange">{{ h.exchange }}</span>
+                    </div>
+                  </td>
+                  <td>{{ h.quantity | number:'1.0-4' }}</td>
+                  <td>{{ getCurrencySymbol(h.currency) }}{{ h.currentPrice | number:'1.2-2' }}</td>
+                  <td class="font-semibold">{{ getCurrencySymbol(h.currency) }}{{ h.currentValue | number:'1.2-2' }}</td>
+                  <td>
+                    <div class="weight-cell">
+                      <span>{{ h.weightPercent }}%</span>
+                      <div class="mini-bar-track">
+                        <div class="mini-bar-fill" [style.width.%]="h.weightPercent"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    @if (h.dataAvailable && h.annualizedVolatilityPercent !== null) {
+                      <span>{{ h.annualizedVolatilityPercent }}%</span>
+                    } @else {
+                      <span class="text-muted">Data unavailable</span>
+                    }
+                  </td>
+                  <td>
+                    @if (h.dataAvailable && h.maxDrawdownPercent !== null) {
+                      <span class="text-danger">-{{ h.maxDrawdownPercent }}%</span>
+                    } @else {
+                      <span class="text-muted">Data unavailable</span>
+                    }
+                  </td>
+                  <td>
+                    @if (h.dataAvailable && h.var95Daily !== null) {
+                      <span>{{ getCurrencySymbol(h.currency) }}{{ h.var95Daily | number:'1.2-2' }}</span>
+                    } @else {
+                      <span class="text-muted">Data unavailable</span>
+                    }
+                  </td>
+                  <td>
+                    <div class="pnl-cell" [class.profit]="h.unrealizedPnL > 0" [class.loss]="h.unrealizedPnL < 0">
+                      <span>{{ h.unrealizedPnL >= 0 ? '+' : '' }}{{ getCurrencySymbol(h.currency) }}{{ h.unrealizedPnL | number:'1.2-2' }}</span>
+                      <span class="pnl-pct">({{ h.unrealizedPnLPercent >= 0 ? '+' : '' }}{{ h.unrealizedPnLPercent }}%)</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge-status" [ngClass]="getRiskRatingBadgeClass(h.riskRating)">
+                      {{ h.riskRating }}
+                    </span>
+                  </td>
+                  <td>
+                    <button type="button" class="btn-table-action" (click)="$event.stopPropagation(); navigateToStock(h.symbol)">
+                      Analyze
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+  }
+</div>

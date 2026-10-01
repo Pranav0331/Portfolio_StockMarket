@@ -14,6 +14,7 @@ import { SettingsComponent } from './pages/dashboard/settings/settings';
 import { StockDetailsComponent } from './pages/dashboard/stock-details/stock-details';
 import { TechnicalAnalysisComponent } from './pages/dashboard/technical/technical';
 import { FundamentalComponent } from './pages/dashboard/fundamental/fundamental';
+import { RiskComponent } from './pages/dashboard/risk/risk';
 import { authGuard, rootGuard, guestGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
@@ -50,6 +51,7 @@ export const routes: Routes = [
       { path: 'fundamental', redirectTo: 'fundamental/RELIANCE', pathMatch: 'full' },
       { path: 'fundamental/:symbol', component: FundamentalComponent },
       { path: 'portfolio', component: PortfolioComponent },
+      { path: 'risk', component: RiskComponent },
       { path: 'watchlist', component: WatchlistComponent },
       { path: 'orders', component: OrdersComponent },
       { path: 'transactions', component: TransactionsComponent },
@@ -57,5 +59,6 @@ export const routes: Routes = [
       { path: 'settings', component: SettingsComponent }
     ]
   },
+
   { path: '**', redirectTo: '' }
 ];
