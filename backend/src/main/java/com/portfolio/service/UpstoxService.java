@@ -44,6 +44,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
@@ -182,14 +183,15 @@ public class UpstoxService {
         this.upstoxSessionRepository = upstoxSessionRepository;
     }
 
-    /**
-     * Load persisted Upstox session on startup
-     */
     @jakarta.annotation.PostConstruct
     public void loadPersistedSession() {
         if (upstoxSessionRepository != null) {
             try {
-                upstoxSessionRepository.findFirstByIsActiveTrueOrderByUpdatedAtDesc().ifPresent(session -> {
+                Optional<UpstoxSession> optSession = upstoxSessionRepository.findFirstByIsActiveTrueOrderByUpdatedAtDesc();
+                if (optSession.isEmpty()) {
+                    optSession = upstoxSessionRepository.findBySessionKey("DEFAULT");
+                }
+                optSession.ifPresent(session -> {
                     if (session.getAccessToken() != null && !session.getAccessToken().trim().isEmpty()) {
                         this.tokenHolder.set(new UpstoxTokenHolder(
                                 session.getAccessToken(),
@@ -343,6 +345,39 @@ public class UpstoxService {
         }
         if (envAccessToken != null && !envAccessToken.trim().isEmpty()) {
             return UpstoxAuthStatusDto.connected("Upstox User (Env)", "UPSTOX_ENV", null, "individual", "Upstox", System.currentTimeMillis());
+        }
+        if (upstoxSessionRepository != null) {
+            try {
+                Optional<UpstoxSession> optSession = upstoxSessionRepository.findFirstByIsActiveTrueOrderByUpdatedAtDesc();
+                if (optSession.isEmpty()) {
+                    optSession = upstoxSessionRepository.findBySessionKey("DEFAULT");
+                }
+                if (optSession.isPresent()) {
+                    UpstoxSession session = optSession.get();
+                    if (session.getAccessToken() != null && !session.getAccessToken().trim().isEmpty()) {
+                        UpstoxTokenHolder loaded = new UpstoxTokenHolder(
+                                session.getAccessToken(),
+                                session.getUserName(),
+                                session.getUserId(),
+                                session.getEmail(),
+                                session.getUserType(),
+                                session.getBroker(),
+                                session.getConnectedAt() != null ? session.getConnectedAt() : System.currentTimeMillis()
+                        );
+                        this.tokenHolder.set(loaded);
+                        return UpstoxAuthStatusDto.connected(
+                                loaded.userName,
+                                loaded.userId,
+                                loaded.email,
+                                loaded.userType,
+                                loaded.broker,
+                                loaded.connectedAt
+                        );
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Could not retrieve Upstox session from database: {}", e.getMessage());
+            }
         }
         return UpstoxAuthStatusDto.disconnected("Not connected to Upstox. Please authenticate via OAuth.");
     }
@@ -719,6 +754,32 @@ public class UpstoxService {
         }
         if (envAccessToken != null && !envAccessToken.trim().isEmpty()) {
             return envAccessToken.trim();
+        }
+        if (upstoxSessionRepository != null) {
+            try {
+                Optional<UpstoxSession> optSession = upstoxSessionRepository.findFirstByIsActiveTrueOrderByUpdatedAtDesc();
+                if (optSession.isEmpty()) {
+                    optSession = upstoxSessionRepository.findBySessionKey("DEFAULT");
+                }
+                if (optSession.isPresent()) {
+                    UpstoxSession session = optSession.get();
+                    if (session.getAccessToken() != null && !session.getAccessToken().trim().isEmpty()) {
+                        UpstoxTokenHolder loaded = new UpstoxTokenHolder(
+                                session.getAccessToken(),
+                                session.getUserName(),
+                                session.getUserId(),
+                                session.getEmail(),
+                                session.getUserType(),
+                                session.getBroker(),
+                                session.getConnectedAt() != null ? session.getConnectedAt() : System.currentTimeMillis()
+                        );
+                        this.tokenHolder.set(loaded);
+                        return loaded.accessToken;
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Could not lazily load Upstox session from database: {}", e.getMessage());
+            }
         }
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Upstox access token not found. Please log in with Upstox via /api/upstox/login");
     }
