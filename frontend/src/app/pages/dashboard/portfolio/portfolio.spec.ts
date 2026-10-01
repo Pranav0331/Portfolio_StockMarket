@@ -110,8 +110,8 @@ describe('PortfolioComponent', () => {
     expect(p.totalPortfolioValue).toBe(103500);
     expect(p.availableCash).toBe(55000);
     expect(p.totalInvested).toBe(45000);
-    expect(p.unrealizedPnL).toBe(3500);
-    expect(p.unrealizedPnLPercent).toBe(7.78);
+    expect(p.totalUnrealizedPnL).toBe(3500);
+    expect(p.totalUnrealizedPnLPercent).toBe(7.78);
     expect(p.totalHoldingsCount).toBe(2);
     expect(p.cashAllocationPercent).toBe(53.14);
     expect(p.holdings.length).toBe(2);

@@ -58,3 +58,39 @@ export interface PortfolioSummary {
   cashAllocationPercent: number;
   holdings: UserHolding[];
 }
+
+export interface TransactionItem {
+  transactionId: number;
+  orderId?: number;
+  symbol: string;
+  companyName: string;
+  exchange: string;
+  currency: string;
+  type: 'BUY' | 'SELL';
+  status: string;
+  quantity: number;
+  executionPrice: number;
+  totalAmount: number;
+  fees?: number;
+  executedAt: string;
+}
+
+export interface TransactionPageResponse {
+  content: TransactionItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface TransactionFilterParams {
+  type?: 'BUY' | 'SELL' | 'ALL';
+  symbol?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  size?: number;
+  sort?: 'desc' | 'asc';
+}

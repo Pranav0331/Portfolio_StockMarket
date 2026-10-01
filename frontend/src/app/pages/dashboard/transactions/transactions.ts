@@ -1,55 +1,186 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router, RouterLink } from '@angular/router';
+import { TransactionService } from '../../../services/transaction.service';
+import { TransactionItem, TransactionPageResponse, TransactionFilterParams } from '../../../models/trading.model';
 
 @Component({
   selector: 'app-transactions',
   standalone: true,
-  imports: [CommonModule],
-  template: `
-    <div class="page-container">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">Transaction Ledger</h1>
-          <p class="page-sub">Historical record of all buy, sell, deposit, and dividend activities.</p>
-        </div>
-      </div>
-
-      <div class="glass-panel">
-        <div class="empty-state">
-          <div class="empty-icon-box">
-            <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
-              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-              <line x1="1" y1="10" x2="23" y2="10"></line>
-            </svg>
-          </div>
-          <h3 class="empty-title">No transactions recorded</h3>
-          <p class="empty-desc">
-            Your transaction history will be maintained here once trading or funding activities occur.
-          </p>
-        </div>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .page-container { display: flex; flex-direction: column; gap: 1.5rem; }
-    .page-title { font-size: 1.75rem; font-weight: 800; color: var(--text-primary); }
-    .page-sub { font-size: 0.92rem; color: var(--text-secondary); }
-    .glass-panel {
-      background: var(--bg-glass-card);
-      backdrop-filter: var(--glass-blur);
-      border: 1px solid var(--border-glass);
-      border-radius: var(--radius-lg);
-      padding: 3.5rem 1.5rem;
-    }
-    .empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.85rem; }
-    .empty-icon-box {
-      width: 64px; height: 64px; border-radius: 50%;
-      background: var(--bg-surface-elevated);
-      display: flex; align-items: center; justify-content: center;
-      border: 1px solid var(--border-subtle);
-    }
-    .empty-title { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); }
-    .empty-desc { font-size: 0.88rem; color: var(--text-secondary); max-width: 420px; line-height: 1.5; }
-  `]
+  imports: [CommonModule, RouterLink],
+  templateUrl: './transactions.html',
+  styleUrls: ['./transactions.css']
 })
-export class TransactionsComponent {}
+export class TransactionsComponent implements OnInit {
+  private readonly transactionService = inject(TransactionService);
+  private readonly router = inject(Router);
+
+  // View state signals
+  readonly transactions = signal<TransactionItem[]>([]);
+  readonly pageResponse = signal<TransactionPageResponse | null>(null);
+  readonly isLoading = signal<boolean>(false);
+  readonly error = signal<string | null>(null);
+
+  // Filter signals
+  readonly selectedType = signal<'ALL' | 'BUY' | 'SELL'>('ALL');
+  readonly symbolSearch = signal<string>('');
+  readonly startDate = signal<string>('');
+  readonly endDate = signal<string>('');
+  readonly sortDirection = signal<'desc' | 'asc'>('desc');
+  readonly currentPage = signal<number>(0);
+  readonly pageSize = signal<number>(15);
+
+  private searchDebounceTimer?: any;
+
+  ngOnInit(): void {
+    this.loadTransactions();
+  }
+
+  loadTransactions(): void {
+    this.isLoading.set(true);
+    this.error.set(null);
+
+    const filterParams: TransactionFilterParams = {
+      type: this.selectedType(),
+      symbol: this.symbolSearch().trim() || undefined,
+      startDate: this.startDate() || undefined,
+      endDate: this.endDate() || undefined,
+      page: this.currentPage(),
+      size: this.pageSize(),
+      sort: this.sortDirection()
+    };
+
+    this.transactionService.getTransactions(filterParams).subscribe({
+      next: (res) => {
+        this.pageResponse.set(res);
+        this.transactions.set(res.content || []);
+        this.isLoading.set(false);
+        this.error.set(null);
+      },
+      error: (err) => {
+        this.isLoading.set(false);
+        const errorMsg = err?.error?.message || err?.message || 'Failed to load transaction history.';
+        this.error.set(errorMsg);
+      }
+    });
+  }
+
+  refreshTransactions(): void {
+    this.loadTransactions();
+  }
+
+  setTypeFilter(type: 'ALL' | 'BUY' | 'SELL'): void {
+    if (this.selectedType() === type) return;
+    this.selectedType.set(type);
+    this.currentPage.set(0);
+    this.loadTransactions();
+  }
+
+  onSymbolInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const value = input?.value || '';
+    this.symbolSearch.set(value);
+
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+    this.searchDebounceTimer = setTimeout(() => {
+      this.currentPage.set(0);
+      this.loadTransactions();
+    }, 300);
+  }
+
+  clearSymbolSearch(): void {
+    this.symbolSearch.set('');
+    this.currentPage.set(0);
+    this.loadTransactions();
+  }
+
+  onStartDateChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.startDate.set(input?.value || '');
+    this.currentPage.set(0);
+    this.loadTransactions();
+  }
+
+  onEndDateChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.endDate.set(input?.value || '');
+    this.currentPage.set(0);
+    this.loadTransactions();
+  }
+
+  onSortChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    this.sortDirection.set((select?.value as 'desc' | 'asc') || 'desc');
+    this.currentPage.set(0);
+    this.loadTransactions();
+  }
+
+  resetFilters(): void {
+    this.selectedType.set('ALL');
+    this.symbolSearch.set('');
+    this.startDate.set('');
+    this.endDate.set('');
+    this.sortDirection.set('desc');
+    this.currentPage.set(0);
+    this.loadTransactions();
+  }
+
+  hasActiveFilters(): boolean {
+    return this.selectedType() !== 'ALL' ||
+      this.symbolSearch().trim().length > 0 ||
+      this.startDate().length > 0 ||
+      this.endDate().length > 0;
+  }
+
+  goToPage(page: number): void {
+    if (page < 0) return;
+    const current = this.pageResponse();
+    if (current && page >= current.totalPages) return;
+
+    this.currentPage.set(page);
+    this.loadTransactions();
+  }
+
+  navigateToStock(symbol: string): void {
+    if (!symbol) return;
+    this.router.navigate(['/dashboard/stock', symbol]);
+  }
+
+  getCurrencySymbol(currency?: string): string {
+    if (currency === 'INR') return '₹';
+    if (currency === 'EUR') return '€';
+    if (currency === 'GBP') return '£';
+    return '$';
+  }
+
+  getStatusBadgeClass(status?: string): string {
+    if (!status) return 'status-executed';
+    const s = status.toUpperCase();
+    if (s === 'EXECUTED' || s === 'SUCCESS') return 'status-executed';
+    if (s === 'PENDING') return 'status-pending';
+    return 'status-rejected';
+  }
+
+  getPageNumbers(totalPages: number): number[] {
+    const maxButtons = 5;
+    const current = this.currentPage();
+    let start = Math.max(0, current - Math.floor(maxButtons / 2));
+    let end = Math.min(totalPages, start + maxButtons);
+
+    if (end - start < maxButtons) {
+      start = Math.max(0, end - maxButtons);
+    }
+
+    const pages: number[] = [];
+    for (let i = start; i < end; i++) {
+      pages.push(i);
+    }
+    return pages;
+  }
+
+  getDisplayEnd(page: number, size: number, total: number): number {
+    return Math.min((page + 1) * size, total);
+  }
+}

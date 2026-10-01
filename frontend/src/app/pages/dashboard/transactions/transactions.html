@@ -1,0 +1,310 @@
+<div class="transactions-container">
+  <!-- Header Section -->
+  <header class="page-header">
+    <div class="header-left">
+      <div class="title-row">
+        <h1 class="page-title">Trading History & Transactions</h1>
+        <span class="count-badge" *ngIf="pageResponse() as p">
+          {{ p.totalElements }} record{{ p.totalElements !== 1 ? 's' : '' }}
+        </span>
+      </div>
+      <p class="page-subtitle">
+        Audited ledger of all simulated order executions, buy/sell transactions, and asset fills.
+      </p>
+    </div>
+    <div class="header-actions">
+      <button 
+        type="button"
+        class="btn-refresh" 
+        (click)="refreshTransactions()" 
+        [disabled]="isLoading()"
+        title="Refresh transaction history">
+        <svg class="refresh-icon" [class.spinning]="isLoading()" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6"></path>
+          <path d="M1 20v-6h6"></path>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>{{ isLoading() ? 'Loading...' : 'Refresh' }}</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Filter & Search Toolbar -->
+  <div class="filters-card glass-card">
+    <div class="filters-grid">
+      <!-- Type Filter Buttons (ALL / BUY / SELL) -->
+      <div class="filter-group">
+        <label class="filter-label">Transaction Type</label>
+        <div class="pill-group">
+          <button 
+            type="button" 
+            class="pill-btn" 
+            [class.active]="selectedType() === 'ALL'"
+            (click)="setTypeFilter('ALL')">
+            All
+          </button>
+          <button 
+            type="button" 
+            class="pill-btn pill-buy" 
+            [class.active]="selectedType() === 'BUY'"
+            (click)="setTypeFilter('BUY')">
+            BUY
+          </button>
+          <button 
+            type="button" 
+            class="pill-btn pill-sell" 
+            [class.active]="selectedType() === 'SELL'"
+            (click)="setTypeFilter('SELL')">
+            SELL
+          </button>
+        </div>
+      </div>
+
+      <!-- Symbol Search Input -->
+      <div class="filter-group">
+        <label class="filter-label" for="symbol-search">Symbol / Asset</label>
+        <div class="search-input-wrapper">
+          <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input 
+            id="symbol-search"
+            type="text" 
+            class="filter-input" 
+            placeholder="e.g. AAPL, RELIANCE..." 
+            [value]="symbolSearch()" 
+            (input)="onSymbolInput($event)">
+          <button 
+            *ngIf="symbolSearch()" 
+            type="button" 
+            class="clear-input-btn" 
+            (click)="clearSymbolSearch()"
+            title="Clear symbol filter">
+            &times;
+          </button>
+        </div>
+      </div>
+
+      <!-- Start Date Picker -->
+      <div class="filter-group">
+        <label class="filter-label" for="start-date">From Date</label>
+        <input 
+          id="start-date"
+          type="date" 
+          class="filter-input date-input" 
+          [value]="startDate()" 
+          (change)="onStartDateChange($event)">
+      </div>
+
+      <!-- End Date Picker -->
+      <div class="filter-group">
+        <label class="filter-label" for="end-date">To Date</label>
+        <input 
+          id="end-date"
+          type="date" 
+          class="filter-input date-input" 
+          [value]="endDate()" 
+          (change)="onEndDateChange($event)">
+      </div>
+
+      <!-- Sort Direction -->
+      <div class="filter-group">
+        <label class="filter-label" for="sort-select">Sort By</label>
+        <select 
+          id="sort-select"
+          class="filter-select" 
+          [value]="sortDirection()" 
+          (change)="onSortChange($event)">
+          <option value="desc">Newest First</option>
+          <option value="asc">Oldest First</option>
+        </select>
+      </div>
+
+      <!-- Reset Filters Button -->
+      <div class="filter-group filter-actions">
+        <label class="filter-label">&nbsp;</label>
+        <button 
+          type="button" 
+          class="btn-reset" 
+          (click)="resetFilters()"
+          title="Reset all search filters">
+          Reset Filters
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Banner -->
+  <div class="error-banner glass-card" *ngIf="error()">
+    <div class="error-content">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" class="error-icon">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <div class="error-text">
+        <strong>Error loading transactions:</strong> {{ error() }}
+      </div>
+    </div>
+    <button class="btn-retry" (click)="loadTransactions()">Retry</button>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="isLoading() && transactions().length === 0">
+    <div class="loading-spinner"></div>
+    <p>Loading trading history from ledger...</p>
+  </div>
+
+  <!-- Main Table Section -->
+  <div class="table-container glass-card" *ngIf="!isLoading() || transactions().length > 0">
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="transactions().length === 0 && !error()">
+      <div class="empty-icon-box">
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+          <line x1="2" y1="10" x2="22" y2="10"></line>
+        </svg>
+      </div>
+      <h3 class="empty-title">No transactions found</h3>
+      <p class="empty-desc">
+        {{ hasActiveFilters() ? 'No orders match your filter criteria. Try resetting your search filters.' : 'You have not executed any simulated trades yet. Explore the market to start paper trading.' }}
+      </p>
+      <div class="empty-actions">
+        <button *ngIf="hasActiveFilters()" type="button" class="btn-primary" (click)="resetFilters()">
+          Clear Filters
+        </button>
+        <a *ngIf="!hasActiveFilters()" routerLink="/dashboard/market" class="btn-primary">
+          Explore Market
+        </a>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="table-responsive" *ngIf="transactions().length > 0">
+      <table class="transactions-table">
+        <thead>
+          <tr>
+            <th class="th-date">Execution Time</th>
+            <th class="th-type">Type</th>
+            <th class="th-symbol">Instrument</th>
+            <th class="th-id">Tx / Order ID</th>
+            <th class="th-num">Qty</th>
+            <th class="th-num">Executed Price</th>
+            <th class="th-num">Total Amount</th>
+            <th class="th-status">Status</th>
+            <th class="th-action">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let tx of transactions()" class="tx-row" (click)="navigateToStock(tx.symbol)">
+            <!-- Date & Time -->
+            <td class="td-date">
+              <div class="date-wrap">
+                <span class="date-main">{{ tx.executedAt | date:'MMM d, y' }}</span>
+                <span class="date-time">{{ tx.executedAt | date:'hh:mm:ss a' }}</span>
+              </div>
+            </td>
+
+            <!-- BUY / SELL Type -->
+            <td class="td-type">
+              <span class="type-badge" [ngClass]="tx.type === 'BUY' ? 'badge-buy' : 'badge-sell'">
+                {{ tx.type }}
+              </span>
+            </td>
+
+            <!-- Instrument Symbol & Name -->
+            <td class="td-symbol">
+              <div class="symbol-info">
+                <div class="symbol-line">
+                  <span class="symbol-code">{{ tx.symbol }}</span>
+                  <span class="exchange-tag">{{ tx.exchange }}</span>
+                </div>
+                <span class="company-name" [title]="tx.companyName">{{ tx.companyName }}</span>
+              </div>
+            </td>
+
+            <!-- Transaction & Order IDs -->
+            <td class="td-id">
+              <div class="id-wrap">
+                <span class="tx-id-badge" [title]="'Transaction ID: #' + tx.transactionId">TX #{{ tx.transactionId }}</span>
+                <span class="order-id-sub" *ngIf="tx.orderId" [title]="'Order ID: #' + tx.orderId">Ord #{{ tx.orderId }}</span>
+              </div>
+            </td>
+
+            <!-- Quantity -->
+            <td class="td-num font-mono">
+              {{ tx.quantity | number:'1.0-4' }}
+            </td>
+
+            <!-- Executed Price -->
+            <td class="td-num font-mono">
+              {{ getCurrencySymbol(tx.currency) }}{{ tx.executionPrice | number:'1.2-4' }}
+            </td>
+
+            <!-- Total Amount -->
+            <td class="td-num font-mono">
+              <span class="total-amount" [ngClass]="tx.type === 'BUY' ? 'cost-outflow' : 'cost-inflow'">
+                {{ tx.type === 'BUY' ? '-' : '+' }}{{ getCurrencySymbol(tx.currency) }}{{ tx.totalAmount | number:'1.2-2' }}
+              </span>
+            </td>
+
+            <!-- Status -->
+            <td class="td-status">
+              <span class="status-badge" [ngClass]="getStatusBadgeClass(tx.status)">
+                {{ tx.status }}
+              </span>
+            </td>
+
+            <!-- Trade / View Action -->
+            <td class="td-action" (click)="$event.stopPropagation()">
+              <a [routerLink]="['/dashboard/stock', tx.symbol]" class="btn-stock-link" title="View details and trade chart">
+                Trade
+              </a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Footer -->
+    <div class="pagination-footer" *ngIf="pageResponse() as p">
+      <div class="pagination-info">
+        Showing <strong>{{ (p.page * p.size) + 1 }}</strong> to 
+        <strong>{{ getDisplayEnd(p.page, p.size, p.totalElements) }}</strong> of 
+        <strong>{{ p.totalElements }}</strong> records
+      </div>
+
+      <div class="pagination-controls" *ngIf="p.totalPages > 1">
+        <button 
+          type="button" 
+          class="page-btn nav-btn" 
+          [disabled]="p.first || isLoading()"
+          (click)="goToPage(p.page - 1)"
+          title="Previous page">
+          &lsaquo; Prev
+        </button>
+
+        <ng-container *ngFor="let pageNum of getPageNumbers(p.totalPages)">
+          <button 
+            type="button" 
+            class="page-btn" 
+            [class.active]="pageNum === p.page"
+            [disabled]="isLoading()"
+            (click)="goToPage(pageNum)">
+            {{ pageNum + 1 }}
+          </button>
+        </ng-container>
+
+        <button 
+          type="button" 
+          class="page-btn nav-btn" 
+          [disabled]="p.last || isLoading()"
+          (click)="goToPage(p.page + 1)"
+          title="Next page">
+          Next &rsaquo;
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
