@@ -1,135 +1,297 @@
-import { Component, signal } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  inject,
+  signal,
+  computed
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-
-interface WatchItem {
-  symbol: string;
-  name: string;
-  category: string;
-  exchange: string;
-  currency: string;
-}
+import { Router, RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { WatchlistService } from '../../../services/watchlist.service';
+import { MarketService } from '../../../services/market.service';
+import { WatchlistItem, AddWatchlistRequest } from '../../../models/watchlist.model';
+import { StockSearchItem } from '../../../models/market.model';
 
 @Component({
   selector: 'app-watchlist',
   standalone: true,
-  imports: [CommonModule, RouterModule],
-  template: `
-    <div class="page-container">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">Watchlist</h1>
-          <p class="page-sub">Monitor key market securities, volatility triggers, and price bands.</p>
-        </div>
-      </div>
-
-      <div class="watchlist-grid">
-        @for (item of items(); track item.symbol) {
-          <a [routerLink]="['/dashboard/stock', item.symbol]" class="watch-card">
-            <div class="card-left">
-              <div class="sym-badge">{{ item.symbol }}</div>
-              <div class="info-group">
-                <span class="stock-name">{{ item.name }}</span>
-                <span class="stock-meta">{{ item.exchange }} • {{ item.category }}</span>
-              </div>
-            </div>
-            <div class="card-right">
-              <span class="btn-view-details">
-                <span>View Details</span>
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                  <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
-              </span>
-            </div>
-          </a>
-        }
-      </div>
-    </div>
-  `,
-  styles: [`
-    .page-container { display: flex; flex-direction: column; gap: 1.5rem; max-width: 1200px; margin: 0 auto; }
-    .page-title { font-size: 1.75rem; font-weight: 800; color: var(--text-primary); }
-    .page-sub { font-size: 0.92rem; color: var(--text-secondary); }
-    .watchlist-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 1rem;
-    }
-    .watch-card {
-      background: var(--bg-glass-card);
-      backdrop-filter: var(--glass-blur);
-      border: 1px solid var(--border-glass);
-      border-radius: var(--radius-lg, 12px);
-      padding: 1.25rem 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      text-decoration: none;
-      transition: all 0.2s ease;
-    }
-    .watch-card:hover {
-      border-color: var(--primary-color, #38bdf8);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.3);
-    }
-    .card-left {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-    .sym-badge {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.92rem;
-      font-weight: 800;
-      color: #38bdf8;
-      background: rgba(56, 189, 248, 0.12);
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      padding: 0.35rem 0.65rem;
-      border-radius: 6px;
-    }
-    .info-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.2rem;
-    }
-    .stock-name {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--text-primary);
-    }
-    .stock-meta {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-    }
-    .btn-view-details {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--text-secondary);
-      padding: 0.35rem 0.7rem;
-      border-radius: 6px;
-      background: var(--bg-surface-elevated);
-      border: 1px solid var(--border-subtle);
-      transition: all 0.15s ease;
-    }
-    .watch-card:hover .btn-view-details {
-      color: #38bdf8;
-      border-color: rgba(56, 189, 248, 0.4);
-    }
-  `]
+  imports: [CommonModule, RouterModule, FormsModule],
+  templateUrl: './watchlist.html',
+  styleUrls: ['./watchlist.css']
 })
-export class WatchlistComponent {
-  readonly items = signal<WatchItem[]>([
-    { symbol: 'RELIANCE', name: 'Reliance Industries', category: 'Stock', exchange: 'NSE', currency: 'INR' },
-    { symbol: 'TCS', name: 'Tata Consultancy Services', category: 'Stock', exchange: 'NSE', currency: 'INR' },
-    { symbol: 'NIFTY 50', name: 'Nifty 50 Index', category: 'Index', exchange: 'NSE', currency: 'INR' },
-    { symbol: 'BANK NIFTY', name: 'Nifty Bank Index', category: 'Index', exchange: 'NSE', currency: 'INR' },
-    { symbol: 'AAPL', name: 'Apple Inc.', category: 'Stock', exchange: 'NASDAQ', currency: 'USD' },
-    { symbol: 'NVDA', name: 'NVIDIA Corporation', category: 'Stock', exchange: 'NASDAQ', currency: 'USD' },
-    { symbol: 'EUR/USD', name: 'Euro / US Dollar', category: 'Forex', exchange: 'Forex', currency: 'USD' },
-    { symbol: 'BTC/USD', name: 'Bitcoin / US Dollar', category: 'Crypto', exchange: 'Coinbase', currency: 'USD' }
-  ]);
+export class WatchlistComponent implements OnInit {
+  private readonly watchlistService = inject(WatchlistService);
+  private readonly marketService = inject(MarketService);
+  private readonly router = inject(Router);
+
+  readonly watchlistData = this.watchlistService.watchlistData;
+  readonly isLoading = this.watchlistService.isLoading;
+  readonly error = this.watchlistService.error;
+
+  // Search & Filtering
+  readonly filterQuery = signal<string>('');
+  readonly selectedCategory = signal<string>('ALL');
+  readonly collapsedCategories = signal<Record<string, boolean>>({});
+
+  // Add Symbol Bar & Autocomplete
+  readonly addSymbolQuery = signal<string>('');
+  readonly selectedAddCategory = signal<string>('AUTO');
+  readonly searchResults = signal<StockSearchItem[]>([]);
+  readonly isSearching = signal<boolean>(false);
+  readonly isAdding = signal<boolean>(false);
+  readonly addMessage = signal<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // Drag & Drop
+  readonly draggedItemId = signal<number | null>(null);
+
+  readonly categoriesList = ['INDICES', 'STOCKS', 'FOREX', 'CRYPTO'];
+
+  // Filtered & Grouped Items
+  readonly filteredItems = computed(() => {
+    const data = this.watchlistData();
+    if (!data || !data.items) return [];
+
+    let items = data.items;
+    const cat = this.selectedCategory();
+    if (cat !== 'ALL') {
+      items = items.filter(i => i.category === cat);
+    }
+
+    const q = this.filterQuery().trim().toLowerCase();
+    if (q) {
+      items = items.filter(i =>
+        i.symbol.toLowerCase().includes(q) ||
+        (i.companyName && i.companyName.toLowerCase().includes(q)) ||
+        (i.exchange && i.exchange.toLowerCase().includes(q))
+      );
+    }
+
+    return items;
+  });
+
+  // Grouped by Category for Sectional Display
+  readonly groupedCategories = computed(() => {
+    const items = this.filteredItems();
+    const groups: { category: string; title: string; items: WatchlistItem[] }[] = [];
+
+    const categoryTitles: Record<string, string> = {
+      INDICES: 'Market Indices',
+      STOCKS: 'Equities & Stocks',
+      FOREX: 'Currency Pairs (Forex)',
+      CRYPTO: 'Cryptocurrencies'
+    };
+
+    for (const cat of this.categoriesList) {
+      const catItems = items.filter(i => i.category === cat);
+      if (catItems.length > 0 || this.selectedCategory() === cat) {
+        groups.push({
+          category: cat,
+          title: categoryTitles[cat] || cat,
+          items: catItems
+        });
+      }
+    }
+
+    return groups;
+  });
+
+  ngOnInit(): void {
+    this.loadWatchlist();
+  }
+
+  loadWatchlist(): void {
+    this.watchlistService.getWatchlist().subscribe();
+  }
+
+  refreshPrices(): void {
+    this.loadWatchlist();
+  }
+
+  setCategoryFilter(cat: string): void {
+    this.selectedCategory.set(cat);
+  }
+
+  toggleCategoryCollapse(category: string): void {
+    this.collapsedCategories.update(current => ({
+      ...current,
+      [category]: !current[category]
+    }));
+  }
+
+  isCategoryCollapsed(category: string): boolean {
+    return !!this.collapsedCategories()[category];
+  }
+
+  getCategoryCount(category: string): number {
+    const data = this.watchlistData();
+    if (!data || !data.items) return 0;
+    return data.items.filter(i => i.category === category).length;
+  }
+
+  // ==========================================================================
+  // SYMBOL SEARCH & ADD
+  // ==========================================================================
+  onAddSearchInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const q = input?.value || '';
+    this.addSymbolQuery.set(q);
+    this.addMessage.set(null);
+
+    if (q.trim().length >= 2) {
+      this.isSearching.set(true);
+      this.marketService.searchSymbols(q.trim()).subscribe({
+        next: (resp) => {
+          this.searchResults.set(resp.bestMatches || []);
+          this.isSearching.set(false);
+        },
+        error: () => {
+          this.searchResults.set([]);
+          this.isSearching.set(false);
+        }
+      });
+    } else {
+      this.searchResults.set([]);
+      this.isSearching.set(false);
+    }
+  }
+
+  selectSearchResult(item: StockSearchItem): void {
+    if (!item || !item.symbol) return;
+    this.addSymbolQuery.set(item.symbol);
+    this.searchResults.set([]);
+    this.submitAddSymbol();
+  }
+
+  submitAddSymbol(): void {
+    const sym = this.addSymbolQuery().trim().toUpperCase();
+    if (!sym) return;
+
+    this.isAdding.set(true);
+    this.addMessage.set(null);
+
+    const req: AddWatchlistRequest = {
+      symbol: sym,
+      category: this.selectedAddCategory() === 'AUTO' ? undefined : this.selectedAddCategory()
+    };
+
+    this.watchlistService.addToWatchlist(req).subscribe({
+      next: (item) => {
+        this.isAdding.set(false);
+        this.addSymbolQuery.set('');
+        this.searchResults.set([]);
+        this.addMessage.set({
+          text: `Successfully added ${item.symbol} to watchlist.`,
+          type: 'success'
+        });
+        setTimeout(() => this.addMessage.set(null), 4000);
+      },
+      error: (err) => {
+        this.isAdding.set(false);
+        const msg = err?.error?.message || err?.message || 'Failed to add symbol to watchlist.';
+        this.addMessage.set({
+          text: msg,
+          type: 'error'
+        });
+      }
+    });
+  }
+
+  removeItem(item: WatchlistItem, event: Event): void {
+    event.stopPropagation();
+    event.preventDefault();
+
+    this.watchlistService.removeFromWatchlist(item.id).subscribe({
+      next: () => {
+        this.addMessage.set({
+          text: `Removed ${item.symbol} from watchlist.`,
+          type: 'success'
+        });
+        setTimeout(() => this.addMessage.set(null), 3000);
+      },
+      error: (err) => {
+        const msg = err?.error?.message || err?.message || 'Failed to remove item.';
+        this.addMessage.set({ text: msg, type: 'error' });
+      }
+    });
+  }
+
+  // ==========================================================================
+  // DRAG & DROP REORDERING
+  // ==========================================================================
+  onDragStart(item: WatchlistItem, event: DragEvent): void {
+    this.draggedItemId.set(item.id);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', item.id.toString());
+    }
+  }
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+  }
+
+  onDrop(targetItem: WatchlistItem, event: DragEvent): void {
+    event.preventDefault();
+    const draggedId = this.draggedItemId();
+    if (draggedId === null || draggedId === targetItem.id) return;
+
+    const currentData = this.watchlistData();
+    if (!currentData || !currentData.items) return;
+
+    const items = [...currentData.items];
+    const fromIndex = items.findIndex(i => i.id === draggedId);
+    const toIndex = items.findIndex(i => i.id === targetItem.id);
+
+    if (fromIndex !== -1 && toIndex !== -1) {
+      const [movedItem] = items.splice(fromIndex, 1);
+      items.splice(toIndex, 0, movedItem);
+
+      // Re-assign displayOrder
+      const orderedIds = items.map(i => i.id);
+
+      // Optimistic update
+      this.watchlistService.watchlistData.set({
+        ...currentData,
+        items
+      });
+
+      this.watchlistService.reorderWatchlist({ orderedIds }).subscribe({
+        error: () => {
+          this.loadWatchlist();
+        }
+      });
+    }
+
+    this.draggedItemId.set(null);
+  }
+
+  onDragEnd(): void {
+    this.draggedItemId.set(null);
+  }
+
+  navigateToStock(symbol: string): void {
+    if (!symbol) return;
+    this.router.navigate(['/dashboard/stock', symbol]);
+  }
+
+  getCurrencySymbol(currency?: string): string {
+    if (currency === 'INR') return '₹';
+    if (currency === 'EUR') return '€';
+    if (currency === 'GBP') return '£';
+    return '$';
+  }
+
+  isPositiveChange(changePercent: string | null): boolean {
+    if (!changePercent) return false;
+    return changePercent.startsWith('+') || (!changePercent.startsWith('-') && parseFloat(changePercent) > 0);
+  }
+
+  isNegativeChange(changePercent: string | null): boolean {
+    if (!changePercent) return false;
+    return changePercent.startsWith('-') || parseFloat(changePercent) < 0;
+  }
 }

@@ -30,6 +30,12 @@ public class Watchlist {
     @JoinColumn(name = "stock_id", nullable = false, foreignKey = @ForeignKey(name = "fk_watchlist_stock"))
     private Stock stock;
 
+    @Column(length = 20)
+    private String category = "STOCKS";
+
+    @Column(name = "display_order")
+    private Integer displayOrder = 0;
+
     @Column(length = 500)
     private String notes;
 
@@ -42,6 +48,13 @@ public class Watchlist {
     public Watchlist(User user, Stock stock) {
         this.user = user;
         this.stock = stock;
+    }
+
+    public Watchlist(User user, Stock stock, String category, Integer displayOrder) {
+        this.user = user;
+        this.stock = stock;
+        this.category = category != null ? category : "STOCKS";
+        this.displayOrder = displayOrder != null ? displayOrder : 0;
     }
 
     public Watchlist(User user, Stock stock, String notes) {
@@ -72,6 +85,22 @@ public class Watchlist {
 
     public void setStock(Stock stock) {
         this.stock = stock;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public Integer getDisplayOrder() {
+        return displayOrder;
+    }
+
+    public void setDisplayOrder(Integer displayOrder) {
+        this.displayOrder = displayOrder;
     }
 
     public String getNotes() {

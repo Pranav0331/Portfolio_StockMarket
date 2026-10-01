@@ -1,0 +1,337 @@
+<div class="watchlist-container">
+  <!-- PAGE HEADER -->
+  <div class="watchlist-header glass-card">
+    <div class="header-left">
+      <div class="title-row">
+        <h1 class="page-title">Market Watchlist</h1>
+        <span class="badge-source">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          Live Market Feed
+        </span>
+      </div>
+      <p class="page-subtitle">
+        Organize, track, and monitor real-time prices across indices, stocks, forex pairs, and crypto assets.
+      </p>
+    </div>
+
+    <div class="header-actions">
+      @if (watchlistData()?.lastRefreshed) {
+        <div class="refresh-time-box">
+          <span class="time-lbl">Updated:</span>
+          <span class="time-val">{{ watchlistData()?.lastRefreshed | date:'mediumTime' }}</span>
+        </div>
+      }
+
+      <button 
+        type="button" 
+        class="btn-refresh" 
+        (click)="refreshPrices()" 
+        [disabled]="isLoading()"
+        title="Refresh real-time prices"
+      >
+        <svg [class.spinning]="isLoading()" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6"></path>
+          <path d="M1 20v-6h6"></path>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>{{ isLoading() ? 'Updating...' : 'Refresh Prices' }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ADD SYMBOL & FILTER TOOLBAR -->
+  <div class="toolbar-card glass-card">
+    <div class="add-symbol-section">
+      <div class="search-input-wrapper">
+        <span class="search-icon">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </span>
+        <input 
+          type="text" 
+          [value]="addSymbolQuery()" 
+          (input)="onAddSearchInput($event)"
+          (keyup.enter)="submitAddSymbol()"
+          placeholder="Add symbol (e.g. RELIANCE, AAPL, NIFTY 50, EUR/USD, BTC/USD)..." 
+          class="add-input"
+        />
+
+        @if (isSearching()) {
+          <span class="input-spinner"></span>
+        }
+
+        <!-- Autocomplete Suggestions Dropdown -->
+        @if (searchResults().length > 0) {
+          <div class="search-results-dropdown">
+            @for (res of searchResults(); track res.symbol) {
+              <div class="search-result-item" (click)="selectSearchResult(res)">
+                <div class="res-left">
+                  <span class="res-symbol">{{ res.symbol }}</span>
+                  <span class="res-name">{{ res.name || res.symbol }}</span>
+                </div>
+                <span class="res-type-badge">{{ res.type || 'Stock' }} • {{ res.currency || 'USD' }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="add-controls">
+        <select 
+          class="category-select" 
+          [ngModel]="selectedAddCategory()" 
+          (ngModelChange)="selectedAddCategory.set($event)"
+        >
+          <option value="AUTO">Auto Detect Category</option>
+          <option value="INDICES">Indices</option>
+          <option value="STOCKS">Stocks</option>
+          <option value="FOREX">Forex</option>
+          <option value="CRYPTO">Crypto</option>
+        </select>
+
+        <button 
+          type="button" 
+          class="btn-add-symbol" 
+          (click)="submitAddSymbol()" 
+          [disabled]="isAdding() || !addSymbolQuery().trim()"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>{{ isAdding() ? 'Adding...' : 'Add to Watchlist' }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Alert / Feedback Banner -->
+    @if (addMessage(); as msg) {
+      <div class="feedback-banner" [ngClass]="msg.type">
+        <span>{{ msg.text }}</span>
+      </div>
+    }
+
+    <!-- Filtering & Category Tabs -->
+    <div class="filter-row">
+      <div class="category-tabs">
+        <button 
+          type="button" 
+          class="tab-btn" 
+          [class.active]="selectedCategory() === 'ALL'"
+          (click)="setCategoryFilter('ALL')"
+        >
+          All ({{ watchlistData()?.totalCount || 0 }})
+        </button>
+        @for (cat of categoriesList; track cat) {
+          <button 
+            type="button" 
+            class="tab-btn" 
+            [class.active]="selectedCategory() === cat"
+            (click)="setCategoryFilter(cat)"
+          >
+            {{ cat | titlecase }} ({{ getCategoryCount(cat) }})
+          </button>
+        }
+      </div>
+
+      <div class="filter-input-wrap">
+        <span class="filter-icon">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+          </svg>
+        </span>
+        <input 
+          type="text" 
+          [ngModel]="filterQuery()" 
+          (ngModelChange)="filterQuery.set($event)"
+          placeholder="Filter watchlist..." 
+          class="filter-input"
+        />
+      </div>
+    </div>
+  </div>
+
+  <!-- LOADING SKELETON STATE -->
+  @if (isLoading() && !watchlistData()) {
+    <div class="loading-container glass-card">
+      <div class="spinner"></div>
+      <h3>Loading Real-Time Watchlist...</h3>
+      <p>Fetching quotes from Upstox & Twelve Data</p>
+    </div>
+  }
+
+  <!-- ERROR BANNER -->
+  @if (error() && !isLoading()) {
+    <div class="error-banner glass-card">
+      <div class="error-icon">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <div class="error-content">
+        <h4>Unable to Load Watchlist</h4>
+        <p>{{ error() }}</p>
+      </div>
+      <button type="button" class="btn-retry" (click)="loadWatchlist()">Retry</button>
+    </div>
+  }
+
+  <!-- WATCHLIST SECTIONS & ITEMS -->
+  @if (watchlistData(); as data) {
+    @if (data.items.length === 0) {
+      <!-- EMPTY WATCHLIST STATE -->
+      <div class="empty-watchlist-card glass-card">
+        <div class="empty-icon-circle">
+          <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </div>
+        <h2>Your Watchlist is Empty</h2>
+        <p class="empty-desc">
+          Add Indian stocks, US equities, market indices, forex pairs, or cryptocurrencies to track live prices, intraday swings, and volume.
+        </p>
+
+        <div class="suggested-chips">
+          <span class="suggest-lbl">Quick Add:</span>
+          <button type="button" class="chip-btn" (click)="addSymbolQuery.set('RELIANCE'); submitAddSymbol()">+ RELIANCE</button>
+          <button type="button" class="chip-btn" (click)="addSymbolQuery.set('TCS'); submitAddSymbol()">+ TCS</button>
+          <button type="button" class="chip-btn" (click)="addSymbolQuery.set('AAPL'); submitAddSymbol()">+ AAPL</button>
+          <button type="button" class="chip-btn" (click)="addSymbolQuery.set('NIFTY 50'); submitAddSymbol()">+ NIFTY 50</button>
+          <button type="button" class="chip-btn" (click)="addSymbolQuery.set('EUR/USD'); submitAddSymbol()">+ EUR/USD</button>
+          <button type="button" class="chip-btn" (click)="addSymbolQuery.set('BTC/USD'); submitAddSymbol()">+ BTC/USD</button>
+        </div>
+      </div>
+    } @else {
+      <!-- CATEGORY GROUPS WITH DRAG & DROP -->
+      <div class="watchlist-groups-container">
+        @for (group of groupedCategories(); track group.category) {
+          <div class="category-section glass-card">
+            <div class="section-header" (click)="toggleCategoryCollapse(group.category)">
+              <div class="section-title-wrap">
+                <span class="category-icon" [ngClass]="group.category.toLowerCase()">
+                  @if (group.category === 'INDICES') {
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline></svg>
+                  } @else if (group.category === 'FOREX') {
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                  } @else if (group.category === 'CRYPTO') {
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.5 9.5h5a2 2 0 0 1 0 4h-5m0 0h5a2 2 0 0 1 0 4h-5"></path></svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                  }
+                </span>
+                <h3 class="section-title">{{ group.title }}</h3>
+                <span class="section-count">{{ group.items.length }} assets</span>
+              </div>
+
+              <button 
+                type="button" 
+                class="btn-collapse" 
+                (click)="$event.stopPropagation(); toggleCategoryCollapse(group.category)"
+                [title]="isCategoryCollapsed(group.category) ? 'Expand section' : 'Collapse section'"
+              >
+                <svg [class.rotated]="isCategoryCollapsed(group.category)" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+            </div>
+
+            @if (!isCategoryCollapsed(group.category)) {
+              @if (group.items.length === 0) {
+                <div class="empty-category-msg">
+                  <span>No {{ group.title.toLowerCase() }} found in your watchlist matching the current filter.</span>
+                </div>
+              } @else {
+                <div class="watchlist-items-grid">
+                  @for (item of group.items; track item.id) {
+                    <div 
+                      class="watchlist-card"
+                      [class.dragging]="draggedItemId() === item.id"
+                      draggable="true"
+                      (dragstart)="onDragStart(item, $event)"
+                      (dragover)="onDragOver($event)"
+                      (drop)="onDrop(item, $event)"
+                      (dragend)="onDragEnd()"
+                      (click)="navigateToStock(item.symbol)"
+                    >
+                      <!-- Drag Handle -->
+                      <div class="drag-handle" title="Drag to reorder" (click)="$event.stopPropagation()">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                          <circle cx="9" cy="6" r="1.5"></circle>
+                          <circle cx="15" cy="6" r="1.5"></circle>
+                          <circle cx="9" cy="12" r="1.5"></circle>
+                          <circle cx="15" cy="12" r="1.5"></circle>
+                          <circle cx="9" cy="18" r="1.5"></circle>
+                          <circle cx="15" cy="18" r="1.5"></circle>
+                        </svg>
+                      </div>
+
+                      <!-- Symbol & Company Info -->
+                      <div class="item-primary-info">
+                        <div class="sym-badge-row">
+                          <span class="symbol-tag">{{ item.symbol }}</span>
+                          <span class="exchange-tag">{{ item.exchange }}</span>
+                          <span class="provider-pill">{{ item.provider }}</span>
+                        </div>
+                        <span class="company-title" [title]="item.companyName">{{ item.companyName }}</span>
+                      </div>
+
+                      <!-- Price & Performance Metrics -->
+                      <div class="item-pricing-info">
+                        @if (item.priceAvailable && item.currentPrice !== null) {
+                          <div class="price-val">
+                            {{ getCurrencySymbol(item.currency) }}{{ item.currentPrice | number:'1.2-4' }}
+                          </div>
+                          <div class="change-val" [class.profit]="isPositiveChange(item.changePercent)" [class.loss]="isNegativeChange(item.changePercent)">
+                            <span>{{ item.change && item.change > 0 ? '+' : '' }}{{ item.change ? (item.change | number:'1.2-2') : '0.00' }}</span>
+                            <span class="pct">({{ item.changePercent || '0.00%' }})</span>
+                          </div>
+                        } @else {
+                          <span class="price-unavailable">Data unavailable</span>
+                        }
+                      </div>
+
+                      <!-- Actions -->
+                      <div class="item-actions" (click)="$event.stopPropagation()">
+                        <button 
+                          type="button" 
+                          class="btn-action-view" 
+                          (click)="navigateToStock(item.symbol)"
+                          title="View Technical Chart & Details"
+                        >
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                          </svg>
+                          <span>Analyze</span>
+                        </button>
+
+                        <button 
+                          type="button" 
+                          class="btn-action-remove" 
+                          (click)="removeItem(item, $event)"
+                          title="Remove from watchlist"
+                        >
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            }
+          </div>
+        }
+      </div>
+    }
+  }
+</div>
