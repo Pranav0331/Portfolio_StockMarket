@@ -160,6 +160,22 @@
   border-left: 3px solid var(--accent-primary);
 }
 
+.nav-item-admin {
+  color: #c084fc;
+}
+
+.nav-item-admin:hover {
+  background: rgba(168, 85, 247, 0.15);
+  color: #e9d5ff;
+}
+
+.nav-item-admin.active {
+  color: #c084fc;
+  background: rgba(168, 85, 247, 0.15);
+  border-left: 3px solid #c084fc;
+}
+
+
 .nav-icon {
   min-width: 20px;
 }

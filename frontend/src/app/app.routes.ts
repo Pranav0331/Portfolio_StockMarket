@@ -11,11 +11,13 @@ import { OrdersComponent } from './pages/dashboard/orders/orders';
 import { TransactionsComponent } from './pages/dashboard/transactions/transactions';
 import { AlertsComponent } from './pages/dashboard/alerts/alerts';
 import { SettingsComponent } from './pages/dashboard/settings/settings';
+import { AdminComponent } from './pages/dashboard/admin/admin';
 import { StockDetailsComponent } from './pages/dashboard/stock-details/stock-details';
 import { TechnicalAnalysisComponent } from './pages/dashboard/technical/technical';
 import { FundamentalComponent } from './pages/dashboard/fundamental/fundamental';
 import { RiskComponent } from './pages/dashboard/risk/risk';
 import { authGuard, rootGuard, guestGuard } from './guards/auth.guard';
+import { adminGuard } from './guards/admin.guard';
 
 export const routes: Routes = [
   { 
@@ -56,9 +58,11 @@ export const routes: Routes = [
       { path: 'orders', component: OrdersComponent },
       { path: 'transactions', component: TransactionsComponent },
       { path: 'alerts', component: AlertsComponent },
+      { path: 'admin', component: AdminComponent, canActivate: [adminGuard] },
       { path: 'settings', component: SettingsComponent }
     ]
   },
 
   { path: '**', redirectTo: '' }
 ];
+
