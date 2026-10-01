@@ -163,5 +163,3 @@ npm test -- --no-watch
 
 ---
 
-## License
-MIT License
