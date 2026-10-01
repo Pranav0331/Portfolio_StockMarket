@@ -1,0 +1,314 @@
+<div class="technical-container">
+  <!-- Top Navigation & Symbol Bar -->
+  <header class="technical-header glass-card">
+    <div class="header-left">
+      <div class="symbol-title-row">
+        <div class="symbol-badge-box">
+          <span class="symbol-text">{{ symbol() }}</span>
+          <span class="exchange-tag">{{ currentExchange() }}</span>
+        </div>
+        <span class="company-title" *ngIf="currentQuote() as q">{{ q.name || symbol() }}</span>
+      </div>
+
+      <div class="price-quote-strip" *ngIf="currentQuote() as q">
+        <span class="real-price">{{ getCurrencySymbol() }}{{ q.price | number:'1.2-4' }}</span>
+        <span class="change-pill" [ngClass]="(q.change || 0) >= 0 ? 'pill-positive' : 'pill-negative'">
+          {{ (q.change || 0) >= 0 ? '+' : '' }}{{ q.change | number:'1.2-2' }}
+          ({{ q.changePercent || '0.00%' }})
+        </span>
+      </div>
+    </div>
+
+    <!-- Symbol Switcher & Search -->
+    <div class="header-center">
+      <div class="symbol-search-box">
+        <svg class="search-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input 
+          type="text" 
+          class="symbol-input" 
+          placeholder="Switch symbol (e.g. AAPL, TCS, BTC/USD)..." 
+          [value]="searchQuery()" 
+          (input)="onSearchInput($event)"
+          (keydown.enter)="onSearchEnter()">
+        <button class="btn-go" (click)="onSearchEnter()">Go</button>
+      </div>
+    </div>
+
+    <!-- Provider badge & Action Buttons -->
+    <div class="header-actions">
+      <div class="meta-badge-group">
+        <span class="provider-badge" [title]="'Real-time data powered by ' + currentProvider()">
+          <span class="live-dot"></span>
+          {{ currentProvider() }}
+        </span>
+        <span class="interval-badge">{{ currentTimeframe() }} ({{ currentInterval() }})</span>
+      </div>
+
+      <button 
+        type="button" 
+        class="btn-refresh" 
+        (click)="refreshData()" 
+        [disabled]="isLoading()"
+        title="Refresh technical data">
+        <svg class="refresh-icon" [class.spinning]="isLoading()" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6"></path>
+          <path d="M1 20v-6h6"></path>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+      </button>
+
+      <a [routerLink]="['/dashboard/stock', symbol()]" class="btn-action-link" title="Open Stock Details">
+        Details
+      </a>
+    </div>
+  </header>
+
+  <!-- Error Banner -->
+  <div class="error-banner glass-card" *ngIf="errorMessage()">
+    <div class="error-content">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" class="error-icon">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <div class="error-text">
+        <strong>Technical Analysis Error:</strong> {{ errorMessage() }}
+      </div>
+    </div>
+    <button class="btn-retry" (click)="loadTechnicalData(symbol())">Retry</button>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state glass-card" *ngIf="isLoading() && (!summary() || summary()?.candleCount === 0)">
+    <div class="loading-spinner"></div>
+    <p>Loading real market historical candles and calculating indicators for {{ symbol() }}...</p>
+  </div>
+
+  <!-- Technical Indicator Overview Cards -->
+  <div class="indicators-summary-grid" *ngIf="summary() as s">
+    <!-- 1. RSI (14) Card -->
+    <div class="indicator-card glass-card">
+      <div class="ind-card-header">
+        <div class="ind-title-wrap">
+          <span class="ind-title">RSI (14)</span>
+          <span class="ind-badge" [ngClass]="getRsiBadgeClass(s.rsi14.latestValue)">
+            {{ getRsiCondition(s.rsi14.latestValue) }}
+          </span>
+        </div>
+        <span class="ind-sub">Relative Strength</span>
+      </div>
+
+      <div class="ind-card-body">
+        <ng-container *ngIf="s.rsi14.isSufficient && s.rsi14.latestValue !== null; else rsiInsufficient">
+          <div class="ind-main-val">{{ s.rsi14.latestValue | number:'1.2-2' }}</div>
+          <!-- Visual Meter -->
+          <div class="rsi-meter-track">
+            <div class="rsi-zone-oversold"></div>
+            <div class="rsi-zone-neutral"></div>
+            <div class="rsi-zone-overbought"></div>
+            <div class="rsi-needle" [style.left.%]="s.rsi14.latestValue"></div>
+          </div>
+          <div class="rsi-scale-labels">
+            <span>0 (Oversold &lt; 30)</span>
+            <span>50</span>
+            <span>100 (Overbought &gt; 70)</span>
+          </div>
+        </ng-container>
+        <ng-template #rsiInsufficient>
+          <div class="insufficient-badge">Insufficient data</div>
+        </ng-template>
+      </div>
+    </div>
+
+    <!-- 2. MACD (12, 26, 9) Card -->
+    <div class="indicator-card glass-card">
+      <div class="ind-card-header">
+        <div class="ind-title-wrap">
+          <span class="ind-title">MACD (12, 26, 9)</span>
+        </div>
+        <span class="ind-sub">Convergence / Divergence</span>
+      </div>
+
+      <div class="ind-card-body">
+        <ng-container *ngIf="s.macd.isSufficient && s.macd.latestMACD !== null; else macdInsufficient">
+          <div class="macd-metrics-row">
+            <div class="macd-metric-col">
+              <span class="macd-label">MACD Line</span>
+              <span class="macd-val font-mono" [ngClass]="(s.macd.latestMACD || 0) >= 0 ? 'text-profit' : 'text-loss'">
+                {{ s.macd.latestMACD | number:'1.2-4' }}
+              </span>
+            </div>
+            <div class="macd-metric-col">
+              <span class="macd-label">Signal (9)</span>
+              <span class="macd-val font-mono">
+                {{ s.macd.latestSignal !== null ? (s.macd.latestSignal | number:'1.2-4') : '—' }}
+              </span>
+            </div>
+            <div class="macd-metric-col">
+              <span class="macd-label">Histogram</span>
+              <span class="macd-val font-mono" [ngClass]="(s.macd.latestHistogram || 0) >= 0 ? 'text-profit' : 'text-loss'">
+                {{ s.macd.latestHistogram !== null ? ((s.macd.latestHistogram || 0) >= 0 ? '+' : '') + (s.macd.latestHistogram | number:'1.2-4') : '—' }}
+              </span>
+            </div>
+          </div>
+        </ng-container>
+        <ng-template #macdInsufficient>
+          <div class="insufficient-badge">Insufficient data</div>
+        </ng-template>
+      </div>
+    </div>
+
+    <!-- 3. Moving Averages (EMA 20 & 50) Card -->
+    <div class="indicator-card glass-card">
+      <div class="ind-card-header">
+        <div class="ind-title-wrap">
+          <span class="ind-title">EMA (20 & 50)</span>
+        </div>
+        <span class="ind-sub">Exponential Moving Averages</span>
+      </div>
+
+      <div class="ind-card-body">
+        <div class="ma-rows">
+          <div class="ma-row">
+            <span class="ma-name color-ema20">EMA (20)</span>
+            <span class="ma-val font-mono" *ngIf="s.ema20.isSufficient && s.ema20.latestValue !== null; else ema20Insufficient">
+              {{ getCurrencySymbol() }}{{ s.ema20.latestValue | number:'1.2-2' }}
+            </span>
+            <ng-template #ema20Insufficient>
+              <span class="insufficient-text">Insufficient data</span>
+            </ng-template>
+          </div>
+
+          <div class="ma-row">
+            <span class="ma-name color-ema50">EMA (50)</span>
+            <span class="ma-val font-mono" *ngIf="s.ema50.isSufficient && s.ema50.latestValue !== null; else ema50Insufficient">
+              {{ getCurrencySymbol() }}{{ s.ema50.latestValue | number:'1.2-2' }}
+            </span>
+            <ng-template #ema50Insufficient>
+              <span class="insufficient-text">Insufficient data</span>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Moving Averages (SMA 20 & 50) Card -->
+    <div class="indicator-card glass-card">
+      <div class="ind-card-header">
+        <div class="ind-title-wrap">
+          <span class="ind-title">SMA (20 & 50)</span>
+        </div>
+        <span class="ind-sub">Simple Moving Averages</span>
+      </div>
+
+      <div class="ind-card-body">
+        <div class="ma-rows">
+          <div class="ma-row">
+            <span class="ma-name color-sma20">SMA (20)</span>
+            <span class="ma-val font-mono" *ngIf="s.sma20.isSufficient && s.sma20.latestValue !== null; else sma20Insufficient">
+              {{ getCurrencySymbol() }}{{ s.sma20.latestValue | number:'1.2-2' }}
+            </span>
+            <ng-template #sma20Insufficient>
+              <span class="insufficient-text">Insufficient data</span>
+            </ng-template>
+          </div>
+
+          <div class="ma-row">
+            <span class="ma-name color-sma50">SMA (50)</span>
+            <span class="ma-val font-mono" *ngIf="s.sma50.isSufficient && s.sma50.latestValue !== null; else sma50Insufficient">
+              {{ getCurrencySymbol() }}{{ s.sma50.latestValue | number:'1.2-2' }}
+            </span>
+            <ng-template #sma50Insufficient>
+              <span class="insufficient-text">Insufficient data</span>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Chart & Indicator Panels Container -->
+  <div class="chart-section glass-card">
+    <!-- Chart Toolbar -->
+    <div class="chart-toolbar">
+      <!-- Timeframe Selector -->
+      <div class="timeframe-selector">
+        <button 
+          *ngFor="let tf of availableTimeframes"
+          type="button" 
+          class="tf-btn" 
+          [class.active]="currentTimeframe() === tf"
+          (click)="setTimeframe(tf)">
+          {{ tf }}
+        </button>
+      </div>
+
+      <!-- Overlay Indicator Toggles -->
+      <div class="indicator-toggles">
+        <span class="toggle-group-label">Overlays:</span>
+        <button 
+          type="button" 
+          class="ind-toggle-btn" 
+          [class.active]="showEMA()" 
+          (click)="toggleEMA()">
+          EMA (20/50)
+        </button>
+        <button 
+          type="button" 
+          class="ind-toggle-btn" 
+          [class.active]="showSMA()" 
+          (click)="toggleSMA()">
+          SMA (20/50)
+        </button>
+
+        <span class="toggle-group-label">Oscillators:</span>
+        <button 
+          type="button" 
+          class="ind-toggle-btn" 
+          [class.active]="showRSI()" 
+          (click)="toggleRSI()">
+          RSI (14)
+        </button>
+        <button 
+          type="button" 
+          class="ind-toggle-btn" 
+          [class.active]="showMACD()" 
+          (click)="toggleMACD()">
+          MACD (12,26,9)
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Price & Overlay Chart Container -->
+    <div class="chart-wrapper">
+      <div #priceChartContainer class="chart-canvas-container price-chart-height"></div>
+    </div>
+
+    <!-- Sub-Chart: RSI (14) Panel -->
+    <div class="sub-chart-wrapper" *ngIf="showRSI()">
+      <div class="sub-chart-header">
+        <span class="sub-chart-title">RSI (14)</span>
+        <span class="sub-chart-legend">
+          <span class="legend-color-dot dot-rsi"></span> Value: {{ summary()?.rsi14?.latestValue || '—' }}
+        </span>
+      </div>
+      <div #rsiChartContainer class="chart-canvas-container sub-chart-height"></div>
+    </div>
+
+    <!-- Sub-Chart: MACD Panel -->
+    <div class="sub-chart-wrapper" *ngIf="showMACD()">
+      <div class="sub-chart-header">
+        <span class="sub-chart-title">MACD (12, 26, 9)</span>
+        <span class="sub-chart-legend">
+          <span class="legend-color-dot dot-macd"></span> MACD: {{ summary()?.macd?.latestMACD || '—' }} |
+          <span class="legend-color-dot dot-signal"></span> Signal: {{ summary()?.macd?.latestSignal || '—' }} |
+          <span class="legend-color-dot dot-hist"></span> Hist: {{ summary()?.macd?.latestHistogram || '—' }}
+        </span>
+      </div>
+      <div #macdChartContainer class="chart-canvas-container sub-chart-height"></div>
+    </div>
+  </div>
+</div>

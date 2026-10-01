@@ -12,6 +12,7 @@ import { TransactionsComponent } from './pages/dashboard/transactions/transactio
 import { AlertsComponent } from './pages/dashboard/alerts/alerts';
 import { SettingsComponent } from './pages/dashboard/settings/settings';
 import { StockDetailsComponent } from './pages/dashboard/stock-details/stock-details';
+import { TechnicalAnalysisComponent } from './pages/dashboard/technical/technical';
 import { authGuard, rootGuard, guestGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
@@ -43,6 +44,8 @@ export const routes: Routes = [
       { path: '', component: DashboardHomeComponent },
       { path: 'market', component: MarketComponent },
       { path: 'stock/:symbol', component: StockDetailsComponent },
+      { path: 'technical', redirectTo: 'technical/RELIANCE', pathMatch: 'full' },
+      { path: 'technical/:symbol', component: TechnicalAnalysisComponent },
       { path: 'portfolio', component: PortfolioComponent },
       { path: 'watchlist', component: WatchlistComponent },
       { path: 'orders', component: OrdersComponent },
