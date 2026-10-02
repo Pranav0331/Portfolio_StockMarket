@@ -14,7 +14,7 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly baseUrl = environment.apiUrl;
-  private readonly backendUrl = 'http://localhost:8080';
+  private readonly backendUrl = environment.apiUrl.replace('/api', '');
 
   readonly currentUser = signal<AuthUser | null>(null);
 
