@@ -173,4 +173,86 @@ class AdminControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("ROLE_ADMIN"));
     }
+
+    @Test
+    @DisplayName("GET /api/admin/orders - admin user returns recent orders")
+    void testGetRecentOrders_AdminSuccess() throws Exception {
+        AdminOrderDto orderDto = new AdminOrderDto(
+                1L, normalUser.getId(), "trader@example.com", "Normal Trader",
+                "AAPL", "Apple Inc.", "BUY", BigDecimal.valueOf(10),
+                BigDecimal.valueOf(150.0), BigDecimal.valueOf(1500.0), "FILLED",
+                System.currentTimeMillis()
+        );
+
+        when(adminService.getRecentOrders(50)).thenReturn(List.of(orderDto));
+
+        mockMvc.perform(get("/api/admin/orders")
+                        .header("Authorization", "Bearer " + adminJwtToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].symbol").value("AAPL"))
+                .andExpect(jsonPath("$[0].orderType").value("BUY"));
+    }
+
+    @Test
+    @DisplayName("GET /api/admin/orders - normal user returns 403 FORBIDDEN")
+    void testGetRecentOrders_NormalUserForbidden() throws Exception {
+        mockMvc.perform(get("/api/admin/orders")
+                        .header("Authorization", "Bearer " + normalJwtToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /api/admin/transactions - admin user returns recent transactions")
+    void testGetRecentTransactions_AdminSuccess() throws Exception {
+        AdminTransactionDto txDto = new AdminTransactionDto(
+                1L, normalUser.getId(), "trader@example.com", "Normal Trader",
+                "AAPL", "Apple Inc.", "BUY", BigDecimal.valueOf(10),
+                BigDecimal.valueOf(150.0), BigDecimal.valueOf(1500.0), BigDecimal.valueOf(2.0),
+                "SUCCESS", System.currentTimeMillis()
+        );
+
+        when(adminService.getRecentTransactions(50)).thenReturn(List.of(txDto));
+
+        mockMvc.perform(get("/api/admin/transactions")
+                        .header("Authorization", "Bearer " + adminJwtToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].symbol").value("AAPL"))
+                .andExpect(jsonPath("$[0].status").value("SUCCESS"));
+    }
+
+    @Test
+    @DisplayName("GET /api/admin/transactions - normal user returns 403 FORBIDDEN")
+    void testGetRecentTransactions_NormalUserForbidden() throws Exception {
+        mockMvc.perform(get("/api/admin/transactions")
+                        .header("Authorization", "Bearer " + normalJwtToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /api/admin/users/{id} - normal user returns 403 FORBIDDEN")
+    void testGetUserById_NormalUserForbidden() throws Exception {
+        mockMvc.perform(get("/api/admin/users/" + normalUser.getId())
+                        .header("Authorization", "Bearer " + normalJwtToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /api/admin/users - sensitive password and hash fields are NOT exposed")
+    void testGetUsers_DoesNotExposeSensitiveData() throws Exception {
+        AdminUserDto userDto = new AdminUserDto(
+                normalUser.getId(), "trader@example.com", "Normal Trader",
+                "ROLE_USER", "ACTIVE", "LOCAL",
+                System.currentTimeMillis(), System.currentTimeMillis(),
+                3, 10, 8, 2, 5, BigDecimal.valueOf(95000.0)
+        );
+
+        when(adminService.getUsers(any(), any(), any())).thenReturn(List.of(userDto));
+
+        mockMvc.perform(get("/api/admin/users")
+                        .header("Authorization", "Bearer " + adminJwtToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].password").doesNotExist())
+                .andExpect(jsonPath("$[0].passwordHash").doesNotExist())
+                .andExpect(jsonPath("$[0].secret").doesNotExist());
+    }
 }

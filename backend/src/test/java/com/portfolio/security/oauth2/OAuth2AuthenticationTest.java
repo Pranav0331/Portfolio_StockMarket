@@ -192,4 +192,56 @@ class OAuth2AuthenticationTest {
         assertThat(savedUserOpt).isPresent();
         assertThat(savedUserOpt.get().getProviderId()).isEqualTo("google-oidc-sub-9999");
     }
+
+    @Test
+    @DisplayName("5. Google OAuth registers new user with ROLE_ADMIN when email matches ADMIN_EMAIL")
+    void testGoogleOAuthMatchingAdminEmailGetsRoleAdmin() {
+        Map<String, Object> attributes = Map.of(
+                "email", "admin@example.com",
+                "name", "System Administrator",
+                "sub", "google-admin-12345"
+        );
+
+        OAuth2User rawOAuth2User = new DefaultOAuth2User(
+                Collections.emptyList(),
+                attributes,
+                "email"
+        );
+
+        OAuth2User processedUser = customOAuth2UserService.processOAuth2User(null, rawOAuth2User);
+        assertThat(processedUser).isInstanceOf(UserPrincipal.class);
+        UserPrincipal principal = (UserPrincipal) processedUser;
+
+        assertThat(principal.getEmail()).isEqualTo("admin@example.com");
+
+        User savedUser = userRepository.findByEmail("admin@example.com").orElseThrow();
+        assertThat(savedUser.getRole()).isEqualTo(UserRole.ROLE_ADMIN);
+    }
+
+    @Test
+    @DisplayName("6. Existing user with ROLE_USER is upgraded to ROLE_ADMIN on Google OAuth login when email matches ADMIN_EMAIL")
+    void testGoogleOAuthUpgradesExistingUserToRoleAdmin() {
+        User existingUser = new User("admin@example.com", "Admin Before");
+        existingUser.setRole(UserRole.ROLE_USER);
+        existingUser.setStatus(UserStatus.ACTIVE);
+        existingUser.setProvider(AuthProvider.LOCAL);
+        userRepository.save(existingUser);
+
+        Map<String, Object> attributes = Map.of(
+                "email", "admin@example.com",
+                "name", "Admin After",
+                "sub", "google-admin-99999"
+        );
+
+        OAuth2User rawOAuth2User = new DefaultOAuth2User(
+                Collections.emptyList(),
+                attributes,
+                "email"
+        );
+
+        customOAuth2UserService.processOAuth2User(null, rawOAuth2User);
+
+        User upgradedUser = userRepository.findByEmail("admin@example.com").orElseThrow();
+        assertThat(upgradedUser.getRole()).isEqualTo(UserRole.ROLE_ADMIN);
+    }
 }

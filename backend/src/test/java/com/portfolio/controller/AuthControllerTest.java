@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.portfolio.dto.auth.LoginRequest;
 import com.portfolio.dto.auth.RegisterRequest;
 import com.portfolio.entity.User;
+import com.portfolio.entity.enums.UserRole;
+import com.portfolio.entity.enums.UserStatus;
 import com.portfolio.repository.UserRepository;
 import com.portfolio.security.jwt.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -294,5 +296,48 @@ class AuthControllerTest {
         mockMvc.perform(get("/api/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));
+    }
+
+    @Test
+    @DisplayName("14. Registering with matching ADMIN_EMAIL assigns ROLE_ADMIN")
+    void testRegisterWithAdminEmailAssignsRoleAdmin() throws Exception {
+        RegisterRequest register = new RegisterRequest(
+                "Super Administrator",
+                "admin@example.com",
+                "AdminPassword123",
+                "AdminPassword123"
+        );
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(register)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value("admin@example.com"))
+                .andExpect(jsonPath("$.role").value("ROLE_ADMIN"));
+
+        User savedUser = userRepository.findByEmail("admin@example.com").orElseThrow();
+        assertThat(savedUser.getRole()).isEqualTo(UserRole.ROLE_ADMIN);
+    }
+
+    @Test
+    @DisplayName("15. Logging in with matching ADMIN_EMAIL upgrades existing ROLE_USER to ROLE_ADMIN")
+    void testLoginWithAdminEmailUpgradesExistingUserToRoleAdmin() throws Exception {
+        User existingUser = new User("admin@example.com", "Admin Before Upgrade");
+        existingUser.setPasswordHash(passwordEncoder.encode("AdminPass123"));
+        existingUser.setRole(UserRole.ROLE_USER);
+        existingUser.setStatus(UserStatus.ACTIVE);
+        userRepository.save(existingUser);
+
+        LoginRequest login = new LoginRequest("admin@example.com", "AdminPass123");
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(login)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("admin@example.com"))
+                .andExpect(jsonPath("$.role").value("ROLE_ADMIN"));
+
+        User updatedUser = userRepository.findByEmail("admin@example.com").orElseThrow();
+        assertThat(updatedUser.getRole()).isEqualTo(UserRole.ROLE_ADMIN);
     }
 }

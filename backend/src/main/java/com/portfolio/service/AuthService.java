@@ -23,15 +23,25 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final String adminEmail;
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            JwtTokenProvider jwtTokenProvider
+            JwtTokenProvider jwtTokenProvider,
+            @org.springframework.beans.factory.annotation.Value("${app.admin.email:}") String adminEmail
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.adminEmail = adminEmail;
+    }
+
+    public boolean isAdminEmail(String email) {
+        if (adminEmail == null || adminEmail.trim().isEmpty() || email == null || email.trim().isEmpty()) {
+            return false;
+        }
+        return adminEmail.trim().equalsIgnoreCase(email.trim());
     }
 
     @Transactional
@@ -52,12 +62,13 @@ public class AuthService {
         user.setFullName(request.name().trim());
         user.setEmail(normalizedEmail);
         user.setPasswordHash(hashedPassword);
-        user.setRole(UserRole.ROLE_USER);
+        UserRole assignedRole = isAdminEmail(normalizedEmail) ? UserRole.ROLE_ADMIN : UserRole.ROLE_USER;
+        user.setRole(assignedRole);
         user.setStatus(UserStatus.ACTIVE);
 
         User savedUser = userRepository.save(user);
 
-        log.info("Successfully registered new user with ID: {}", savedUser.getId());
+        log.info("Successfully registered new user with ID: {} and role: {}", savedUser.getId(), savedUser.getRole());
 
         return new AuthResponse(
                 savedUser.getId(),
@@ -68,7 +79,7 @@ public class AuthService {
         );
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         String normalizedEmail = request.email().trim().toLowerCase();
 
@@ -81,6 +92,13 @@ public class AuthService {
 
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account is " + user.getStatus().name().toLowerCase());
+        }
+
+        // If configured admin email matches and user is currently ROLE_USER, upgrade to ROLE_ADMIN
+        if (isAdminEmail(normalizedEmail) && user.getRole() != UserRole.ROLE_ADMIN) {
+            user.setRole(UserRole.ROLE_ADMIN);
+            user = userRepository.save(user);
+            log.info("Upgraded existing user {} to ROLE_ADMIN based on ADMIN_EMAIL configuration", user.getEmail());
         }
 
         UserPrincipal principal = UserPrincipal.create(user);

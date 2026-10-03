@@ -25,9 +25,21 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private static final Logger log = LoggerFactory.getLogger(CustomOAuth2UserService.class);
 
     private final UserRepository userRepository;
+    private final String adminEmail;
 
-    public CustomOAuth2UserService(UserRepository userRepository) {
+    public CustomOAuth2UserService(
+            UserRepository userRepository,
+            @org.springframework.beans.factory.annotation.Value("${app.admin.email:}") String adminEmail
+    ) {
         this.userRepository = userRepository;
+        this.adminEmail = adminEmail;
+    }
+
+    private boolean isAdminEmail(String email) {
+        if (adminEmail == null || adminEmail.trim().isEmpty() || email == null || email.trim().isEmpty()) {
+            return false;
+        }
+        return adminEmail.trim().equalsIgnoreCase(email.trim());
     }
 
     @Override
@@ -69,6 +81,11 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             if (!StringUtils.hasText(user.getFullName()) && StringUtils.hasText(name)) {
                 user.setFullName(name);
             }
+            // If configured admin email matches and user is currently ROLE_USER, upgrade to ROLE_ADMIN
+            if (isAdminEmail(normalizedEmail) && user.getRole() != UserRole.ROLE_ADMIN) {
+                user.setRole(UserRole.ROLE_ADMIN);
+                log.info("Upgraded existing OAuth user {} to ROLE_ADMIN based on ADMIN_EMAIL configuration", user.getEmail());
+            }
             user = userRepository.save(user);
             log.info("Existing user {} authenticated via Google OAuth", user.getEmail());
         } else {
@@ -76,14 +93,15 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             user = new User();
             user.setEmail(normalizedEmail);
             user.setFullName(StringUtils.hasText(name) ? name.trim() : "Google User");
-            user.setRole(UserRole.ROLE_USER);
+            UserRole assignedRole = isAdminEmail(normalizedEmail) ? UserRole.ROLE_ADMIN : UserRole.ROLE_USER;
+            user.setRole(assignedRole);
             user.setStatus(UserStatus.ACTIVE);
             user.setProvider(AuthProvider.GOOGLE);
             user.setProviderId(sub);
             user.setPasswordHash(null); // No password for Google OAuth users
 
             user = userRepository.save(user);
-            log.info("Registered new user {} via Google OAuth", user.getEmail());
+            log.info("Registered new user {} via Google OAuth with role {}", user.getEmail(), assignedRole);
         }
 
         return UserPrincipal.create(user, oAuth2User.getAttributes());
