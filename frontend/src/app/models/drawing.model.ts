@@ -24,6 +24,7 @@ export interface ChartDrawing {
   points: DrawingPoint[];
   color: string;
   lineWidth: number;
+  lineStyle?: 'solid' | 'dashed' | 'dotted';
   filled?: boolean;
   text?: string;
   locked?: boolean;

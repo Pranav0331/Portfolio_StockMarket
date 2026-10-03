@@ -157,10 +157,28 @@ export class MarketComponent implements OnInit, OnDestroy {
 
   readonly drawings = signal<ChartDrawing[]>([]);
   readonly selectedDrawingId = signal<string | null>(null);
+  readonly selectedDrawing = computed(() => this.drawings().find(d => d.id === this.selectedDrawingId()) || null);
+  readonly floatingToolbarPos = signal<{ x: number; y: number }>({ x: 100, y: 100 });
+  readonly isColorPickerOpen = signal<boolean>(false);
+  readonly isLineStyleMenuOpen = signal<boolean>(false);
+  readonly isLineWidthMenuOpen = signal<boolean>(false);
+  readonly isMoreOptionsMenuOpen = signal<boolean>(false);
+  readonly drawingColorPalette = [
+    '#38bdf8', '#818cf8', '#6366f1', '#10b981', '#f59e0b',
+    '#f43f5e', '#ec4899', '#a855f7', '#ffffff', '#94a3b8', '#1e293b'
+  ];
 
-  // In-progress drawing draft
+  // In-progress drawing draft & dragging handles/body state
   private currentDraftDrawing: ChartDrawing | null = null;
   private isDrawingMouseDown = false;
+  private isDraggingHandle = false;
+  private draggingHandleIndex = -1;
+  private isDraggingDrawingBody = false;
+  private activeDragDrawingId: string | null = null;
+  private dragStartPoint: DrawingPoint | null = null;
+  private dragStartScreenX = 0;
+  private dragStartScreenY = 0;
+  private dragInitialPoints: DrawingPoint[] | null = null;
 
   // ==========================================
   // INDICATOR LIBRARY & ACTIVE STATE
@@ -931,6 +949,10 @@ export class MarketComponent implements OnInit, OnDestroy {
     this.selectedDrawingId.set(null);
     this.currentDraftDrawing = null;
     this.isDrawingMouseDown = false;
+    this.isColorPickerOpen.set(false);
+    this.isLineStyleMenuOpen.set(false);
+    this.isLineWidthMenuOpen.set(false);
+    this.isMoreOptionsMenuOpen.set(false);
   }
 
   toggleMagnet(): void {
@@ -950,6 +972,10 @@ export class MarketComponent implements OnInit, OnDestroy {
     this.drawings.set([]);
     this.selectedDrawingId.set(null);
     this.currentDraftDrawing = null;
+    this.isColorPickerOpen.set(false);
+    this.isLineStyleMenuOpen.set(false);
+    this.isLineWidthMenuOpen.set(false);
+    this.isMoreOptionsMenuOpen.set(false);
     this.saveDrawingsForSymbol(this.selectedSymbol());
     this.renderDrawings();
   }
@@ -960,6 +986,10 @@ export class MarketComponent implements OnInit, OnDestroy {
 
     this.drawings.update(list => list.filter(d => d.id !== id));
     this.selectedDrawingId.set(null);
+    this.isColorPickerOpen.set(false);
+    this.isLineStyleMenuOpen.set(false);
+    this.isLineWidthMenuOpen.set(false);
+    this.isMoreOptionsMenuOpen.set(false);
     this.saveDrawingsForSymbol(this.selectedSymbol());
     this.renderDrawings();
   }
@@ -998,6 +1028,228 @@ export class MarketComponent implements OnInit, OnDestroy {
         // ignore
       }
     }
+  }
+
+  // ==========================================
+  // FLOATING TOOLBAR ACTIONS & STATE HANDLERS
+  // ==========================================
+
+  toggleColorPicker(e?: MouseEvent): void {
+    if (e) e.stopPropagation();
+    this.isColorPickerOpen.update(v => !v);
+    this.isLineStyleMenuOpen.set(false);
+    this.isLineWidthMenuOpen.set(false);
+    this.isMoreOptionsMenuOpen.set(false);
+  }
+
+  setSelectedDrawingColor(color: string): void {
+    const selId = this.selectedDrawingId();
+    if (!selId) return;
+    this.drawings.update(list => list.map(d => d.id === selId ? { ...d, color } : d));
+    this.activeDrawingColor.set(color);
+    this.isColorPickerOpen.set(false);
+    this.saveDrawingsForSymbol(this.selectedSymbol());
+    this.renderDrawings();
+  }
+
+  toggleLineStyleMenu(e?: MouseEvent): void {
+    if (e) e.stopPropagation();
+    this.isLineStyleMenuOpen.update(v => !v);
+    this.isColorPickerOpen.set(false);
+    this.isLineWidthMenuOpen.set(false);
+    this.isMoreOptionsMenuOpen.set(false);
+  }
+
+  setSelectedDrawingLineStyle(style: 'solid' | 'dashed' | 'dotted'): void {
+    const selId = this.selectedDrawingId();
+    if (!selId) return;
+    this.drawings.update(list => list.map(d => d.id === selId ? { ...d, lineStyle: style } : d));
+    this.isLineStyleMenuOpen.set(false);
+    this.saveDrawingsForSymbol(this.selectedSymbol());
+    this.renderDrawings();
+  }
+
+  toggleLineWidthMenu(e?: MouseEvent): void {
+    if (e) e.stopPropagation();
+    this.isLineWidthMenuOpen.update(v => !v);
+    this.isColorPickerOpen.set(false);
+    this.isLineStyleMenuOpen.set(false);
+    this.isMoreOptionsMenuOpen.set(false);
+  }
+
+  setSelectedDrawingLineWidth(width: number): void {
+    const selId = this.selectedDrawingId();
+    if (!selId) return;
+    this.drawings.update(list => list.map(d => d.id === selId ? { ...d, lineWidth: width } : d));
+    this.activeLineWidth.set(width);
+    this.isLineWidthMenuOpen.set(false);
+    this.saveDrawingsForSymbol(this.selectedSymbol());
+    this.renderDrawings();
+  }
+
+  toggleSelectedDrawingLock(): void {
+    const selId = this.selectedDrawingId();
+    if (!selId) return;
+    this.drawings.update(list => list.map(d => d.id === selId ? { ...d, locked: !d.locked } : d));
+    this.saveDrawingsForSymbol(this.selectedSymbol());
+    this.renderDrawings();
+  }
+
+  toggleMoreOptionsMenu(e?: MouseEvent): void {
+    if (e) e.stopPropagation();
+    this.isMoreOptionsMenuOpen.update(v => !v);
+    this.isColorPickerOpen.set(false);
+    this.isLineStyleMenuOpen.set(false);
+    this.isLineWidthMenuOpen.set(false);
+  }
+
+  cloneSelectedDrawing(): void {
+    const sel = this.selectedDrawing();
+    if (!sel) return;
+    const clone: ChartDrawing = {
+      ...sel,
+      id: 'draw_' + Date.now(),
+      points: sel.points.map(p => ({
+        ...p,
+        price: p.price * 1.002,
+        screenY: (p.screenY ?? 0) + 12
+      })),
+      createdAt: Date.now()
+    };
+    this.drawings.update(list => [...list, clone]);
+    this.selectedDrawingId.set(clone.id);
+    this.isMoreOptionsMenuOpen.set(false);
+    this.saveDrawingsForSymbol(this.selectedSymbol());
+    this.renderDrawings();
+  }
+
+  bringSelectedDrawingToFront(): void {
+    const selId = this.selectedDrawingId();
+    if (!selId) return;
+    this.drawings.update(list => {
+      const item = list.find(d => d.id === selId);
+      if (!item) return list;
+      return [...list.filter(d => d.id !== selId), item];
+    });
+    this.isMoreOptionsMenuOpen.set(false);
+    this.saveDrawingsForSymbol(this.selectedSymbol());
+    this.renderDrawings();
+  }
+
+  sendSelectedDrawingToBack(): void {
+    const selId = this.selectedDrawingId();
+    if (!selId) return;
+    this.drawings.update(list => {
+      const item = list.find(d => d.id === selId);
+      if (!item) return list;
+      return [item, ...list.filter(d => d.id !== selId)];
+    });
+    this.isMoreOptionsMenuOpen.set(false);
+    this.saveDrawingsForSymbol(this.selectedSymbol());
+    this.renderDrawings();
+  }
+
+  onToolbarGripMouseDown(e: MouseEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startPos = this.floatingToolbarPos();
+
+    const onMove = (ev: MouseEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      const canvas = this.drawingCanvasRef()?.nativeElement;
+      const maxW = (canvas?.clientWidth || 800) - 270;
+      const maxH = (canvas?.clientHeight || 500) - 45;
+
+      this.floatingToolbarPos.set({
+        x: Math.max(10, Math.min(maxW, startPos.x + dx)),
+        y: Math.max(10, Math.min(maxH, startPos.y + dy))
+      });
+    };
+
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
+  onViewportMouseDown(e: MouseEvent): void {
+    if (this.selectedDrawingTool() !== 'cursor' || this.selectedDrawingId() !== null) return;
+    const canvas = this.drawingCanvasRef()?.nativeElement;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const hit = this.findDrawingAtPoint(x, y);
+    if (hit) {
+      e.stopPropagation();
+      this.selectedDrawingId.set(hit.id);
+      this.renderDrawings();
+    }
+  }
+
+  updateFloatingToolbarPos(): void {
+    const selDrawing = this.selectedDrawing();
+    const canvas = this.drawingCanvasRef()?.nativeElement;
+    if (!selDrawing || !canvas || !this.chart) return;
+
+    const timeScale = this.chart.timeScale();
+    const coords = selDrawing.points.map(p => {
+      let px: number | null = null;
+      let py: number | null = null;
+      if (p.time != null) {
+        px = timeScale.timeToCoordinate(p.time as any) as number | null;
+      }
+      if (p.price != null && this.candlestickSeries) {
+        py = this.candlestickSeries.priceToCoordinate(p.price as any) as number | null;
+      } else if (p.price != null && this.lineSeries) {
+        py = this.lineSeries.priceToCoordinate(p.price as any) as number | null;
+      }
+      return { x: px ?? p.screenX ?? 0, y: py ?? p.screenY ?? 0 };
+    });
+
+    if (coords.length === 0) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const containerW = rect.width;
+    const containerH = rect.height;
+    const tbWidth = 270;
+    const tbHeight = 36;
+
+    let targetX = 0;
+    let targetY = 0;
+
+    if (selDrawing.type === 'horizontal') {
+      targetX = Math.max(20, Math.min(containerW - tbWidth - 20, containerW / 2 - tbWidth / 2));
+      targetY = coords[0].y - 48;
+    } else if (selDrawing.type === 'vertical') {
+      targetX = coords[0].x - tbWidth / 2;
+      targetY = 40;
+    } else {
+      const minX = Math.min(...coords.map(c => c.x));
+      const maxX = Math.max(...coords.map(c => c.x));
+      const minY = Math.min(...coords.map(c => c.y));
+      const midX = (minX + maxX) / 2;
+
+      targetX = midX - tbWidth / 2;
+      targetY = minY - 48;
+    }
+
+    if (targetY < 12) {
+      const maxY = Math.max(...coords.map(c => c.y));
+      targetY = Math.min(containerH - tbHeight - 12, maxY + 18);
+    }
+    targetX = Math.max(12, Math.min(containerW - tbWidth - 12, targetX));
+    targetY = Math.max(12, Math.min(containerH - tbHeight - 12, targetY));
+
+    this.floatingToolbarPos.set({ x: Math.round(targetX), y: Math.round(targetY) });
   }
 
   private syncCanvasSize(): void {
@@ -1076,6 +1328,36 @@ export class MarketComponent implements OnInit, OnDestroy {
     return bestSnap;
   }
 
+  private findHandleAtPoint(x: number, y: number): { drawing: ChartDrawing; handleIndex: number } | null {
+    const selId = this.selectedDrawingId();
+    if (!selId || !this.chart) return null;
+    const drawing = this.drawings().find(d => d.id === selId);
+    if (!drawing) return null;
+
+    const timeScale = this.chart.timeScale();
+    const handleRadius = 12;
+
+    for (let i = 0; i < drawing.points.length; i++) {
+      const p = drawing.points[i];
+      let px: number | null = null;
+      let py: number | null = null;
+      if (p.time != null) {
+        px = timeScale.timeToCoordinate(p.time as any) as number | null;
+      }
+      if (p.price != null && this.candlestickSeries) {
+        py = this.candlestickSeries.priceToCoordinate(p.price as any) as number | null;
+      } else if (p.price != null && this.lineSeries) {
+        py = this.lineSeries.priceToCoordinate(p.price as any) as number | null;
+      }
+      const sx = px ?? p.screenX ?? 0;
+      const sy = py ?? p.screenY ?? 0;
+      if (Math.hypot(x - sx, y - sy) <= handleRadius) {
+        return { drawing, handleIndex: i };
+      }
+    }
+    return null;
+  }
+
   private findDrawingAtPoint(x: number, y: number): ChartDrawing | null {
     const drawings = this.drawings();
     if (!this.chart || drawings.length === 0) return null;
@@ -1146,6 +1428,10 @@ export class MarketComponent implements OnInit, OnDestroy {
         this.renderDrawings();
       }
       this.selectedDrawingId.set(null);
+      this.isColorPickerOpen.set(false);
+      this.isLineStyleMenuOpen.set(false);
+      this.isLineWidthMenuOpen.set(false);
+      this.isMoreOptionsMenuOpen.set(false);
       this.selectDrawingTool('cursor');
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       const activeTag = (document.activeElement?.tagName || '').toLowerCase();
@@ -1170,12 +1456,38 @@ export class MarketComponent implements OnInit, OnDestroy {
     const y = e.clientY - rect.top;
 
     if (tool === 'cursor') {
+      // 1. Check if clicking on an anchor handle of currently selected drawing
+      const handleHit = this.findHandleAtPoint(x, y);
+      if (handleHit) {
+        if (!handleHit.drawing.locked) {
+          this.isDraggingHandle = true;
+          this.draggingHandleIndex = handleHit.handleIndex;
+          this.activeDragDrawingId = handleHit.drawing.id;
+        }
+        return;
+      }
+
+      // 2. Check if clicking on a drawing body
       const hit = this.findDrawingAtPoint(x, y);
       if (hit) {
         this.selectedDrawingId.set(hit.id);
-      } else {
-        this.selectedDrawingId.set(null);
+        if (!hit.locked) {
+          this.isDraggingDrawingBody = true;
+          this.activeDragDrawingId = hit.id;
+          this.dragStartScreenX = x;
+          this.dragStartScreenY = y;
+          this.dragInitialPoints = JSON.parse(JSON.stringify(hit.points));
+        }
+        this.renderDrawings();
+        return;
       }
+
+      // 3. Clicked empty space: deselect and close menus
+      this.selectedDrawingId.set(null);
+      this.isColorPickerOpen.set(false);
+      this.isLineStyleMenuOpen.set(false);
+      this.isLineWidthMenuOpen.set(false);
+      this.isMoreOptionsMenuOpen.set(false);
       this.renderDrawings();
       return;
     }
@@ -1204,6 +1516,7 @@ export class MarketComponent implements OnInit, OnDestroy {
         points: [point],
         color: this.activeDrawingColor(),
         lineWidth: this.activeLineWidth(),
+        lineStyle: 'solid',
         text: textContent,
         createdAt: Date.now()
       };
@@ -1225,6 +1538,7 @@ export class MarketComponent implements OnInit, OnDestroy {
         points: [point],
         color: this.activeDrawingColor(),
         lineWidth: this.activeLineWidth(),
+        lineStyle: 'solid',
         createdAt: Date.now()
       };
       return;
@@ -1239,6 +1553,7 @@ export class MarketComponent implements OnInit, OnDestroy {
         points: [point, { ...point }],
         color: this.activeDrawingColor(),
         lineWidth: this.activeLineWidth(),
+        lineStyle: 'solid',
         filled: tool === 'rectangle' || tool === 'measure',
         createdAt: Date.now()
       };
@@ -1257,7 +1572,76 @@ export class MarketComponent implements OnInit, OnDestroy {
   }
 
   onCanvasMouseMove(e: MouseEvent): void {
-    if (!this.currentDraftDrawing || this.isDrawingsHidden()) return;
+    if (this.isDrawingsHidden()) return;
+
+    const canvas = this.drawingCanvasRef()?.nativeElement;
+    if (!canvas || !this.chart) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Handle Dragging
+    if (this.isDraggingHandle && this.activeDragDrawingId) {
+      const drawing = this.drawings().find(d => d.id === this.activeDragDrawingId);
+      if (drawing && !drawing.locked) {
+        const point = this.getPointFromEvent(e);
+        if (point && this.draggingHandleIndex >= 0 && this.draggingHandleIndex < drawing.points.length) {
+          drawing.points[this.draggingHandleIndex] = point;
+          this.drawings.update(list => list.map(d => d.id === drawing.id ? { ...drawing } : d));
+          this.renderDrawings();
+        }
+      }
+      return;
+    }
+
+    // Drawing Body Dragging
+    if (this.isDraggingDrawingBody && this.activeDragDrawingId && this.dragInitialPoints) {
+      const drawing = this.drawings().find(d => d.id === this.activeDragDrawingId);
+      if (drawing && !drawing.locked) {
+        const dx = x - this.dragStartScreenX;
+        const dy = y - this.dragStartScreenY;
+        const timeScale = this.chart.timeScale();
+
+        const newPoints = this.dragInitialPoints.map(p0 => {
+          let p0x: number | null = null;
+          let p0y: number | null = null;
+          if (p0.time != null) {
+            p0x = timeScale.timeToCoordinate(p0.time as any) as number | null;
+          }
+          if (p0.price != null && this.candlestickSeries) {
+            p0y = this.candlestickSeries.priceToCoordinate(p0.price as any) as number | null;
+          } else if (p0.price != null && this.lineSeries) {
+            p0y = this.lineSeries.priceToCoordinate(p0.price as any) as number | null;
+          }
+
+          const currentScreenX = (p0x ?? p0.screenX ?? 0) + dx;
+          const currentScreenY = (p0y ?? p0.screenY ?? 0) + dy;
+
+          const timeRaw: any = timeScale.coordinateToTime(currentScreenX as any);
+          const priceRaw: any = this.candlestickSeries?.coordinateToPrice(currentScreenY as any) ??
+                                this.lineSeries?.coordinateToPrice(currentScreenY as any);
+
+          let price: number = typeof priceRaw === 'number' ? priceRaw : p0.price;
+          let time: string | number = typeof timeRaw === 'object' && timeRaw !== null
+            ? `${timeRaw.year}-${String(timeRaw.month).padStart(2, '0')}-${String(timeRaw.day).padStart(2, '0')}`
+            : (timeRaw ?? p0.time ?? Math.floor(Date.now() / 1000));
+
+          return {
+            time,
+            price,
+            screenX: currentScreenX,
+            screenY: currentScreenY
+          };
+        });
+
+        drawing.points = newPoints;
+        this.drawings.update(list => list.map(d => d.id === drawing.id ? { ...drawing } : d));
+        this.renderDrawings();
+      }
+      return;
+    }
+
+    if (!this.currentDraftDrawing) return;
 
     const point = this.getPointFromEvent(e);
     if (!point) return;
@@ -1268,13 +1652,21 @@ export class MarketComponent implements OnInit, OnDestroy {
         this.renderDrawings();
       }
     } else {
-      // Live preview endpoint
       this.currentDraftDrawing.points[1] = point;
       this.renderDrawings();
     }
   }
 
   onCanvasMouseUp(): void {
+    if (this.isDraggingHandle || this.isDraggingDrawingBody) {
+      this.saveDrawingsForSymbol(this.selectedSymbol());
+      this.isDraggingHandle = false;
+      this.draggingHandleIndex = -1;
+      this.isDraggingDrawingBody = false;
+      this.activeDragDrawingId = null;
+      this.dragInitialPoints = null;
+    }
+
     if (this.currentDraftDrawing && this.currentDraftDrawing.type === 'brush') {
       const completed = this.currentDraftDrawing;
       this.drawings.update(d => [...d, completed]);
@@ -1285,6 +1677,16 @@ export class MarketComponent implements OnInit, OnDestroy {
       this.renderDrawings();
     }
     this.isDrawingMouseDown = false;
+  }
+
+  private applyDrawingLineDash(ctx: CanvasRenderingContext2D, style?: 'solid' | 'dashed' | 'dotted', isSelected: boolean = false): void {
+    if (style === 'dashed') {
+      ctx.setLineDash([8, 6]);
+    } else if (style === 'dotted') {
+      ctx.setLineDash([3, 4]);
+    } else {
+      ctx.setLineDash([]);
+    }
   }
 
   renderDrawings(): void {
@@ -1314,8 +1716,9 @@ export class MarketComponent implements OnInit, OnDestroy {
 
     allDrawings.forEach(d => {
       const isSelected = d.id === selId;
-      const drawColor = isSelected ? '#38bdf8' : (d.color || '#38bdf8');
-      const drawLineWidth = isSelected ? Math.max(3, (d.lineWidth || 2) + 1) : (d.lineWidth || 2);
+      const isLocked = !!d.locked;
+      const drawColor = d.color || '#38bdf8';
+      const drawLineWidth = d.lineWidth || 2;
 
       ctx.strokeStyle = drawColor;
       ctx.fillStyle = drawColor;
@@ -1346,16 +1749,18 @@ export class MarketComponent implements OnInit, OnDestroy {
       if (coords.length === 0) return;
 
       if (d.type === 'trendline' && coords.length >= 2) {
+        this.applyDrawingLineDash(ctx, d.lineStyle, isSelected);
         ctx.beginPath();
         ctx.moveTo(coords[0].x, coords[0].y);
         ctx.lineTo(coords[1].x, coords[1].y);
         ctx.stroke();
+        ctx.setLineDash([]);
 
-        // Draw handles at points
-        this.drawAnchorHandle(ctx, coords[0].x, coords[0].y, drawColor, isSelected);
-        this.drawAnchorHandle(ctx, coords[1].x, coords[1].y, drawColor, isSelected);
+        // Endpoint handles remain visible and draggable on trendlines
+        this.drawAnchorHandle(ctx, coords[0].x, coords[0].y, drawColor, isSelected, isLocked);
+        this.drawAnchorHandle(ctx, coords[1].x, coords[1].y, drawColor, isSelected, isLocked);
       } else if (d.type === 'horizontal' && coords.length >= 1) {
-        ctx.setLineDash(isSelected ? [6, 3] : [4, 4]);
+        this.applyDrawingLineDash(ctx, d.lineStyle || (isSelected ? 'dashed' : 'solid'), isSelected);
         ctx.beginPath();
         ctx.moveTo(0, coords[0].y);
         ctx.lineTo(canvas.width / dpr, coords[0].y);
@@ -1366,13 +1771,14 @@ export class MarketComponent implements OnInit, OnDestroy {
         const priceLabel = d.points[0].price.toFixed(2);
         this.drawPriceTag(ctx, canvas.width / dpr - 65, coords[0].y, priceLabel, drawColor, isSelected);
       } else if (d.type === 'vertical' && coords.length >= 1) {
-        ctx.setLineDash(isSelected ? [6, 3] : [4, 4]);
+        this.applyDrawingLineDash(ctx, d.lineStyle || (isSelected ? 'dashed' : 'solid'), isSelected);
         ctx.beginPath();
         ctx.moveTo(coords[0].x, 0);
         ctx.lineTo(coords[0].x, canvas.height / dpr);
         ctx.stroke();
         ctx.setLineDash([]);
       } else if (d.type === 'ray' && coords.length >= 2) {
+        this.applyDrawingLineDash(ctx, d.lineStyle, isSelected);
         const dx = coords[1].x - coords[0].x;
         const dy = coords[1].y - coords[0].y;
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -1383,10 +1789,12 @@ export class MarketComponent implements OnInit, OnDestroy {
         ctx.moveTo(coords[0].x, coords[0].y);
         ctx.lineTo(extendedX, extendedY);
         ctx.stroke();
+        ctx.setLineDash([]);
 
-        this.drawAnchorHandle(ctx, coords[0].x, coords[0].y, drawColor, isSelected);
-        this.drawAnchorHandle(ctx, coords[1].x, coords[1].y, drawColor, isSelected);
+        this.drawAnchorHandle(ctx, coords[0].x, coords[0].y, drawColor, isSelected, isLocked);
+        this.drawAnchorHandle(ctx, coords[1].x, coords[1].y, drawColor, isSelected, isLocked);
       } else if (d.type === 'rectangle' && coords.length >= 2) {
+        this.applyDrawingLineDash(ctx, d.lineStyle, isSelected);
         const rx = Math.min(coords[0].x, coords[1].x);
         const ry = Math.min(coords[0].y, coords[1].y);
         const rw = Math.abs(coords[1].x - coords[0].x);
@@ -1395,16 +1803,19 @@ export class MarketComponent implements OnInit, OnDestroy {
         ctx.fillStyle = isSelected ? 'rgba(56, 189, 248, 0.22)' : 'rgba(56, 189, 248, 0.12)';
         ctx.fillRect(rx, ry, rw, rh);
         ctx.strokeRect(rx, ry, rw, rh);
+        ctx.setLineDash([]);
 
-        this.drawAnchorHandle(ctx, coords[0].x, coords[0].y, drawColor, isSelected);
-        this.drawAnchorHandle(ctx, coords[1].x, coords[1].y, drawColor, isSelected);
+        this.drawAnchorHandle(ctx, coords[0].x, coords[0].y, drawColor, isSelected, isLocked);
+        this.drawAnchorHandle(ctx, coords[1].x, coords[1].y, drawColor, isSelected, isLocked);
       } else if (d.type === 'brush' && coords.length > 1) {
+        this.applyDrawingLineDash(ctx, d.lineStyle, isSelected);
         ctx.beginPath();
         ctx.moveTo(coords[0].x, coords[0].y);
         for (let i = 1; i < coords.length; i++) {
           ctx.lineTo(coords[i].x, coords[i].y);
         }
         ctx.stroke();
+        ctx.setLineDash([]);
       } else if (d.type === 'text' && coords.length >= 1) {
         const text = d.text || 'Annotation';
         ctx.font = '600 12px "Plus Jakarta Sans", sans-serif';
@@ -1443,16 +1854,29 @@ export class MarketComponent implements OnInit, OnDestroy {
     });
 
     ctx.restore();
+
+    if (this.selectedDrawingId()) {
+      this.updateFloatingToolbarPos();
+    }
   }
 
-  private drawAnchorHandle(ctx: CanvasRenderingContext2D, x: number, y: number, color: string, isSelected: boolean = false): void {
+  private drawAnchorHandle(ctx: CanvasRenderingContext2D, x: number, y: number, color: string, isSelected: boolean = false, isLocked: boolean = false): void {
+    ctx.save();
+    if (isSelected) {
+      ctx.fillStyle = isLocked ? 'rgba(239, 68, 68, 0.25)' : 'rgba(56, 189, 248, 0.28)';
+      ctx.beginPath();
+      ctx.arc(x, y, 9, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = color;
+    ctx.strokeStyle = isLocked ? '#ef4444' : color;
     ctx.lineWidth = isSelected ? 2.5 : 2;
     ctx.beginPath();
     ctx.arc(x, y, isSelected ? 5.5 : 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    ctx.restore();
   }
 
   private drawPriceTag(ctx: CanvasRenderingContext2D, x: number, y: number, text: string, color: string, isSelected: boolean = false): void {

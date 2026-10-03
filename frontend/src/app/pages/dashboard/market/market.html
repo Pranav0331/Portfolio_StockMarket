@@ -600,7 +600,7 @@
         </aside>
 
         <!-- 2. CHART VIEWPORT & DRAWING CANVAS OVERLAY -->
-        <div class="chart-canvas-viewport">
+        <div class="chart-canvas-viewport" (mousedown)="onViewportMouseDown($event)">
           <!-- Lightweight Charts div -->
           <div #chartContainer class="trading-chart-canvas"></div>
 
@@ -613,6 +613,240 @@
             (mousemove)="onCanvasMouseMove($event)"
             (mouseup)="onCanvasMouseUp()"
           ></canvas>
+
+          <!-- TradingView Floating Drawing Edit Toolbar -->
+          @if (selectedDrawing(); as selectedD) {
+            <div 
+              class="tv-floating-drawing-toolbar"
+              [style.left.px]="floatingToolbarPos().x"
+              [style.top.px]="floatingToolbarPos().y"
+              (mousedown)="$event.stopPropagation()"
+            >
+              <!-- 1. Drag / Move Grip -->
+              <div class="tv-ft-grip" (mousedown)="onToolbarGripMouseDown($event)" title="Drag toolbar">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                  <circle cx="9" cy="6" r="1.5"/>
+                  <circle cx="15" cy="6" r="1.5"/>
+                  <circle cx="9" cy="12" r="1.5"/>
+                  <circle cx="15" cy="12" r="1.5"/>
+                  <circle cx="9" cy="18" r="1.5"/>
+                  <circle cx="15" cy="18" r="1.5"/>
+                </svg>
+              </div>
+
+              <div class="tv-ft-sep"></div>
+
+              <!-- 2. Color Picker Swatch Button -->
+              <div class="tv-ft-dropdown-anchor">
+                <button 
+                  type="button" 
+                  class="tv-ft-btn tv-ft-color-btn" 
+                  [class.active]="isColorPickerOpen()"
+                  (click)="toggleColorPicker($event)"
+                  title="Drawing Color"
+                >
+                  <span class="color-swatch-circle" [style.backgroundColor]="selectedD.color || '#38bdf8'"></span>
+                </button>
+
+                @if (isColorPickerOpen()) {
+                  <div class="tv-ft-popover tv-color-popover" (mousedown)="$event.stopPropagation()">
+                    <div class="popover-swatches-grid">
+                      @for (c of drawingColorPalette; track c) {
+                        <button 
+                          type="button" 
+                          class="swatch-cell" 
+                          [style.backgroundColor]="c"
+                          [class.selected]="selectedD.color === c"
+                          (click)="setSelectedDrawingColor(c)"
+                        ></button>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- 3. Line Style (Solid, Dashed, Dotted) -->
+              <div class="tv-ft-dropdown-anchor">
+                <button 
+                  type="button" 
+                  class="tv-ft-btn" 
+                  [class.active]="isLineStyleMenuOpen()"
+                  (click)="toggleLineStyleMenu($event)"
+                  title="Line Style"
+                >
+                  @if (selectedD.lineStyle === 'dashed') {
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="2" y1="12" x2="6" y2="12"></line>
+                      <line x1="10" y1="12" x2="14" y2="12"></line>
+                      <line x1="18" y1="12" x2="22" y2="12"></line>
+                    </svg>
+                  } @else if (selectedD.lineStyle === 'dotted') {
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                      <circle cx="4" cy="12" r="1.5"></circle>
+                      <circle cx="10" cy="12" r="1.5"></circle>
+                      <circle cx="16" cy="12" r="1.5"></circle>
+                      <circle cx="22" cy="12" r="1.5"></circle>
+                    </svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="2" y1="12" x2="22" y2="12"></line>
+                    </svg>
+                  }
+                </button>
+
+                @if (isLineStyleMenuOpen()) {
+                  <div class="tv-ft-popover tv-menu-popover" (mousedown)="$event.stopPropagation()">
+                    <button 
+                      type="button" 
+                      class="tv-popover-item" 
+                      [class.active]="!selectedD.lineStyle || selectedD.lineStyle === 'solid'"
+                      (click)="setSelectedDrawingLineStyle('solid')"
+                    >
+                      <svg viewBox="0 0 24 24" width="20" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="2" y1="7" x2="22" y2="7"></line>
+                      </svg>
+                      <span>Solid</span>
+                    </button>
+                    <button 
+                      type="button" 
+                      class="tv-popover-item" 
+                      [class.active]="selectedD.lineStyle === 'dashed'"
+                      (click)="setSelectedDrawingLineStyle('dashed')"
+                    >
+                      <svg viewBox="0 0 24 24" width="20" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="2" y1="7" x2="6" y2="7"></line>
+                        <line x1="10" y1="7" x2="14" y2="7"></line>
+                        <line x1="18" y1="7" x2="22" y2="7"></line>
+                      </svg>
+                      <span>Dashed</span>
+                    </button>
+                    <button 
+                      type="button" 
+                      class="tv-popover-item" 
+                      [class.active]="selectedD.lineStyle === 'dotted'"
+                      (click)="setSelectedDrawingLineStyle('dotted')"
+                    >
+                      <svg viewBox="0 0 24 24" width="20" height="14" fill="currentColor">
+                        <circle cx="4" cy="7" r="1.5"></circle>
+                        <circle cx="10" cy="7" r="1.5"></circle>
+                        <circle cx="16" cy="7" r="1.5"></circle>
+                        <circle cx="22" cy="7" r="1.5"></circle>
+                      </svg>
+                      <span>Dotted</span>
+                    </button>
+                  </div>
+                }
+              </div>
+
+              <!-- 4. Line Width (1px, 2px, 3px, 4px) -->
+              <div class="tv-ft-dropdown-anchor">
+                <button 
+                  type="button" 
+                  class="tv-ft-btn" 
+                  [class.active]="isLineWidthMenuOpen()"
+                  (click)="toggleLineWidthMenu($event)"
+                  title="Line Width"
+                >
+                  <span class="width-badge-icon">{{ selectedD.lineWidth || 2 }}px</span>
+                </button>
+
+                @if (isLineWidthMenuOpen()) {
+                  <div class="tv-ft-popover tv-menu-popover width-menu" (mousedown)="$event.stopPropagation()">
+                    @for (w of [1, 2, 3, 4]; track w) {
+                      <button 
+                        type="button" 
+                        class="tv-popover-item" 
+                        [class.active]="(selectedD.lineWidth || 2) === w"
+                        (click)="setSelectedDrawingLineWidth(w)"
+                      >
+                        <span class="width-line-preview" [style.height.px]="w"></span>
+                        <span>{{ w }}px</span>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+
+              <div class="tv-ft-sep"></div>
+
+              <!-- 5. Lock / Unlock Toggle -->
+              <button 
+                type="button" 
+                class="tv-ft-btn" 
+                [class.active]="selectedD.locked"
+                (click)="toggleSelectedDrawingLock()"
+                [title]="selectedD.locked ? 'Unlock Drawing' : 'Lock Drawing'"
+              >
+                @if (selectedD.locked) {
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#ef4444" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                } @else {
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                  </svg>
+                }
+              </button>
+
+              <!-- 6. Delete Selected Drawing -->
+              <button 
+                type="button" 
+                class="tv-ft-btn tv-ft-danger" 
+                (click)="deleteSelectedDrawing()"
+                title="Delete Drawing (Del)"
+              >
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+              </button>
+
+              <!-- 7. More Options -->
+              <div class="tv-ft-dropdown-anchor">
+                <button 
+                  type="button" 
+                  class="tv-ft-btn" 
+                  [class.active]="isMoreOptionsMenuOpen()"
+                  (click)="toggleMoreOptionsMenu($event)"
+                  title="More Options"
+                >
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                    <circle cx="12" cy="12" r="2"></circle>
+                    <circle cx="19" cy="12" r="2"></circle>
+                    <circle cx="5" cy="12" r="2"></circle>
+                  </svg>
+                </button>
+
+                @if (isMoreOptionsMenuOpen()) {
+                  <div class="tv-ft-popover tv-menu-popover more-menu" (mousedown)="$event.stopPropagation()">
+                    <button type="button" class="tv-popover-item" (click)="cloneSelectedDrawing()">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                      <span>Clone</span>
+                    </button>
+                    <button type="button" class="tv-popover-item" (click)="bringSelectedDrawingToFront()">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="18 15 12 9 6 15"></polyline>
+                      </svg>
+                      <span>Bring to Front</span>
+                    </button>
+                    <button type="button" class="tv-popover-item" (click)="sendSelectedDrawingToBack()">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                      <span>Send to Back</span>
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          }
 
           <!-- Shimmer Loading Overlay -->
           @if (isLoadingCandles()) {
