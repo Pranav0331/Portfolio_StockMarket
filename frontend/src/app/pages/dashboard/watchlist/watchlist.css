@@ -773,3 +773,166 @@
   color: #ef4444;
   background: rgba(239, 68, 68, 0.1);
 }
+
+/* ==========================================================================
+   EXPLICIT LIGHT THEME OVERRIDES VIA :host-context
+   ========================================================================== */
+:host-context([data-theme="light"]) .glass-card,
+:host-context([data-theme="light"]) .toolbar-card,
+:host-context([data-theme="light"]) .empty-watchlist-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04) !important;
+}
+
+:host-context([data-theme="light"]) .glass-card:hover {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.12), 0 4px 8px -2px rgba(15, 23, 42, 0.06) !important;
+}
+
+:host-context([data-theme="light"]) .watchlist-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+}
+
+:host-context([data-theme="light"]) .watchlist-card:hover {
+  background: #f8fafc !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 8px 20px -6px rgba(15, 23, 42, 0.12) !important;
+}
+
+:host-context([data-theme="light"]) .page-title,
+:host-context([data-theme="light"]) .section-title,
+:host-context([data-theme="light"]) .price-val,
+:host-context([data-theme="light"]) .time-val,
+:host-context([data-theme="light"]) .res-symbol {
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .symbol-tag {
+  color: #0284c7 !important;
+}
+
+:host-context([data-theme="light"]) .page-subtitle,
+:host-context([data-theme="light"]) .empty-desc,
+:host-context([data-theme="light"]) .res-name,
+:host-context([data-theme="light"]) .company-title {
+  color: #334155 !important;
+}
+
+:host-context([data-theme="light"]) .time-lbl,
+:host-context([data-theme="light"]) .suggest-lbl,
+:host-context([data-theme="light"]) .section-count,
+:host-context([data-theme="light"]) .exchange-tag,
+:host-context([data-theme="light"]) .res-type-badge,
+:host-context([data-theme="light"]) .filter-icon,
+:host-context([data-theme="light"]) .search-icon,
+:host-context([data-theme="light"]) .empty-category-msg,
+:host-context([data-theme="light"]) .price-unavailable,
+:host-context([data-theme="light"]) .drag-handle {
+  color: #475569 !important;
+}
+
+:host-context([data-theme="light"]) .section-header {
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+:host-context([data-theme="light"]) .add-input,
+:host-context([data-theme="light"]) .filter-input,
+:host-context([data-theme="light"]) .category-select {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .add-input:focus,
+:host-context([data-theme="light"]) .filter-input:focus {
+  border-color: #0284c7 !important;
+  background: #ffffff !important;
+}
+
+:host-context([data-theme="light"]) .category-select option {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .search-results-dropdown {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.15) !important;
+}
+
+:host-context([data-theme="light"]) .search-result-item {
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+:host-context([data-theme="light"]) .search-result-item:hover {
+  background: #f0f9ff !important;
+}
+
+:host-context([data-theme="light"]) .tab-btn {
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+:host-context([data-theme="light"]) .tab-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .tab-btn.active {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+:host-context([data-theme="light"]) .refresh-time-box {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+:host-context([data-theme="light"]) .chip-btn {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0284c7 !important;
+}
+
+:host-context([data-theme="light"]) .chip-btn:hover {
+  background: #e0f2fe !important;
+  border-color: #0284c7 !important;
+}
+
+:host-context([data-theme="light"]) .exchange-tag {
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+:host-context([data-theme="light"]) .section-count {
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+:host-context([data-theme="light"]) .btn-action-view {
+  background: rgba(2, 132, 199, 0.1) !important;
+  color: #0284c7 !important;
+  border-color: rgba(2, 132, 199, 0.3) !important;
+}
+
+:host-context([data-theme="light"]) .btn-action-view:hover {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+:host-context([data-theme="light"]) .btn-action-remove {
+  color: #64748b !important;
+}
+
+:host-context([data-theme="light"]) .btn-action-remove:hover {
+  color: #dc2626 !important;
+  background: rgba(220, 38, 38, 0.1) !important;
+}
+

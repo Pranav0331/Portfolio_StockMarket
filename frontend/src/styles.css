@@ -85,11 +85,24 @@
   --glow-radial: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.08), transparent 70%);
 }
 
-/* Explicit Global Light Theme Overrides for Risk Page */
-[data-theme="light"] app-risk .glass-card {
+/* Explicit Global Light Theme Overrides for Risk, Watchlist, and Alerts Pages */
+[data-theme="light"] app-risk .glass-card,
+[data-theme="light"] app-watchlist .glass-card,
+[data-theme="light"] app-watchlist .toolbar-card,
+[data-theme="light"] app-watchlist .empty-watchlist-card,
+[data-theme="light"] app-watchlist .watchlist-card,
+[data-theme="light"] app-alerts .summary-card,
+[data-theme="light"] app-alerts .toolbar-glass,
+[data-theme="light"] app-alerts .alert-card,
+[data-theme="light"] app-alerts .empty-state-panel {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
   box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-theme="light"] app-alerts .alert-card.status-triggered {
+  background: #fffbeb !important;
+  border-color: #f59e0b !important;
 }
 
 [data-theme="light"] app-risk .page-title,
@@ -98,7 +111,20 @@
 [data-theme="light"] app-risk .c-stat-val,
 [data-theme="light"] app-risk .beta-title,
 [data-theme="light"] app-risk .ts-val,
-[data-theme="light"] app-risk .risk-table td {
+[data-theme="light"] app-risk .risk-table td,
+[data-theme="light"] app-watchlist .page-title,
+[data-theme="light"] app-watchlist .section-title,
+[data-theme="light"] app-watchlist .price-val,
+[data-theme="light"] app-watchlist .time-val,
+[data-theme="light"] app-watchlist .res-symbol,
+[data-theme="light"] app-alerts .page-title,
+[data-theme="light"] app-alerts .summary-val,
+[data-theme="light"] app-alerts .symbol-text,
+[data-theme="light"] app-alerts .target-val,
+[data-theme="light"] app-alerts .live-val,
+[data-theme="light"] app-alerts .modal-title,
+[data-theme="light"] app-alerts .empty-heading,
+[data-theme="light"] app-alerts .cond-title {
   color: #0f172a !important;
 }
 
@@ -107,7 +133,17 @@
 [data-theme="light"] app-risk .exp-labels,
 [data-theme="light"] app-risk .hhi-value-pill,
 [data-theme="light"] app-risk .beta-subtitle,
-[data-theme="light"] app-risk .chart-legend-row {
+[data-theme="light"] app-risk .chart-legend-row,
+[data-theme="light"] app-watchlist .page-subtitle,
+[data-theme="light"] app-watchlist .empty-desc,
+[data-theme="light"] app-watchlist .res-name,
+[data-theme="light"] app-watchlist .company-title,
+[data-theme="light"] app-alerts .page-subtitle,
+[data-theme="light"] app-alerts .empty-subtext,
+[data-theme="light"] app-alerts .company-text,
+[data-theme="light"] app-alerts .notes-wrap,
+[data-theme="light"] app-alerts .delete-msg,
+[data-theme="light"] app-alerts .cond-desc {
   color: #334155 !important;
 }
 
@@ -119,9 +155,44 @@
 [data-theme="light"] app-risk .beta-info-row,
 [data-theme="light"] app-risk .insufficient-data-box,
 [data-theme="light"] app-risk .risk-table th,
-[data-theme="light"] app-risk .stock-company-sub {
+[data-theme="light"] app-risk .stock-company-sub,
+[data-theme="light"] app-watchlist .time-lbl,
+[data-theme="light"] app-watchlist .suggest-lbl,
+[data-theme="light"] app-watchlist .section-count,
+[data-theme="light"] app-watchlist .exchange-tag,
+[data-theme="light"] app-watchlist .res-type-badge,
+[data-theme="light"] app-watchlist .filter-icon,
+[data-theme="light"] app-watchlist .search-icon,
+[data-theme="light"] app-watchlist .empty-category-msg,
+[data-theme="light"] app-alerts .summary-label,
+[data-theme="light"] app-alerts .section-label,
+[data-theme="light"] app-alerts .triggered-meta,
+[data-theme="light"] app-alerts .form-label,
+[data-theme="light"] app-alerts .form-hint,
+[data-theme="light"] app-alerts .preview-label,
+[data-theme="light"] app-alerts .quick-add-label,
+[data-theme="light"] app-alerts .chip-label,
+[data-theme="light"] app-alerts .item-name {
   color: #475569 !important;
 }
+
+[data-theme="light"] app-watchlist .add-input,
+[data-theme="light"] app-watchlist .filter-input,
+[data-theme="light"] app-watchlist .category-select,
+[data-theme="light"] app-alerts .search-input,
+[data-theme="light"] app-alerts .form-input,
+[data-theme="light"] app-alerts .condition-select {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] app-alerts .modal-dialog {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+}
+
 
 
 *, *::before, *::after {

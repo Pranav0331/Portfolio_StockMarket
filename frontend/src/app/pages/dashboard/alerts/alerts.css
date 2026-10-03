@@ -1233,3 +1233,207 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   EXPLICIT LIGHT THEME OVERRIDES VIA :host-context
+   ========================================================================== */
+:host-context([data-theme="light"]) .summary-card,
+:host-context([data-theme="light"]) .toolbar-glass,
+:host-context([data-theme="light"]) .alert-card,
+:host-context([data-theme="light"]) .empty-state-panel {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04) !important;
+}
+
+:host-context([data-theme="light"]) .summary-card:hover,
+:host-context([data-theme="light"]) .alert-card:hover {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.12), 0 4px 8px -2px rgba(15, 23, 42, 0.06) !important;
+}
+
+:host-context([data-theme="light"]) .alert-card.status-triggered {
+  background: #fffbeb !important;
+  border-color: #f59e0b !important;
+}
+
+:host-context([data-theme="light"]) .page-title,
+:host-context([data-theme="light"]) .summary-val,
+:host-context([data-theme="light"]) .symbol-text,
+:host-context([data-theme="light"]) .target-val,
+:host-context([data-theme="light"]) .live-val,
+:host-context([data-theme="light"]) .modal-title,
+:host-context([data-theme="light"]) .empty-heading,
+:host-context([data-theme="light"]) .cond-title {
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .page-subtitle,
+:host-context([data-theme="light"]) .empty-subtext,
+:host-context([data-theme="light"]) .company-text,
+:host-context([data-theme="light"]) .notes-wrap,
+:host-context([data-theme="light"]) .delete-msg,
+:host-context([data-theme="light"]) .cond-desc {
+  color: #334155 !important;
+}
+
+:host-context([data-theme="light"]) .summary-label,
+:host-context([data-theme="light"]) .section-label,
+:host-context([data-theme="light"]) .triggered-meta,
+:host-context([data-theme="light"]) .form-label,
+:host-context([data-theme="light"]) .form-hint,
+:host-context([data-theme="light"]) .preview-label,
+:host-context([data-theme="light"]) .quick-add-label,
+:host-context([data-theme="light"]) .chip-label,
+:host-context([data-theme="light"]) .item-name,
+:host-context([data-theme="light"]) .text-muted {
+  color: #475569 !important;
+}
+
+:host-context([data-theme="light"]) .search-input,
+:host-context([data-theme="light"]) .form-input,
+:host-context([data-theme="light"]) .condition-select {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .search-input:focus,
+:host-context([data-theme="light"]) .form-input:focus {
+  border-color: #4f46e5 !important;
+  background: #ffffff !important;
+}
+
+:host-context([data-theme="light"]) .status-pills {
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+:host-context([data-theme="light"]) .pill-btn {
+  color: #475569 !important;
+}
+
+:host-context([data-theme="light"]) .pill-btn:hover {
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .pill-btn.active {
+  background: #4f46e5 !important;
+  color: #ffffff !important;
+}
+
+:host-context([data-theme="light"]) .condition-select option {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .target-section {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+:host-context([data-theme="light"]) .card-footer {
+  border-top: 1px solid #f1f5f9 !important;
+}
+
+:host-context([data-theme="light"]) .link-action-btn {
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+:host-context([data-theme="light"]) .link-action-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .modal-dialog {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+}
+
+:host-context([data-theme="light"]) .modal-header {
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+:host-context([data-theme="light"]) .modal-footer {
+  border-top: 1px solid #f1f5f9 !important;
+}
+
+:host-context([data-theme="light"]) .modal-close-btn {
+  color: #64748b !important;
+}
+
+:host-context([data-theme="light"]) .modal-close-btn:hover {
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .autocomplete-dropdown {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 15px 30px rgba(15, 23, 42, 0.15) !important;
+}
+
+:host-context([data-theme="light"]) .autocomplete-item {
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+:host-context([data-theme="light"]) .autocomplete-item:hover {
+  background: #f0f9ff !important;
+}
+
+:host-context([data-theme="light"]) .item-symbol {
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .quick-chip,
+:host-context([data-theme="light"]) .chip-btn {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+:host-context([data-theme="light"]) .quick-chip:hover,
+:host-context([data-theme="light"]) .chip-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .cond-toggle-btn {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+:host-context([data-theme="light"]) .cond-toggle-btn.active-above {
+  background: #ecfdf5 !important;
+  border-color: #059669 !important;
+}
+
+:host-context([data-theme="light"]) .cond-toggle-btn.active-below {
+  background: #fef2f2 !important;
+  border-color: #dc2626 !important;
+}
+
+:host-context([data-theme="light"]) .preview-card {
+  background: #f0fdf4 !important;
+  border: 1px solid #bbf7d0 !important;
+}
+
+:host-context([data-theme="light"]) .btn-secondary {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+:host-context([data-theme="light"]) .btn-secondary:hover:not(:disabled) {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .exchange-badge {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
