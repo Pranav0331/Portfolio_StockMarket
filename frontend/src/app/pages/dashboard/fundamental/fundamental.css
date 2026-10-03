@@ -566,3 +566,166 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   EXPLICIT LIGHT THEME OVERRIDES VIA :host-context
+   ========================================================================== */
+:host-context([data-theme="light"]) .glass-card,
+:host-context([data-theme="light"]) .profile-card,
+:host-context([data-theme="light"]) .metric-card,
+:host-context([data-theme="light"]) .fundamental-header,
+:host-context([data-theme="light"]) .loading-state {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04) !important;
+}
+
+:host-context([data-theme="light"]) .glass-card:hover,
+:host-context([data-theme="light"]) .metric-card:hover {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.12), 0 4px 8px -2px rgba(15, 23, 42, 0.06) !important;
+}
+
+:host-context([data-theme="light"]) .symbol-text,
+:host-context([data-theme="light"]) .real-price,
+:host-context([data-theme="light"]) .card-title,
+:host-context([data-theme="light"]) .metrics-section-heading h2,
+:host-context([data-theme="light"]) .metric-main-val,
+:host-context([data-theme="light"]) .desc-heading,
+:host-context([data-theme="light"]) .profile-value {
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .company-title,
+:host-context([data-theme="light"]) .desc-text {
+  color: #334155 !important;
+}
+
+:host-context([data-theme="light"]) .profile-label,
+:host-context([data-theme="light"]) .metric-title,
+:host-context([data-theme="light"]) .metric-footnote,
+:host-context([data-theme="light"]) .metrics-sub,
+:host-context([data-theme="light"]) .search-icon,
+:host-context([data-theme="light"]) .loading-state p {
+  color: #475569 !important;
+}
+
+:host-context([data-theme="light"]) .symbol-search-box {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+:host-context([data-theme="light"]) .symbol-search-box:focus-within {
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2) !important;
+}
+
+:host-context([data-theme="light"]) .symbol-input {
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .symbol-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+:host-context([data-theme="light"]) .btn-go {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+:host-context([data-theme="light"]) .btn-go:hover {
+  background: #0369a1 !important;
+}
+
+:host-context([data-theme="light"]) .btn-refresh {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+:host-context([data-theme="light"]) .btn-refresh:hover:not(:disabled) {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+:host-context([data-theme="light"]) .btn-action-link {
+  background: rgba(2, 132, 199, 0.1) !important;
+  color: #0284c7 !important;
+  border: 1px solid rgba(2, 132, 199, 0.3) !important;
+}
+
+:host-context([data-theme="light"]) .btn-action-link:hover {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+:host-context([data-theme="light"]) .exchange-tag {
+  background: rgba(2, 132, 199, 0.1) !important;
+  color: #0284c7 !important;
+  border: 1px solid rgba(2, 132, 199, 0.25) !important;
+}
+
+:host-context([data-theme="light"]) .provider-badge {
+  background: rgba(5, 150, 105, 0.1) !important;
+  color: #059669 !important;
+  border: 1px solid rgba(5, 150, 105, 0.25) !important;
+}
+
+:host-context([data-theme="light"]) .meta-tag {
+  background: rgba(147, 51, 234, 0.1) !important;
+  color: #7e22ce !important;
+  border: 1px solid rgba(147, 51, 234, 0.25) !important;
+}
+
+:host-context([data-theme="light"]) .meta-subtag {
+  background: rgba(59, 130, 246, 0.1) !important;
+  color: #1d4ed8 !important;
+  border: 1px solid rgba(59, 130, 246, 0.25) !important;
+}
+
+:host-context([data-theme="light"]) .metric-badge {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+:host-context([data-theme="light"]) .unavailable-tag {
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+  border: 1px dashed #cbd5e1 !important;
+}
+
+:host-context([data-theme="light"]) .color-high {
+  color: #059669 !important;
+}
+
+:host-context([data-theme="light"]) .color-low {
+  color: #dc2626 !important;
+}
+
+:host-context([data-theme="light"]) .pill-positive {
+  background: rgba(5, 150, 105, 0.12) !important;
+  color: #059669 !important;
+  border-color: rgba(5, 150, 105, 0.3) !important;
+}
+
+:host-context([data-theme="light"]) .pill-negative {
+  background: rgba(220, 38, 38, 0.12) !important;
+  color: #dc2626 !important;
+  border-color: rgba(220, 38, 38, 0.3) !important;
+}
+
+:host-context([data-theme="light"]) .card-header-bar {
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+:host-context([data-theme="light"]) .profile-description {
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+:host-context([data-theme="light"]) .error-banner {
+  background: rgba(239, 68, 68, 0.08) !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+  color: #dc2626 !important;
+}
+

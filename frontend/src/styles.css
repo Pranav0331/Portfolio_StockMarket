@@ -85,7 +85,7 @@
   --glow-radial: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.08), transparent 70%);
 }
 
-/* Explicit Global Light Theme Overrides for Risk, Watchlist, and Alerts Pages */
+/* Explicit Global Light Theme Overrides for Risk, Watchlist, Alerts, and Fundamental Pages */
 [data-theme="light"] app-risk .glass-card,
 [data-theme="light"] app-watchlist .glass-card,
 [data-theme="light"] app-watchlist .toolbar-card,
@@ -94,7 +94,12 @@
 [data-theme="light"] app-alerts .summary-card,
 [data-theme="light"] app-alerts .toolbar-glass,
 [data-theme="light"] app-alerts .alert-card,
-[data-theme="light"] app-alerts .empty-state-panel {
+[data-theme="light"] app-alerts .empty-state-panel,
+[data-theme="light"] app-fundamental .glass-card,
+[data-theme="light"] app-fundamental .profile-card,
+[data-theme="light"] app-fundamental .metric-card,
+[data-theme="light"] app-fundamental .fundamental-header,
+[data-theme="light"] app-fundamental .loading-state {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
   box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04) !important;
@@ -124,7 +129,14 @@
 [data-theme="light"] app-alerts .live-val,
 [data-theme="light"] app-alerts .modal-title,
 [data-theme="light"] app-alerts .empty-heading,
-[data-theme="light"] app-alerts .cond-title {
+[data-theme="light"] app-alerts .cond-title,
+[data-theme="light"] app-fundamental .symbol-text,
+[data-theme="light"] app-fundamental .real-price,
+[data-theme="light"] app-fundamental .card-title,
+[data-theme="light"] app-fundamental .metrics-section-heading h2,
+[data-theme="light"] app-fundamental .metric-main-val,
+[data-theme="light"] app-fundamental .desc-heading,
+[data-theme="light"] app-fundamental .profile-value {
   color: #0f172a !important;
 }
 
@@ -143,7 +155,9 @@
 [data-theme="light"] app-alerts .company-text,
 [data-theme="light"] app-alerts .notes-wrap,
 [data-theme="light"] app-alerts .delete-msg,
-[data-theme="light"] app-alerts .cond-desc {
+[data-theme="light"] app-alerts .cond-desc,
+[data-theme="light"] app-fundamental .company-title,
+[data-theme="light"] app-fundamental .desc-text {
   color: #334155 !important;
 }
 
@@ -172,7 +186,13 @@
 [data-theme="light"] app-alerts .preview-label,
 [data-theme="light"] app-alerts .quick-add-label,
 [data-theme="light"] app-alerts .chip-label,
-[data-theme="light"] app-alerts .item-name {
+[data-theme="light"] app-alerts .item-name,
+[data-theme="light"] app-fundamental .profile-label,
+[data-theme="light"] app-fundamental .metric-title,
+[data-theme="light"] app-fundamental .metric-footnote,
+[data-theme="light"] app-fundamental .metrics-sub,
+[data-theme="light"] app-fundamental .search-icon,
+[data-theme="light"] app-fundamental .loading-state p {
   color: #475569 !important;
 }
 
@@ -181,10 +201,22 @@
 [data-theme="light"] app-watchlist .category-select,
 [data-theme="light"] app-alerts .search-input,
 [data-theme="light"] app-alerts .form-input,
-[data-theme="light"] app-alerts .condition-select {
+[data-theme="light"] app-alerts .condition-select,
+[data-theme="light"] app-fundamental .symbol-search-box {
   background: #f8fafc !important;
   border: 1px solid #cbd5e1 !important;
   color: #0f172a !important;
+}
+
+[data-theme="light"] app-fundamental .symbol-input {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] app-fundamental .metric-badge,
+[data-theme="light"] app-fundamental .unavailable-tag {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #e2e8f0 !important;
 }
 
 [data-theme="light"] app-alerts .modal-dialog {
@@ -192,6 +224,7 @@
   border: 1px solid #e2e8f0 !important;
   box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
 }
+
 
 
 
