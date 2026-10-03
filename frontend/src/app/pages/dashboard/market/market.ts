@@ -1841,6 +1841,8 @@ export class MarketComponent implements OnInit, OnDestroy {
       const delta = this.resizeStartX - moveEvent.clientX;
       const newWidth = Math.min(600, Math.max(260, this.resizeStartWidth + delta));
       this.watchlistWidth.set(newWidth);
+      this.syncCanvasSize();
+      this.renderDrawings();
     };
 
     this.boundOnMouseUp = () => {

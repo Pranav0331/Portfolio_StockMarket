@@ -852,6 +852,44 @@
 /* ==========================================================================
    3. RIGHT COMPACT TRADINGVIEW-STYLE WATCHLIST PANEL (Resizable right pane)
    ========================================================================== */
+
+/* Draggable Vertical Resize Divider between Chart and Watchlist */
+.watchlist-resize-bar {
+  width: 6px;
+  min-width: 6px;
+  cursor: col-resize;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  user-select: none;
+  z-index: 30;
+  position: relative;
+  transition: background var(--transition-fast);
+}
+
+.watchlist-resize-bar:hover,
+.watchlist-resize-bar.resizing {
+  background: rgba(56, 189, 248, 0.25);
+}
+
+.watchlist-resize-bar .resize-handle-grip {
+  width: 2px;
+  height: 32px;
+  border-radius: 2px;
+  background: var(--border-glass-glow);
+  transition: height var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.watchlist-resize-bar:hover .resize-handle-grip,
+.watchlist-resize-bar.resizing .resize-handle-grip {
+  height: 52px;
+  background: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+}
+
+/* Right Watchlist Sidebar Pane */
 .watchlist-compact-pane {
   position: relative;
   display: flex;
@@ -861,44 +899,11 @@
   border-radius: var(--radius-md);
   min-height: 0;
   height: 100%;
-  overflow: hidden;
+  flex-shrink: 0;
   box-sizing: border-box;
-}
-
-/* Left-edge Resize Handle (TradingView Style) */
-.watchlist-resize-handle {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 8px;
-  cursor: col-resize;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background var(--transition-fast);
-  user-select: none;
-}
-
-.watchlist-resize-handle:hover,
-.watchlist-compact-pane.is-resizing .watchlist-resize-handle {
-  background: rgba(99, 102, 241, 0.22);
-}
-
-.resize-handle-bar {
-  width: 2px;
-  height: 28px;
-  border-radius: 1px;
-  background: var(--border-subtle);
-  transition: background var(--transition-fast), height var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.watchlist-resize-handle:hover .resize-handle-bar,
-.watchlist-compact-pane.is-resizing .resize-handle-bar {
-  background: var(--accent-primary);
-  height: 48px;
-  box-shadow: 0 0 8px var(--accent-primary);
+  overflow: hidden;
+  min-width: 260px;
+  max-width: 600px;
 }
 
 /* 1. Top Header Bar */
