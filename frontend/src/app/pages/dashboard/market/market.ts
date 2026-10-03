@@ -32,7 +32,10 @@ import {
   HistogramData
 } from 'lightweight-charts';
 import { MarketService } from '../../../services/market.service';
+import { AuthService } from '../../../services/auth.service';
+import { AlertService } from '../../../services/alert.service';
 import { StockQuote, StockSearchItem, Candle, CandleSeries } from '../../../models/market.model';
+import { AlertConditionType } from '../../../models/alert.model';
 import {
   IndicatorCategory,
   IndicatorDefinition,
@@ -79,8 +82,19 @@ export interface HoveredBarData {
 })
 export class MarketComponent implements OnInit, OnDestroy {
   private readonly marketService = inject(MarketService);
+  readonly authService = inject(AuthService);
+  readonly alertService = inject(AlertService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+
+  // Price Alert Modal State
+  readonly isAlertModalOpen = signal<boolean>(false);
+  readonly alertCondition = signal<AlertConditionType>('ABOVE');
+  readonly alertTargetPrice = signal<number>(100);
+  readonly alertNotes = signal<string>('');
+  readonly isSavingAlert = signal<boolean>(false);
+  readonly alertErrorMessage = signal<string | null>(null);
+  readonly alertSuccessMessage = signal<string | null>(null);
 
   // Chart & Drawing Canvas DOM References
   readonly chartContainerRef = viewChild<ElementRef<HTMLDivElement>>('chartContainer');
@@ -2395,5 +2409,65 @@ export class MarketComponent implements OnInit, OnDestroy {
     if (symbol.startsWith('EUR/')) return '€';
     if (symbol.startsWith('GBP/')) return '£';
     return '$';
+  }
+
+  // ==========================================
+  // PRICE ALERT ACTIONS
+  // ==========================================
+
+  openAlertModal(): void {
+    const currentP = this.currentQuote()?.price ?? 100;
+    this.alertTargetPrice.set(Number(currentP.toFixed(2)));
+    this.alertCondition.set('ABOVE');
+    this.alertNotes.set('');
+    this.alertErrorMessage.set(null);
+    this.alertSuccessMessage.set(null);
+    this.isAlertModalOpen.set(true);
+  }
+
+  closeAlertModal(): void {
+    this.isAlertModalOpen.set(false);
+    this.alertErrorMessage.set(null);
+    this.alertSuccessMessage.set(null);
+  }
+
+  setAlertCondition(cond: AlertConditionType): void {
+    this.alertCondition.set(cond);
+  }
+
+  saveAlert(): void {
+    if (!this.authService.isAuthenticated()) {
+      this.alertErrorMessage.set('Please log in to create price alerts.');
+      return;
+    }
+
+    const price = this.alertTargetPrice();
+    if (!price || price <= 0) {
+      this.alertErrorMessage.set('Please enter a valid target price greater than 0.');
+      return;
+    }
+
+    this.isSavingAlert.set(true);
+    this.alertErrorMessage.set(null);
+    this.alertSuccessMessage.set(null);
+
+    this.alertService.createAlert({
+      symbol: this.selectedSymbol(),
+      condition: this.alertCondition(),
+      targetPrice: price,
+      notes: this.alertNotes().trim() || undefined
+    }).subscribe({
+      next: () => {
+        this.isSavingAlert.set(false);
+        this.alertSuccessMessage.set(`Alert set: ${this.selectedSymbol()} ${this.alertCondition()} ${this.formatCurrencySymbol(this.selectedSymbol())}${price.toFixed(2)}`);
+        setTimeout(() => {
+          this.closeAlertModal();
+        }, 1200);
+      },
+      error: (err) => {
+        this.isSavingAlert.set(false);
+        this.alertErrorMessage.set(err.error?.message || err.message || 'Failed to create price alert');
+      }
+    });
   }
 }

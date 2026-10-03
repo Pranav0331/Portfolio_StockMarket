@@ -250,7 +250,25 @@
     <div class="chart-section-card">
       <!-- Chart Controls Toolbar -->
       <div class="chart-toolbar">
-        <!-- Left: Timeframes (1D, 1W, 1M, 3M, 6M, 1Y) -->
+        <!-- Intervals (1m, 5m, 15m, 30m, 1H, 4H, 1D, 1W) -->
+        <div class="toolbar-group intervals-group">
+          <span class="toolbar-label">Timeframe</span>
+          <div class="btn-segmented">
+            @for (iv of intervals; track iv.value) {
+              <button
+                type="button"
+                class="seg-btn"
+                [class.active]="currentInterval() === iv.value"
+                (click)="setInterval(iv.value)"
+                [title]="iv.label + ' Candle Interval'"
+              >
+                {{ iv.label }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Ranges (1D, 1W, 1M, 3M, 6M, 1Y) -->
         <div class="toolbar-group timeframes-group">
           <span class="toolbar-label">Range</span>
           <div class="btn-segmented">

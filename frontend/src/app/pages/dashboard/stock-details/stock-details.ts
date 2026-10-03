@@ -37,7 +37,14 @@ import { TradeResponse, VirtualWallet, UserHolding } from '../../../models/tradi
 import { AlertConditionType } from '../../../models/alert.model';
 
 export type ChartType = 'candles' | 'line' | 'area';
+export type StockDetailInterval = '1min' | '5min' | '15min' | '30min' | '1h' | '4h' | '1day' | '1week';
 export type TimeframeRange = '1D' | '1W' | '1M' | '3M' | '6M' | '1Y';
+
+export interface IntervalOption {
+  label: string;
+  value: StockDetailInterval;
+  outputsize: number;
+}
 
 export interface HoveredBarData {
   timeStr: string;
@@ -86,6 +93,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
   // Chart Controls State
   readonly currentChartType = signal<ChartType>('candles');
+  readonly currentInterval = signal<StockDetailInterval>('5min');
   readonly currentTimeframe = signal<TimeframeRange>('1D');
   readonly isFullscreen = signal<boolean>(false);
 
@@ -95,7 +103,19 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   // Real Candlestick Data Cache
   readonly candleData = signal<Candle[]>([]);
 
-  // Timeframe Ranges Available
+  // Timeframe / Interval Options Available (1m, 5m, 15m, 30m, 1H, 4H, 1D, 1W)
+  readonly intervals: IntervalOption[] = [
+    { label: '1m', value: '1min', outputsize: 100 },
+    { label: '5m', value: '5min', outputsize: 100 },
+    { label: '15m', value: '15min', outputsize: 100 },
+    { label: '30m', value: '30min', outputsize: 100 },
+    { label: '1H', value: '1h', outputsize: 120 },
+    { label: '4H', value: '4h', outputsize: 120 },
+    { label: '1D', value: '1day', outputsize: 180 },
+    { label: '1W', value: '1week', outputsize: 260 }
+  ];
+
+  // Range Ranges Available
   readonly timeframes: TimeframeRange[] = ['1D', '1W', '1M', '3M', '6M', '1Y'];
 
   // =========================================================================
@@ -231,7 +251,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     }
 
     this.fetchQuote(cleanSym);
-    this.fetchCandles(cleanSym, this.currentTimeframe());
+    this.fetchCandles(cleanSym, this.currentInterval());
 
     if (this.authService.isAuthenticated()) {
       this.refreshTradingState();
@@ -256,10 +276,34 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     });
   }
 
-  fetchCandles(symbol: string, timeframe: TimeframeRange): void {
-    this.isLoadingCandles.set(true);
+  fetchCandles(symbol: string, timeframeOrInterval?: TimeframeRange | StockDetailInterval): void {
+    let interval: StockDetailInterval = this.currentInterval();
+    let outputsize = 100;
 
-    const { interval, outputsize } = this.getApiParamsForTimeframe(timeframe);
+    if (timeframeOrInterval) {
+      if (['1D', '1W', '1M', '3M', '6M', '1Y'].includes(timeframeOrInterval)) {
+        const tf = timeframeOrInterval as TimeframeRange;
+        this.currentTimeframe.set(tf);
+        const params = this.getApiParamsForTimeframe(tf);
+        interval = params.interval as StockDetailInterval;
+        outputsize = params.outputsize;
+        this.currentInterval.set(interval);
+      } else {
+        interval = timeframeOrInterval as StockDetailInterval;
+        this.currentInterval.set(interval);
+        const opt = this.intervals.find(i => i.value === interval);
+        outputsize = opt ? opt.outputsize : 100;
+      }
+    } else {
+      const opt = this.intervals.find(i => i.value === interval);
+      outputsize = opt ? opt.outputsize : 100;
+    }
+
+    this.fetchCandlesByInterval(symbol, interval, outputsize);
+  }
+
+  fetchCandlesByInterval(symbol: string, interval: StockDetailInterval, outputsize: number = 100): void {
+    this.isLoadingCandles.set(true);
 
     this.marketService.getCandles(symbol, interval, outputsize).subscribe({
       next: (series) => {
@@ -717,9 +761,18 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   // USER ACTIONS
   // =========================================================================
 
+  setInterval(iv: StockDetailInterval): void {
+    this.currentInterval.set(iv);
+    const opt = this.intervals.find(i => i.value === iv);
+    const outputsize = opt ? opt.outputsize : 100;
+    this.fetchCandlesByInterval(this.symbol(), iv, outputsize);
+  }
+
   setTimeframe(tf: TimeframeRange): void {
     this.currentTimeframe.set(tf);
-    this.fetchCandles(this.symbol(), tf);
+    const { interval, outputsize } = this.getApiParamsForTimeframe(tf);
+    this.currentInterval.set(interval as StockDetailInterval);
+    this.fetchCandlesByInterval(this.symbol(), interval as StockDetailInterval, outputsize);
   }
 
   setChartType(type: ChartType): void {
