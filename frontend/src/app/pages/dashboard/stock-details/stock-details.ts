@@ -321,10 +321,10 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     try {
       if (!this.chart) {
         const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-        const bgColor = isDark ? '#0f172a' : '#ffffff';
-        const textColor = isDark ? '#94a3b8' : '#475569';
-        const gridColor = isDark ? 'rgba(51, 65, 85, 0.25)' : 'rgba(226, 232, 240, 0.6)';
-        const borderColor = isDark ? 'rgba(51, 65, 85, 0.4)' : 'rgba(226, 232, 240, 0.8)';
+        const bgColor = isDark ? '#08080a' : '#ffffff';
+        const textColor = isDark ? '#a1a1aa' : '#475569';
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(226, 232, 240, 0.6)';
+        const borderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.8)';
 
         this.chart = createChart(container, {
           width: container.clientWidth || 800,

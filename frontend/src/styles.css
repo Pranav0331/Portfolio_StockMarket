@@ -1,22 +1,24 @@
 :root {
-  /* Dark Theme (Default) */
-  --bg-app: #080c14;
-  --bg-surface: rgba(15, 23, 42, 0.72);
-  --bg-surface-elevated: rgba(30, 41, 59, 0.75);
-  --bg-surface-hover: rgba(30, 41, 59, 0.9);
-  --bg-glass-card: rgba(15, 23, 42, 0.65);
-  --bg-glass-card-hover: rgba(26, 38, 66, 0.75);
-  --bg-nav: rgba(8, 12, 20, 0.8);
+  /* ==========================================================================
+     Dark Theme (Default - True Premium Black / Charcoal)
+     ========================================================================== */
+  --bg-app: #050505;
+  --bg-surface: rgba(16, 16, 18, 0.82);
+  --bg-surface-elevated: rgba(24, 24, 28, 0.90);
+  --bg-surface-hover: rgba(32, 32, 38, 0.96);
+  --bg-glass-card: rgba(12, 12, 14, 0.76);
+  --bg-glass-card-hover: rgba(20, 20, 24, 0.88);
+  --bg-nav: rgba(8, 8, 10, 0.88);
   
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-glass: rgba(255, 255, 255, 0.12);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-glass: rgba(255, 255, 255, 0.09);
   --border-glass-glow: rgba(99, 102, 241, 0.35);
   --border-focus: #6366f1;
 
   --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-inverse: #0b0f19;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-inverse: #000000;
 
   --accent-primary: #6366f1;
   --accent-primary-hover: #4f46e5;
@@ -27,9 +29,9 @@
   --accent-rose: #f43f5e;
 
   --glass-blur: blur(16px);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  --card-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-  --glow-radial: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.15), transparent 70%);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.7);
+  --card-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.8);
+  --glow-radial: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.12), transparent 70%);
 
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
@@ -42,16 +44,23 @@
 
   --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-smooth: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --theme-transition: background-color 300ms ease-in-out,
+                      border-color 300ms ease-in-out,
+                      color 300ms ease-in-out,
+                      box-shadow 300ms ease-in-out;
 }
 
 [data-theme="light"] {
+  /* ==========================================================================
+     Light Theme (Clean White / Slate Professional Dashboard)
+     ========================================================================== */
   --bg-app: #f4f6fa;
-  --bg-surface: rgba(255, 255, 255, 0.85);
-  --bg-surface-elevated: rgba(255, 255, 255, 0.95);
+  --bg-surface: rgba(255, 255, 255, 0.88);
+  --bg-surface-elevated: rgba(255, 255, 255, 0.98);
   --bg-surface-hover: #ffffff;
-  --bg-glass-card: rgba(255, 255, 255, 0.75);
-  --bg-glass-card-hover: rgba(255, 255, 255, 0.92);
-  --bg-nav: rgba(244, 246, 250, 0.85);
+  --bg-glass-card: rgba(255, 255, 255, 0.82);
+  --bg-glass-card-hover: rgba(255, 255, 255, 0.96);
+  --bg-nav: rgba(244, 246, 250, 0.88);
 
   --border-subtle: rgba(15, 23, 42, 0.08);
   --border-glass: rgba(15, 23, 42, 0.12);
@@ -94,8 +103,38 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color var(--transition-smooth), color var(--transition-smooth);
+  transition: background-color 300ms ease-in-out, color 300ms ease-in-out;
   overflow-x: hidden;
+}
+
+/* Universal Smooth Theme Transitions for Core Layout Elements */
+.app-layout,
+.dashboard-shell,
+.dashboard-sidebar,
+.dashboard-topbar,
+.dashboard-main,
+.navbar,
+.app-footer,
+.dropdown-panel,
+.card,
+.card-glass,
+.glass-card,
+.feature-card,
+.step-card,
+.visual-tile,
+.hero-badge,
+.search-bar-wrapper,
+.icon-btn,
+.nav-item,
+.user-menu-btn,
+.user-profile-badge,
+input,
+select,
+textarea {
+  transition: background-color 300ms ease-in-out,
+              border-color 300ms ease-in-out,
+              color 300ms ease-in-out,
+              box-shadow 300ms ease-in-out;
 }
 
 button {
@@ -117,6 +156,7 @@ a {
 
 ::-webkit-scrollbar-track {
   background: var(--bg-app);
+  transition: background 300ms ease-in-out;
 }
 
 ::-webkit-scrollbar-thumb {
