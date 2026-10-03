@@ -152,27 +152,9 @@
   <div class="terminal-body-grid">
     <!-- MAIN CHART AREA WITH ATTACHED LEFT DRAWING TOOLBAR -->
     <main class="chart-main-pane">
-      <!-- Top Chart Header / Controls Strip -->
+      <!-- 1. Top Chart Controls Strip -->
       <div class="chart-toolbar-row">
-        <!-- Live OHLC Telemetry on Hover -->
-        <div class="ohlc-strip">
-          @if (hoveredBar(); as bar) {
-            <span class="ohlc-time-badge">{{ bar.timeStr }}</span>
-            <span class="ohlc-metric"><span class="k">O</span><span class="v">{{ formatCurrencySymbol(selectedSymbol()) }}{{ bar.open | number:'1.2-2' }}</span></span>
-            <span class="ohlc-metric"><span class="k">H</span><span class="v">{{ formatCurrencySymbol(selectedSymbol()) }}{{ bar.high | number:'1.2-2' }}</span></span>
-            <span class="ohlc-metric"><span class="k">L</span><span class="v">{{ formatCurrencySymbol(selectedSymbol()) }}{{ bar.low | number:'1.2-2' }}</span></span>
-            <span class="ohlc-metric" [class.up]="bar.close >= bar.open" [class.down]="bar.close < bar.open">
-              <span class="k">C</span><span class="v">{{ formatCurrencySymbol(selectedSymbol()) }}{{ bar.close | number:'1.2-2' }}</span>
-            </span>
-            @if (bar.volume != null && bar.volume > 0) {
-              <span class="ohlc-metric vol"><span class="k">Vol</span><span class="v">{{ bar.volume | number }}</span></span>
-            }
-          } @else {
-            <span class="ohlc-idle">Hover candles for OHLC telemetry</span>
-          }
-        </div>
-
-        <!-- Controls: Intervals, Timeframes, Chart Type, Actions -->
+        <!-- Controls: Intervals, Timeframes, Chart Type, Indicators -->
         <div class="toolbar-controls-cluster">
           <!-- Intervals -->
           <div class="segmented-control">
@@ -249,47 +231,65 @@
               <span class="ind-count-badge">{{ activeIndicators().length }}</span>
             }
           </button>
-
-          <!-- Action Tools: Refresh, Reset & Fullscreen -->
-          <div class="tools-btn-group">
-            <button 
-              type="button" 
-              class="tool-btn refresh-btn" 
-              id="chart-refresh-btn" 
-              (click)="refreshCurrentInstrument()" 
-              [class.loading]="isLoadingQuote() || isLoadingCandles()"
-              title="Refresh Real Market Data"
-            >
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 4v6h-6"></path>
-                <path d="M1 20v-6h6"></path>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-              <span>Refresh</span>
-            </button>
-            <button 
-              type="button" 
-              class="tool-btn reset-btn" 
-              id="chart-reset-btn" 
-              (click)="fitChart()" 
-              title="Reset / Fit Chart View"
-            >
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="1 4 1 10 7 10"></polyline>
-                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
-              </svg>
-              <span>Reset</span>
-            </button>
-            <button type="button" class="tool-btn" (click)="toggleFullscreen()" [title]="isFullscreen() ? 'Exit Fullscreen' : 'Fullscreen Terminal'">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="15 3 21 3 21 9"></polyline>
-                <polyline points="9 21 3 21 3 15"></polyline>
-                <line x1="21" y1="3" x2="14" y2="10"></line>
-                <line x1="3" y1="21" x2="10" y2="14"></line>
-              </svg>
-            </button>
-          </div>
         </div>
+
+        <!-- Action Tools: Refresh, Reset & Fullscreen -->
+        <div class="tools-btn-group">
+          <button 
+            type="button" 
+            class="tool-btn refresh-btn" 
+            id="chart-refresh-btn" 
+            (click)="refreshCurrentInstrument()" 
+            [class.loading]="isLoadingQuote() || isLoadingCandles()"
+            title="Refresh Real Market Data"
+          >
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"></path>
+              <path d="M1 20v-6h6"></path>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            <span>Refresh</span>
+          </button>
+          <button 
+            type="button" 
+            class="tool-btn reset-btn" 
+            id="chart-reset-btn" 
+            (click)="fitChart()" 
+            title="Reset / Fit Chart View"
+          >
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="1 4 1 10 7 10"></polyline>
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+            </svg>
+            <span>Reset</span>
+          </button>
+          <button type="button" class="tool-btn" (click)="toggleFullscreen()" [title]="isFullscreen() ? 'Exit Fullscreen' : 'Fullscreen Terminal'">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <polyline points="9 21 3 21 3 15"></polyline>
+              <line x1="21" y1="3" x2="14" y2="10"></line>
+              <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. FIXED CHART TOP INFORMATION BAR (ONE SINGLE COMPACT HORIZONTAL LINE) -->
+      <div class="chart-top-info-bar ohlc-strip">
+        @if (hoveredBar(); as bar) {
+          <span class="info-datetime ohlc-time-badge">{{ bar.timeStr }}</span>
+          <span class="info-metric ohlc-metric"><span class="lbl k">O</span> <span class="val v">{{ bar.open | number:'1.2-2' }}</span></span>
+          <span class="info-metric ohlc-metric"><span class="lbl k">H</span> <span class="val v up-green">{{ bar.high | number:'1.2-2' }}</span></span>
+          <span class="info-metric ohlc-metric"><span class="lbl k">L</span> <span class="val v down-red">{{ bar.low | number:'1.2-2' }}</span></span>
+          <span class="info-metric ohlc-metric" [class.up]="bar.close >= bar.open" [class.down]="bar.close < bar.open">
+            <span class="lbl k">C</span> <span class="val v">{{ bar.close | number:'1.2-2' }}</span>
+          </span>
+          @if (bar.volume != null && bar.volume > 0) {
+            <span class="info-metric vol ohlc-metric"><span class="lbl k">V</span> <span class="val v">{{ bar.volume | number }}</span></span>
+          }
+        } @else {
+          <span class="ohlc-idle">Hover candles for OHLC telemetry</span>
+        }
       </div>
 
       <!-- ACTIVE INDICATORS MANAGEMENT RIBBON -->

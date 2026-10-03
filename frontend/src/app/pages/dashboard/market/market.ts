@@ -739,7 +739,7 @@ export class MarketComponent implements OnInit, OnDestroy {
             const latest = candles[candles.length - 1];
             if (latest) {
               this.hoveredBar.set({
-                timeStr: latest.datetime || new Date(latest.timestamp * 1000).toLocaleString(),
+                timeStr: this.formatBarDateTime(latest.datetime || latest.timestamp),
                 open: latest.open,
                 high: latest.high,
                 low: latest.low,
@@ -760,17 +760,19 @@ export class MarketComponent implements OnInit, OnDestroy {
           }
 
           if (bar) {
-            const timeVal = typeof param.time === 'number'
-              ? new Date(param.time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              : String(param.time);
+            let vol: number | null = null;
+            if (this.volumeSeries && param.seriesData.has(this.volumeSeries)) {
+              const vData: any = param.seriesData.get(this.volumeSeries);
+              vol = vData?.value ?? null;
+            }
 
             this.hoveredBar.set({
-              timeStr: timeVal,
+              timeStr: this.formatBarDateTime(param.time),
               open: bar.open ?? bar.value ?? 0,
               high: bar.high ?? bar.value ?? 0,
               low: bar.low ?? bar.value ?? 0,
               close: bar.close ?? bar.value ?? 0,
-              volume: null
+              volume: vol
             });
           }
         });
@@ -868,7 +870,7 @@ export class MarketComponent implements OnInit, OnDestroy {
       const latest = candles[candles.length - 1];
       if (latest) {
         this.hoveredBar.set({
-          timeStr: latest.datetime || new Date(latest.timestamp * 1000).toLocaleString(),
+          timeStr: this.formatBarDateTime(latest.datetime || latest.timestamp),
           open: latest.open,
           high: latest.high,
           low: latest.low,
@@ -886,6 +888,38 @@ export class MarketComponent implements OnInit, OnDestroy {
     } catch (e) {
       // ignore headless test environments
     }
+  }
+
+  formatBarDateTime(timeVal: any): string {
+    if (!timeVal) return '';
+    if (typeof timeVal === 'number') {
+      const d = new Date(timeVal * 1000);
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+    if (typeof timeVal === 'object' && timeVal !== null && 'year' in timeVal) {
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const h = 'hour' in timeVal ? ` ${pad((timeVal as any).hour)}:${pad((timeVal as any).minute)}:${pad((timeVal as any).second || 0)}` : ' 00:00:00';
+      return `${timeVal.year}-${pad(timeVal.month)}-${pad(timeVal.day)}${h}`;
+    }
+    if (typeof timeVal === 'string') {
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(timeVal)) {
+        return timeVal;
+      }
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(timeVal)) {
+        return `${timeVal}:00`;
+      }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(timeVal)) {
+        return `${timeVal} 00:00:00`;
+      }
+      const d = new Date(timeVal);
+      if (!isNaN(d.getTime())) {
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      }
+      return timeVal;
+    }
+    return String(timeVal);
   }
 
   // =========================================================================

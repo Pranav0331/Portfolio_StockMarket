@@ -464,52 +464,99 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding-bottom: 0.35rem;
+  padding-bottom: 0.25rem;
   border-bottom: 1px solid var(--border-glass);
   flex-shrink: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  min-height: 28px;
 }
 
+.chart-toolbar-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* Dedicated Chart Top Information Bar (ONE single horizontal line, TradingView style) */
+.chart-top-info-bar,
 .ohlc-strip {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  font-size: 0.72rem;
+  gap: 0.6rem;
+  height: 24px;
+  min-height: 24px;
+  max-height: 24px;
+  padding: 0 0.45rem;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm, 4px);
   font-family: var(--font-mono);
+  font-size: 0.70rem;
+  line-height: 1;
+  white-space: nowrap;
+  flex-wrap: nowrap;
   overflow-x: auto;
+  overflow-y: hidden;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  user-select: none;
 }
 
+.chart-top-info-bar::-webkit-scrollbar,
+.ohlc-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.chart-top-info-bar .info-datetime,
 .ohlc-time-badge {
   color: var(--text-muted);
   font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-right: 0.15rem;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
+.chart-top-info-bar .info-metric,
 .ohlc-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
   color: var(--text-secondary);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
+.chart-top-info-bar .info-metric .lbl,
 .ohlc-metric .k {
   color: var(--text-muted);
-  margin-right: 0.15rem;
+  font-weight: 700;
+  font-size: 0.68rem;
+  text-transform: uppercase;
 }
 
+.chart-top-info-bar .info-metric .val,
 .ohlc-metric .v {
   font-weight: 700;
   color: var(--text-primary);
 }
 
+.chart-top-info-bar .info-metric.up .val,
+.chart-top-info-bar .val.up-green,
 .ohlc-metric.up .v {
-  color: var(--accent-emerald);
+  color: var(--accent-emerald, #10b981);
 }
 
+.chart-top-info-bar .info-metric.down .val,
+.chart-top-info-bar .val.down-red,
 .ohlc-metric.down .v {
-  color: var(--accent-rose);
+  color: var(--accent-rose, #f43f5e);
 }
 
 .ohlc-idle {
   color: var(--text-muted);
   font-style: italic;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
+  white-space: nowrap;
 }
 
 .toolbar-controls-cluster {
