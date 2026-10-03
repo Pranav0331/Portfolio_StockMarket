@@ -1,6 +1,6 @@
 <div class="market-trading-terminal" [class.terminal-fullscreen]="isFullscreen()">
   <!-- =========================================================================
-       1. TOP COMPACT MARKET BAR (Ticker, Search, Tabs)
+       1. TOP TRADINGVIEW-STYLE HEADER BAR (Symbol, Ticker, Search, Timeframes)
        ========================================================================= -->
   <header class="terminal-top-bar">
     <!-- Left: Selected Instrument Live Ticker -->
@@ -13,9 +13,9 @@
         <div class="tags-line">
           <span class="micro-tag">{{ selectedExchange() }}</span>
           <span class="micro-tag type">{{ selectedType() }}</span>
-          <span class="micro-tag live">
-            <span class="pulse-beacon sm"></span>
-            Live
+          <span class="micro-tag live" [class.live-active]="isLiveConnected()" [class.live-inactive]="!isLiveConnected()">
+            <span class="pulse-beacon sm" [class.pulse-green]="isLiveConnected()" [class.pulse-gray]="!isLiveConnected()"></span>
+            {{ isLiveConnected() ? 'LIVE' : 'OFFLINE' }}
           </span>
         </div>
       </div>
@@ -147,12 +147,12 @@
   </header>
 
   <!-- =========================================================================
-       2. MAIN TRADING TERMINAL WORKSPACE (Dominant Chart | Resizable Watchlist)
+       2. MAIN WORKSPACE (Left Drawing Toolbar | Dominant Chart | Right Watchlist)
        ========================================================================= -->
   <div class="terminal-body-grid" [style.gridTemplateColumns]="'minmax(0, 1fr) ' + watchlistWidth() + 'px'">
-    <!-- LEFT / CENTER: DOMINANT CHART VIEWPORT -->
+    <!-- MAIN CHART AREA WITH ATTACHED LEFT DRAWING TOOLBAR -->
     <main class="chart-main-pane">
-      <!-- Chart Controls Toolbar Strip -->
+      <!-- Top Chart Header / Controls Strip -->
       <div class="chart-toolbar-row">
         <!-- Live OHLC Telemetry on Hover -->
         <div class="ohlc-strip">
@@ -234,7 +234,7 @@
             </button>
           </div>
 
-          <!-- Indicators Button (TradingView / Terminal Style) -->
+          <!-- Indicators Button -->
           <button
             type="button"
             class="tool-btn indicator-trigger-btn"
@@ -250,7 +250,7 @@
             }
           </button>
 
-          <!-- Action Tools: Refresh, Fit / Reset & Fullscreen -->
+          <!-- Action Tools: Refresh, Reset & Fullscreen -->
           <div class="tools-btn-group">
             <button 
               type="button" 
@@ -305,7 +305,6 @@
                 <span class="ind-color-dot" [style.backgroundColor]="ind.color"></span>
                 <span class="ind-name">{{ ind.shortName }}</span>
                 
-                <!-- Visibility / Enable-Disable Toggle Button -->
                 <button
                   type="button"
                   class="ind-action-btn toggle-visibility-btn"
@@ -325,7 +324,6 @@
                   }
                 </button>
 
-                <!-- Settings Button -->
                 <button
                   type="button"
                   class="ind-action-btn settings-btn"
@@ -338,7 +336,6 @@
                   </svg>
                 </button>
 
-                <!-- Remove Button -->
                 <button
                   type="button"
                   class="ind-action-btn remove-btn"
@@ -354,31 +351,271 @@
         </div>
       }
 
-      <!-- HUGE Candlestick + Volume Chart Canvas Container -->
-      <div class="chart-canvas-viewport">
-        <div #chartContainer class="trading-chart-canvas"></div>
+      <!-- TRADINGVIEW WORKSPACE: LEFT VERTICAL TOOLBAR + CHART CANVAS VIEWPORT -->
+      <div class="tv-chart-viewport-wrapper">
+        <!-- 1. LEFT VERTICAL DRAWING TOOLBAR -->
+        <aside class="tv-drawing-toolbar">
+          <!-- Navigation / Cursor Tool -->
+          <button
+            type="button"
+            class="tv-tool-btn"
+            [class.active]="selectedDrawingTool() === 'cursor'"
+            (click)="selectDrawingTool('cursor')"
+            title="Crosshair / Cursor (Esc)"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="2" x2="12" y2="22"></line>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
 
-        <!-- Shimmer Loading Overlay -->
-        @if (isLoadingCandles()) {
-          <div class="terminal-chart-loader">
-            <div class="spinner-core"></div>
-            <span class="loader-text">Streaming real {{ currentProvider() }} candles...</span>
-          </div>
-        }
+          <div class="tv-tool-divider"></div>
 
-        <!-- Error State -->
-        @if (errorMessage()) {
-          <div class="terminal-error-bar" [class.rate-limit]="isRateLimited()">
-            <div class="err-text">
-              <span class="err-bullet"></span>
-              <span>{{ errorMessage() }}</span>
+          <!-- Trend Line Tool -->
+          <button
+            type="button"
+            class="tv-tool-btn"
+            [class.active]="selectedDrawingTool() === 'trendline'"
+            (click)="selectDrawingTool('trendline')"
+            title="Trend Line"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="20" x2="20" y2="4"></line>
+              <circle cx="4" cy="20" r="2.5" fill="currentColor"></circle>
+              <circle cx="20" cy="4" r="2.5" fill="currentColor"></circle>
+            </svg>
+          </button>
+
+          <!-- Horizontal Line Tool -->
+          <button
+            type="button"
+            class="tv-tool-btn"
+            [class.active]="selectedDrawingTool() === 'horizontal'"
+            (click)="selectDrawingTool('horizontal')"
+            title="Horizontal Line"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <circle cx="12" cy="12" r="2.5" fill="currentColor"></circle>
+            </svg>
+          </button>
+
+          <!-- Vertical Line Tool -->
+          <button
+            type="button"
+            class="tv-tool-btn"
+            [class.active]="selectedDrawingTool() === 'vertical'"
+            (click)="selectDrawingTool('vertical')"
+            title="Vertical Line"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="2" x2="12" y2="22"></line>
+              <circle cx="12" cy="12" r="2.5" fill="currentColor"></circle>
+            </svg>
+          </button>
+
+          <!-- Ray Tool -->
+          <button
+            type="button"
+            class="tv-tool-btn"
+            [class.active]="selectedDrawingTool() === 'ray'"
+            (click)="selectDrawingTool('ray')"
+            title="Ray Line"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="18" x2="21" y2="6"></line>
+              <polyline points="15 6 21 6 21 12"></polyline>
+              <circle cx="4" cy="18" r="2" fill="currentColor"></circle>
+            </svg>
+          </button>
+
+          <!-- Rectangle Box Tool -->
+          <button
+            type="button"
+            class="tv-tool-btn"
+            [class.active]="selectedDrawingTool() === 'rectangle'"
+            (click)="selectDrawingTool('rectangle')"
+            title="Rectangle / Box"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+            </svg>
+          </button>
+
+          <!-- Brush / Freehand Tool -->
+          <button
+            type="button"
+            class="tv-tool-btn"
+            [class.active]="selectedDrawingTool() === 'brush'"
+            (click)="selectDrawingTool('brush')"
+            title="Brush (Freehand Drawing)"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+              <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+              <path d="M2 2l7.586 7.586"></path>
+              <circle cx="11" cy="11" r="2"></circle>
+            </svg>
+          </button>
+
+          <!-- Text Annotation Tool -->
+          <button
+            type="button"
+            class="tv-tool-btn"
+            [class.active]="selectedDrawingTool() === 'text'"
+            (click)="selectDrawingTool('text')"
+            title="Text Annotation"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 7 4 4 20 4 20 7"></polyline>
+              <line x1="9" y1="20" x2="15" y2="20"></line>
+              <line x1="12" y1="4" x2="12" y2="20"></line>
+            </svg>
+          </button>
+
+          <!-- Measure Tool -->
+          <button
+            type="button"
+            class="tv-tool-btn"
+            [class.active]="selectedDrawingTool() === 'measure'"
+            (click)="selectDrawingTool('measure')"
+            title="Measure (Price & Bars Range)"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M2 12h20M12 2v20"></path>
+              <rect x="5" y="5" width="14" height="14" stroke-dasharray="3 3"></rect>
+            </svg>
+          </button>
+
+          <div class="tv-tool-divider"></div>
+
+          <!-- Zoom In -->
+          <button type="button" class="tv-tool-btn" (click)="zoomIn()" title="Zoom In (+)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              <line x1="11" y1="8" x2="11" y2="14"></line>
+              <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+          </button>
+
+          <!-- Zoom Out -->
+          <button type="button" class="tv-tool-btn" (click)="zoomOut()" title="Zoom Out (-)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+          </button>
+
+          <!-- Magnet Mode Toggle -->
+          <button
+            type="button"
+            class="tv-tool-btn"
+            [class.active]="isMagnetMode()"
+            (click)="toggleMagnet()"
+            title="Magnet Mode (Snaps points to OHLC)"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 15v-5a6 6 0 0 1 12 0v5"></path>
+              <path d="M4 15h4v5H4zM16 15h4v5h-4z"></path>
+            </svg>
+          </button>
+
+          <!-- Lock Drawings Toggle -->
+          <button
+            type="button"
+            class="tv-tool-btn"
+            [class.active]="isDrawingsLocked()"
+            (click)="toggleLockDrawings()"
+            [title]="isDrawingsLocked() ? 'Unlock Drawings' : 'Lock All Drawings'"
+          >
+            @if (isDrawingsLocked()) {
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            } @else {
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+              </svg>
+            }
+          </button>
+
+          <!-- Hide / Show Drawings Toggle -->
+          <button
+            type="button"
+            class="tv-tool-btn"
+            [class.active]="isDrawingsHidden()"
+            (click)="toggleHideDrawings()"
+            [title]="isDrawingsHidden() ? 'Show Drawings' : 'Hide Drawings'"
+          >
+            @if (isDrawingsHidden()) {
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            } @else {
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            }
+          </button>
+
+          <!-- Clear All Drawings -->
+          <button
+            type="button"
+            class="tv-tool-btn tv-tool-danger"
+            (click)="clearAllDrawings()"
+            title="Clear All Drawings"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </aside>
+
+        <!-- 2. CHART VIEWPORT & DRAWING CANVAS OVERLAY -->
+        <div class="chart-canvas-viewport">
+          <!-- Lightweight Charts div -->
+          <div #chartContainer class="trading-chart-canvas"></div>
+
+          <!-- Drawing Canvas Interactive Layer -->
+          <canvas
+            #drawingCanvas
+            class="tv-drawing-canvas-overlay"
+            [class.drawing-active]="selectedDrawingTool() !== 'cursor'"
+            (mousedown)="onCanvasMouseDown($event)"
+            (mousemove)="onCanvasMouseMove($event)"
+            (mouseup)="onCanvasMouseUp()"
+          ></canvas>
+
+          <!-- Shimmer Loading Overlay -->
+          @if (isLoadingCandles()) {
+            <div class="terminal-chart-loader">
+              <div class="spinner-core"></div>
+              <span class="loader-text">Streaming real {{ currentProvider() }} candles...</span>
             </div>
-            <button type="button" class="err-retry-btn" (click)="retryFetch()">Retry</button>
-          </div>
-        }
+          }
+
+          <!-- Error State -->
+          @if (errorMessage()) {
+            <div class="terminal-error-bar" [class.rate-limit]="isRateLimited()">
+              <div class="err-text">
+                <span class="err-bullet"></span>
+                <span>{{ errorMessage() }}</span>
+              </div>
+              <button type="button" class="err-retry-btn" (click)="retryFetch()">Retry</button>
+            </div>
+          }
+        </div>
       </div>
 
-      <!-- Compact Bottom Statistics Strip (Single horizontal dense bar) -->
+      <!-- Compact Bottom Statistics Strip -->
       <footer class="terminal-stats-strip">
         <div class="stats-item">
           <span class="stat-key">OPEN</span>
@@ -406,13 +643,8 @@
         </div>
         <div class="stat-sep">|</div>
         <div class="stats-item">
-          <span class="stat-key">52W HIGH</span>
-          <span class="stat-val">—</span>
-        </div>
-        <div class="stat-sep">|</div>
-        <div class="stats-item">
-          <span class="stat-key">52W LOW</span>
-          <span class="stat-val">—</span>
+          <span class="stat-key">LIVE TICK</span>
+          <span class="stat-val brand">{{ isLiveConnected() ? 'CONNECTED' : 'DISCONNECTED' }}</span>
         </div>
         <div class="stat-sep">|</div>
         <div class="stats-item">
@@ -422,546 +654,411 @@
       </footer>
     </main>
 
-    <!-- RIGHT: COMPACT TRADINGVIEW-STYLE WATCHLIST PANEL (Resizable right pane) -->
-    <aside
-      class="watchlist-compact-pane"
-      [class.is-resizing]="isResizingWatchlist()"
-      aria-label="Watchlist"
+    <!-- RESIZE HANDLE DIVIDER -->
+    <div
+      class="watchlist-resize-bar"
+      [class.resizing]="isResizingWatchlist()"
+      (mousedown)="startResizeWatchlist($event)"
+      title="Drag to resize watchlist panel"
     >
-      <!-- Left Edge Resize Handle (TradingView Style) -->
-      <div
-        class="watchlist-resize-handle"
-        (mousedown)="startWatchlistResize($event)"
-        title="Drag left/right to resize watchlist"
-      >
-        <div class="resize-handle-bar"></div>
-      </div>
+      <div class="resize-handle-grip"></div>
+    </div>
 
-      <!-- 1. Pinned Top Watchlist Bar -->
+    <!-- RIGHT: TRADINGVIEW-STYLE DARK WATCHLIST PANE -->
+    <aside class="watchlist-sidebar-pane watchlist-compact-pane">
       <div class="watchlist-header-bar">
-        <div class="wl-title-wrap">
-          <span class="wl-title">Watchlist</span>
-          <span class="wl-badge">{{ filteredWatchlist().length }}</span>
-        </div>
-        <div class="wl-search-box">
-          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        <div class="header-left">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
           </svg>
-          <input
-            id="watchlist-filter-input"
-            type="text"
-            [ngModel]="watchlistSearch()"
-            (ngModelChange)="watchlistSearch.set($event)"
-            placeholder="Filter watchlist..."
-            class="wl-search-input"
-            autocomplete="off"
-          />
-          @if (watchlistSearch()) {
-            <button type="button" class="wl-clear-btn" (click)="watchlistSearch.set('')" title="Clear filter">✕</button>
-          }
+          <span class="pane-title">Watchlist</span>
         </div>
-        <button
-          type="button"
-          class="wl-header-refresh-btn"
-          id="watchlist-refresh-btn"
-          (click)="refreshCurrentInstrument()"
-          title="Refresh Watchlist Prices"
-        >
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M23 4v6h-6"></path>
-            <path d="M1 20v-6h6"></path>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-          </svg>
-        </button>
+        <div class="header-count-badge">{{ filteredWatchlist().length }}</div>
       </div>
 
-      <!-- 2. Pinned Compact Columns Header Strip -->
-      <div class="wl-columns-header">
-        <div class="col-header col-sym">Symbol</div>
-        <div class="col-header col-last">Last</div>
-        <div class="col-header col-chg">Chg</div>
-        <div class="col-header col-pct">Chg%</div>
-      </div>
-
-      <!-- 3. Independent Scrollable Watchlist Content -->
-      <div class="watchlist-scroll-list">
-        <!-- Empty State when filtering -->
-        @if (filteredWatchlist().length === 0) {
-          <div class="wl-empty-state">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <p>No symbols match "<strong>{{ watchlistSearch() }}</strong>"</p>
-            <button type="button" class="wl-reset-filter-btn" (click)="watchlistSearch.set('')">Reset Filter</button>
-          </div>
+      <!-- Local Watchlist Filter -->
+      <div class="watchlist-filter-box">
+        <input
+          type="text"
+          [(ngModel)]="watchlistSearch"
+          placeholder="Filter watchlist..."
+          class="watchlist-search-input"
+        />
+        @if (watchlistSearch()) {
+          <button type="button" class="clear-filter-btn" (click)="watchlistSearch.set('')">✕</button>
         }
+      </div>
 
-        <!-- 1. INDICES SECTION (NIFTY 50, SENSEX) -->
-        @if ((activeCategory() === 'all' || activeCategory() === 'indices') && indicesWatchlist().length > 0) {
-          <div class="wl-section">
-            <button type="button" class="wl-section-header" (click)="toggleIndicesCollapse()">
-              <span class="wl-caret" [class.rotated]="isIndicesCollapsed()">▾</span>
-              <span class="wl-sec-name">INDICES</span>
-              <span class="wl-sec-count">({{ indicesWatchlist().length }})</span>
+      <!-- Columns Header (TradingView Style) -->
+      <div class="wl-columns-header">
+        <span class="col-hdr-sym">Symbol</span>
+        <span class="col-hdr-last">Last</span>
+        <span class="col-hdr-chg">Chg</span>
+        <span class="col-hdr-pct">Chg%</span>
+      </div>
+
+      <!-- Watchlist Categories Accordion -->
+      <div class="watchlist-scroll-container">
+        <!-- 1. Indian Indices -->
+        @if (indicesWatchlist().length > 0) {
+          <div class="watchlist-section">
+            <button type="button" class="section-accordion-header" (click)="toggleSectionCollapse('indices')">
+              <span class="sec-title wl-sec-name">INDICES</span>
+              <div class="sec-meta">
+                <span class="sec-count">{{ indicesWatchlist().length }}</span>
+                <span class="sec-chevron" [class.rotated]="isIndicesCollapsed()">▼</span>
+              </div>
             </button>
             @if (!isIndicesCollapsed()) {
-              @for (item of indicesWatchlist(); track item.symbol) {
-                <div
-                  class="wl-row"
-                  [class.active]="selectedSymbol() === item.symbol"
-                  [class.is-dragging]="draggedItem()?.symbol === item.symbol"
-                  [class.drag-over-above]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
-                  [class.drag-over-below]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
-                  draggable="true"
-                  (dragstart)="onDragStart($event, item)"
-                  (dragover)="onDragOver($event, item)"
-                  (dragleave)="onDragLeave($event)"
-                  (drop)="onDrop($event, item)"
-                  (dragend)="onDragEnd()"
-                  (click)="selectWatchlistItem(item)"
-                  [title]="item.name + ' (' + (item.exchange || 'Index') + ')'"
-                >
-                  <div class="wl-cell col-sym">
-                    <span class="wl-drag-grip" title="Drag to reorder">⋮⋮</span>
-                    <div class="sym-text-group">
-                      <span class="wl-sym">{{ item.symbol }}</span>
-                      <span class="wl-desc">{{ item.exchange || 'Index' }}</span>
+              <div class="watchlist-items-group">
+                @for (item of indicesWatchlist(); track item.symbol) {
+                  <div
+                    class="watchlist-row-card wl-row"
+                    [class.active-selected]="selectedSymbol() === item.symbol"
+                    [class.drag-over-top]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
+                    [class.drag-over-bottom]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
+                    (click)="selectWatchlistItem(item)"
+                    draggable="true"
+                    (dragstart)="onDragStart($event, item)"
+                    (dragover)="onDragOver($event, item)"
+                    (dragleave)="onDragLeave($event)"
+                    (drop)="onDrop($event, item)"
+                    (dragend)="onDragEnd()"
+                  >
+                    <div class="wl-drag-grip" title="Drag to reorder">⋮⋮</div>
+                    <div class="row-left col-sym">
+                      <span class="row-symbol">{{ item.symbol }}</span>
+                      <span class="row-name" [title]="item.name">{{ item.name }}</span>
+                    </div>
+                    <div class="row-right">
+                      <span class="row-price col-last">{{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}</span>
+                      @if (item.change != null) {
+                        <span class="row-change-pill col-chg" [class.up]="item.change >= 0" [class.down]="item.change < 0">
+                          {{ item.change >= 0 ? '+' : '' }}{{ item.change | number:'1.2-2' }}
+                        </span>
+                        <span class="col-pct" [class.up]="item.change >= 0" [class.down]="item.change < 0">
+                          {{ item.changePercent || ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-2')) }}
+                        </span>
+                      }
                     </div>
                   </div>
-                  <div class="wl-cell col-last">
-                    <span class="wl-price">
-                      {{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}
-                    </span>
-                  </div>
-                  <div class="wl-cell col-chg">
-                    <span
-                      class="wl-change-val"
-                      [class.positive]="(item.change ?? 0) >= 0"
-                      [class.negative]="(item.change ?? 0) < 0"
-                    >
-                      {{ item.change != null ? ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-2')) : '—' }}
-                    </span>
-                  </div>
-                  <div class="wl-cell col-pct">
-                    <span
-                      class="wl-pct-pill"
-                      [class.positive]="(item.change ?? 0) >= 0"
-                      [class.negative]="(item.change ?? 0) < 0"
-                    >
-                      {{ item.changePercent != null ? item.changePercent : '—' }}
-                    </span>
-                  </div>
-                </div>
-              }
+                }
+              </div>
             }
           </div>
         }
 
-        <!-- 2. STOCKS SECTION -->
-        @if ((activeCategory() === 'all' || activeCategory() === 'stocks') && stockWatchlist().length > 0) {
-          <div class="wl-section">
-            <button type="button" class="wl-section-header" (click)="toggleStocksCollapse()">
-              <span class="wl-caret" [class.rotated]="isStocksCollapsed()">▾</span>
-              <span class="wl-sec-name">STOCKS</span>
-              <span class="wl-sec-count">({{ stockWatchlist().length }})</span>
+        <!-- 2. Stocks (Indian & US) -->
+        @if (stockWatchlist().length > 0) {
+          <div class="watchlist-section">
+            <button type="button" class="section-accordion-header" (click)="toggleSectionCollapse('stocks')">
+              <span class="sec-title wl-sec-name">STOCKS</span>
+              <div class="sec-meta">
+                <span class="sec-count">{{ stockWatchlist().length }}</span>
+                <span class="sec-chevron" [class.rotated]="isStocksCollapsed()">▼</span>
+              </div>
             </button>
             @if (!isStocksCollapsed()) {
-              @for (item of stockWatchlist(); track item.symbol) {
-                <div
-                  class="wl-row"
-                  [class.active]="selectedSymbol() === item.symbol"
-                  [class.is-dragging]="draggedItem()?.symbol === item.symbol"
-                  [class.drag-over-above]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
-                  [class.drag-over-below]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
-                  draggable="true"
-                  (dragstart)="onDragStart($event, item)"
-                  (dragover)="onDragOver($event, item)"
-                  (dragleave)="onDragLeave($event)"
-                  (drop)="onDrop($event, item)"
-                  (dragend)="onDragEnd()"
-                  (click)="selectWatchlistItem(item)"
-                  [title]="item.name + ' (' + (item.exchange || 'Stock') + ')'"
-                >
-                  <div class="wl-cell col-sym">
-                    <span class="wl-drag-grip" title="Drag to reorder">⋮⋮</span>
-                    <div class="sym-text-group">
-                      <span class="wl-sym">{{ item.symbol }}</span>
-                      <span class="wl-desc">{{ item.exchange || 'Stock' }}</span>
+              <div class="watchlist-items-group">
+                @for (item of stockWatchlist(); track item.symbol) {
+                  <div
+                    class="watchlist-row-card wl-row"
+                    [class.active-selected]="selectedSymbol() === item.symbol"
+                    [class.drag-over-top]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
+                    [class.drag-over-bottom]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
+                    (click)="selectWatchlistItem(item)"
+                    draggable="true"
+                    (dragstart)="onDragStart($event, item)"
+                    (dragover)="onDragOver($event, item)"
+                    (dragleave)="onDragLeave($event)"
+                    (drop)="onDrop($event, item)"
+                    (dragend)="onDragEnd()"
+                  >
+                    <div class="wl-drag-grip" title="Drag to reorder">⋮⋮</div>
+                    <div class="row-left col-sym">
+                      <span class="row-symbol">{{ item.symbol }}</span>
+                      <span class="row-name" [title]="item.name">{{ item.name }}</span>
+                    </div>
+                    <div class="row-right">
+                      <span class="row-price col-last">{{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}</span>
+                      @if (item.change != null) {
+                        <span class="row-change-pill col-chg" [class.up]="item.change >= 0" [class.down]="item.change < 0">
+                          {{ item.change >= 0 ? '+' : '' }}{{ item.change | number:'1.2-2' }}
+                        </span>
+                        <span class="col-pct" [class.up]="item.change >= 0" [class.down]="item.change < 0">
+                          {{ item.changePercent || ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-2')) }}
+                        </span>
+                      }
                     </div>
                   </div>
-                  <div class="wl-cell col-last">
-                    <span class="wl-price">
-                      {{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}
-                    </span>
-                  </div>
-                  <div class="wl-cell col-chg">
-                    <span
-                      class="wl-change-val"
-                      [class.positive]="(item.change ?? 0) >= 0"
-                      [class.negative]="(item.change ?? 0) < 0"
-                    >
-                      {{ item.change != null ? ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-2')) : '—' }}
-                    </span>
-                  </div>
-                  <div class="wl-cell col-pct">
-                    <span
-                      class="wl-pct-pill"
-                      [class.positive]="(item.change ?? 0) >= 0"
-                      [class.negative]="(item.change ?? 0) < 0"
-                    >
-                      {{ item.changePercent != null ? item.changePercent : '—' }}
-                    </span>
-                  </div>
-                </div>
-              }
+                }
+              </div>
             }
           </div>
         }
 
-        <!-- 2. FOREX SECTION -->
-        @if ((activeCategory() === 'all' || activeCategory() === 'forex') && forexWatchlist().length > 0) {
-          <div class="wl-section">
-            <button type="button" class="wl-section-header" (click)="toggleForexCollapse()">
-              <span class="wl-caret" [class.rotated]="isForexCollapsed()">▾</span>
-              <span class="wl-sec-name">FOREX</span>
-              <span class="wl-sec-count">({{ forexWatchlist().length }})</span>
+        <!-- 3. Forex -->
+        @if (forexWatchlist().length > 0) {
+          <div class="watchlist-section">
+            <button type="button" class="section-accordion-header" (click)="toggleSectionCollapse('forex')">
+              <span class="sec-title wl-sec-name">FOREX</span>
+              <div class="sec-meta">
+                <span class="sec-count">{{ forexWatchlist().length }}</span>
+                <span class="sec-chevron" [class.rotated]="isForexCollapsed()">▼</span>
+              </div>
             </button>
             @if (!isForexCollapsed()) {
-              @for (item of forexWatchlist(); track item.symbol) {
-                <div
-                  class="wl-row"
-                  [class.active]="selectedSymbol() === item.symbol"
-                  [class.is-dragging]="draggedItem()?.symbol === item.symbol"
-                  [class.drag-over-above]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
-                  [class.drag-over-below]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
-                  draggable="true"
-                  (dragstart)="onDragStart($event, item)"
-                  (dragover)="onDragOver($event, item)"
-                  (dragleave)="onDragLeave($event)"
-                  (drop)="onDrop($event, item)"
-                  (dragend)="onDragEnd()"
-                  (click)="selectWatchlistItem(item)"
-                  [title]="item.name + ' (Forex)'"
-                >
-                  <div class="wl-cell col-sym">
-                    <span class="wl-drag-grip" title="Drag to reorder">⋮⋮</span>
-                    <div class="sym-text-group">
-                      <span class="wl-sym">{{ item.symbol }}</span>
-                      <span class="wl-desc">Forex</span>
+              <div class="watchlist-items-group">
+                @for (item of forexWatchlist(); track item.symbol) {
+                  <div
+                    class="watchlist-row-card wl-row"
+                    [class.active-selected]="selectedSymbol() === item.symbol"
+                    [class.drag-over-top]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
+                    [class.drag-over-bottom]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
+                    (click)="selectWatchlistItem(item)"
+                    draggable="true"
+                    (dragstart)="onDragStart($event, item)"
+                    (dragover)="onDragOver($event, item)"
+                    (dragleave)="onDragLeave($event)"
+                    (drop)="onDrop($event, item)"
+                    (dragend)="onDragEnd()"
+                  >
+                    <div class="wl-drag-grip" title="Drag to reorder">⋮⋮</div>
+                    <div class="row-left col-sym">
+                      <span class="row-symbol">{{ item.symbol }}</span>
+                      <span class="row-name" [title]="item.name">{{ item.name }}</span>
+                    </div>
+                    <div class="row-right">
+                      <span class="row-price col-last">{{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.4-4')) : '—' }}</span>
+                      @if (item.change != null) {
+                        <span class="row-change-pill col-chg" [class.up]="item.change >= 0" [class.down]="item.change < 0">
+                          {{ item.change >= 0 ? '+' : '' }}{{ item.change | number:'1.2-2' }}
+                        </span>
+                        <span class="col-pct" [class.up]="item.change >= 0" [class.down]="item.change < 0">
+                          {{ item.changePercent || ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-2')) }}
+                        </span>
+                      }
                     </div>
                   </div>
-                  <div class="wl-cell col-last">
-                    <span class="wl-price">
-                      {{ item.price != null ? (item.price | number:'1.2-4') : '—' }}
-                    </span>
-                  </div>
-                  <div class="wl-cell col-chg">
-                    <span
-                      class="wl-change-val"
-                      [class.positive]="(item.change ?? 0) >= 0"
-                      [class.negative]="(item.change ?? 0) < 0"
-                    >
-                      {{ item.change != null ? ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-4')) : '—' }}
-                    </span>
-                  </div>
-                  <div class="wl-cell col-pct">
-                    <span
-                      class="wl-pct-pill"
-                      [class.positive]="(item.change ?? 0) >= 0"
-                      [class.negative]="(item.change ?? 0) < 0"
-                    >
-                      {{ item.changePercent != null ? item.changePercent : '—' }}
-                    </span>
-                  </div>
-                </div>
-              }
+                }
+              </div>
             }
           </div>
         }
 
-        <!-- 3. CRYPTO SECTION -->
-        @if ((activeCategory() === 'all' || activeCategory() === 'crypto') && cryptoWatchlist().length > 0) {
-          <div class="wl-section">
-            <button type="button" class="wl-section-header" (click)="toggleCryptoCollapse()">
-              <span class="wl-caret" [class.rotated]="isCryptoCollapsed()">▾</span>
-              <span class="wl-sec-name">CRYPTO</span>
-              <span class="wl-sec-count">({{ cryptoWatchlist().length }})</span>
+        <!-- 4. Crypto -->
+        @if (cryptoWatchlist().length > 0) {
+          <div class="watchlist-section">
+            <button type="button" class="section-accordion-header" (click)="toggleSectionCollapse('crypto')">
+              <span class="sec-title wl-sec-name">CRYPTO</span>
+              <div class="sec-meta">
+                <span class="sec-count">{{ cryptoWatchlist().length }}</span>
+                <span class="sec-chevron" [class.rotated]="isCryptoCollapsed()">▼</span>
+              </div>
             </button>
             @if (!isCryptoCollapsed()) {
-              @for (item of cryptoWatchlist(); track item.symbol) {
-                <div
-                  class="wl-row"
-                  [class.active]="selectedSymbol() === item.symbol"
-                  [class.is-dragging]="draggedItem()?.symbol === item.symbol"
-                  [class.drag-over-above]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
-                  [class.drag-over-below]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
-                  draggable="true"
-                  (dragstart)="onDragStart($event, item)"
-                  (dragover)="onDragOver($event, item)"
-                  (dragleave)="onDragLeave($event)"
-                  (drop)="onDrop($event, item)"
-                  (dragend)="onDragEnd()"
-                  (click)="selectWatchlistItem(item)"
-                  [title]="item.name + ' (Crypto)'"
-                >
-                  <div class="wl-cell col-sym">
-                    <span class="wl-drag-grip" title="Drag to reorder">⋮⋮</span>
-                    <div class="sym-text-group">
-                      <span class="wl-sym">{{ item.symbol }}</span>
-                      <span class="wl-desc">Crypto</span>
+              <div class="watchlist-items-group">
+                @for (item of cryptoWatchlist(); track item.symbol) {
+                  <div
+                    class="watchlist-row-card wl-row"
+                    [class.active-selected]="selectedSymbol() === item.symbol"
+                    [class.drag-over-top]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
+                    [class.drag-over-bottom]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
+                    (click)="selectWatchlistItem(item)"
+                    draggable="true"
+                    (dragstart)="onDragStart($event, item)"
+                    (dragover)="onDragOver($event, item)"
+                    (dragleave)="onDragLeave($event)"
+                    (drop)="onDrop($event, item)"
+                    (dragend)="onDragEnd()"
+                  >
+                    <div class="wl-drag-grip" title="Drag to reorder">⋮⋮</div>
+                    <div class="row-left col-sym">
+                      <span class="row-symbol">{{ item.symbol }}</span>
+                      <span class="row-name" [title]="item.name">{{ item.name }}</span>
+                    </div>
+                    <div class="row-right">
+                      <span class="row-price col-last">{{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}</span>
+                      @if (item.change != null) {
+                        <span class="row-change-pill col-chg" [class.up]="item.change >= 0" [class.down]="item.change < 0">
+                          {{ item.change >= 0 ? '+' : '' }}{{ item.change | number:'1.2-2' }}
+                        </span>
+                        <span class="col-pct" [class.up]="item.change >= 0" [class.down]="item.change < 0">
+                          {{ item.changePercent || ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-2')) }}
+                        </span>
+                      }
                     </div>
                   </div>
-                  <div class="wl-cell col-last">
-                    <span class="wl-price">
-                      {{ item.price != null ? ('$' + (item.price | number:'1.2-2')) : '—' }}
-                    </span>
-                  </div>
-                  <div class="wl-cell col-chg">
-                    <span
-                      class="wl-change-val"
-                      [class.positive]="(item.change ?? 0) >= 0"
-                      [class.negative]="(item.change ?? 0) < 0"
-                    >
-                      {{ item.change != null ? ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-2')) : '—' }}
-                    </span>
-                  </div>
-                  <div class="wl-cell col-pct">
-                    <span
-                      class="wl-pct-pill"
-                      [class.positive]="(item.change ?? 0) >= 0"
-                      [class.negative]="(item.change ?? 0) < 0"
-                    >
-                      {{ item.changePercent != null ? item.changePercent : '—' }}
-                    </span>
-                  </div>
-                </div>
-              }
+                }
+              </div>
             }
           </div>
         }
       </div>
     </aside>
   </div>
-
-  <!-- =========================================================================
-       3. SEARCHABLE INDICATORS LIBRARY MODAL
-       ========================================================================= -->
-  @if (isIndicatorModalOpen()) {
-    <div class="indicator-modal-backdrop" (click)="closeIndicatorModal()">
-      <div class="indicator-modal-dialog" (click)="$event.stopPropagation()">
-        <!-- Header -->
-        <div class="ind-modal-header">
-          <div class="header-titles">
-            <div class="modal-badge-title">
-              <span class="fx-badge">ƒx</span>
-              <h3>Technical Indicators & Overlays</h3>
-            </div>
-            <p class="modal-sub">Search across 30+ trend, momentum, volatility, volume, moving average and oscillator indicators.</p>
-          </div>
-          <button type="button" class="modal-close-btn" (click)="closeIndicatorModal()" title="Close (Esc)">✕</button>
-        </div>
-
-        <!-- Search Bar -->
-        <div class="ind-modal-search">
-          <svg class="search-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input
-            type="text"
-            id="indicator-search-input"
-            [ngModel]="indicatorSearchQuery()"
-            (ngModelChange)="indicatorSearchQuery.set($event)"
-            placeholder="Search indicator by name, symbol, or keyword (e.g., RSI, EMA, Bollinger, VWAP, MACD)..."
-            class="ind-search-field"
-            autofocus
-          />
-          @if (indicatorSearchQuery()) {
-            <button type="button" class="ind-search-clear" (click)="indicatorSearchQuery.set('')">✕</button>
-          }
-        </div>
-
-        <!-- Category Filter Pills -->
-        <div class="ind-category-pills">
-          @for (cat of indicatorCategories; track cat.id) {
-            <button
-              type="button"
-              class="cat-pill-btn"
-              [class.active]="selectedIndicatorCategory() === cat.id"
-              (click)="setIndicatorCategory(cat.id)"
-            >
-              <span>{{ cat.label }}</span>
-              <span class="cat-count">({{ getCategoryCount(cat.id) }})</span>
-            </button>
-          }
-        </div>
-
-        <!-- Indicators Scrollable List -->
-        <div class="ind-modal-body">
-          @if (filteredIndicators().length === 0) {
-            <div class="ind-no-results">
-              <span class="no-res-icon">🔍</span>
-              <h4>No matching indicators found</h4>
-              <p>Try searching for moving averages, RSI, MACD, Bollinger Bands, Supertrend, or VWAP.</p>
-              <button type="button" class="btn-reset-search" (click)="indicatorSearchQuery.set(''); selectedIndicatorCategory.set('all')">
-                View All Indicators
-              </button>
-            </div>
-          } @else {
-            <div class="ind-grid">
-              @for (ind of filteredIndicators(); track ind.id) {
-                <div class="ind-card" [class.is-added]="isIndicatorActive(ind.id)">
-                  <div class="ind-card-top">
-                    <div class="ind-meta-left">
-                      <span class="ind-short-tag">{{ ind.shortName }}</span>
-                      <h4 class="ind-card-title">{{ ind.name }}</h4>
-                    </div>
-                    <span class="ind-cat-tag">{{ ind.category | uppercase }}</span>
-                  </div>
-
-                  <p class="ind-card-desc">{{ ind.description }}</p>
-
-                  <div class="ind-card-footer">
-                    <div class="ind-badges">
-                      <span class="overlay-badge" [class.overlay-yes]="ind.isOverlay">
-                        {{ ind.isOverlay ? 'Main Chart Overlay' : 'Sub-Pane Oscillator' }}
-                      </span>
-                      @if (getActiveIndicatorCount(ind.id) > 0) {
-                        <span class="active-count-tag">Active ({{ getActiveIndicatorCount(ind.id) }})</span>
-                      }
-                    </div>
-
-                    <button
-                      type="button"
-                      class="btn-add-indicator"
-                      (click)="addIndicator(ind)"
-                      title="Add to chart"
-                    >
-                      <span class="plus-icon">+</span>
-                      <span>{{ getActiveIndicatorCount(ind.id) > 0 ? 'Add Another' : 'Add to Chart' }}</span>
-                    </button>
-                  </div>
-                </div>
-              }
-            </div>
-          }
-        </div>
-
-        <!-- Modal Bottom Status / Done Action -->
-        <div class="ind-modal-footer">
-          <div class="active-summary">
-            <span class="summary-label">Currently Applied:</span>
-            <span class="summary-count">{{ activeIndicators().length }} indicator(s)</span>
-          </div>
-          <button type="button" class="btn-modal-done" (click)="closeIndicatorModal()">
-            Done
-          </button>
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- =========================================================================
-       4. INDICATOR SETTINGS MODAL
-       ========================================================================= -->
-  @if (editingIndicator(); as currentInd) {
-    <div class="indicator-modal-backdrop settings-backdrop" (click)="cancelIndicatorSettings()">
-      <div class="indicator-settings-dialog" (click)="$event.stopPropagation()">
-        <!-- Header -->
-        <div class="settings-modal-header">
-          <div class="settings-title-cluster">
-            <span class="settings-color-preview" [style.backgroundColor]="editingColor()"></span>
-            <div>
-              <h3>{{ currentInd.name }} Settings</h3>
-              <span class="settings-sub">{{ currentInd.shortName }} Parameters & Visual Styling</span>
-            </div>
-          </div>
-          <button type="button" class="modal-close-btn" (click)="cancelIndicatorSettings()">✕</button>
-        </div>
-
-        <!-- Body Form -->
-        <div class="settings-modal-body">
-          <!-- Parameter Inputs (Generated dynamically based on indicator schema) -->
-          <div class="settings-section">
-            <h4 class="section-heading">Inputs & Calculation</h4>
-            <div class="params-fields-grid">
-              @for (field of editingIndicator()?.params | keyvalue; track field.key) {
-                <div class="form-field-group">
-                  <label class="field-label">{{ field.key | uppercase }}</label>
-                  <input
-                    type="number"
-                    [ngModel]="editingParams()[field.key]"
-                    (ngModelChange)="updateEditingParam(field.key, $event)"
-                    class="field-input"
-                  />
-                </div>
-              }
-            </div>
-          </div>
-
-          <!-- Visual Styling (Color & Line Width) -->
-          <div class="settings-section">
-            <h4 class="section-heading">Style & Appearance</h4>
-            
-            <div class="styling-controls-grid">
-              <!-- Color Picker -->
-              <div class="form-field-group">
-                <label class="field-label">Line Color</label>
-                <div class="color-picker-row">
-                  <input
-                    type="color"
-                    [ngModel]="editingColor()"
-                    (ngModelChange)="editingColor.set($event)"
-                    class="color-input-native"
-                  />
-                  <div class="preset-colors">
-                    @for (preset of ['#ffffff', '#f4f4f5', '#e4e4e7', '#d4d4d8', '#a1a1aa', '#71717a', '#52525b', '#27272a']; track preset) {
-                      <button
-                        type="button"
-                        class="preset-swatch"
-                        [style.backgroundColor]="preset"
-                        [class.selected]="editingColor() === preset"
-                        (click)="editingColor.set(preset)"
-                      ></button>
-                    }
-                  </div>
-                </div>
-              </div>
-
-              <!-- Line Width -->
-              <div class="form-field-group">
-                <label class="field-label">Line Thickness</label>
-                <div class="line-width-selector">
-                  @for (w of [1, 2, 3, 4]; track w) {
-                    <button
-                      type="button"
-                      class="width-btn"
-                      [class.active]="editingLineWidth() === w"
-                      (click)="editingLineWidth.set(w)"
-                    >
-                      <span class="line-sample" [style.height.px]="w"></span>
-                      <span>{{ w }}px</span>
-                    </button>
-                  }
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Footer Actions -->
-        <div class="settings-modal-footer">
-          <button type="button" class="btn-settings-cancel" (click)="cancelIndicatorSettings()">
-            Cancel
-          </button>
-          <button type="button" class="btn-settings-save" (click)="saveIndicatorSettings()">
-            Apply & Save
-          </button>
-        </div>
-      </div>
-    </div>
-  }
 </div>
 
+<!-- =========================================================================
+     INDICATOR LIBRARY MODAL
+     ========================================================================= -->
+@if (isIndicatorModalOpen()) {
+  <div class="indicator-modal-backdrop" (click)="closeIndicatorModal()">
+    <div class="indicator-modal-dialog" (click)="$event.stopPropagation()">
+      <header class="ind-modal-header">
+        <div class="modal-badge-title">
+          <span class="fx-badge">ƒx</span>
+          <div>
+            <h3>Indicators & Strategies Library</h3>
+            <p class="modal-sub">Explore professional technical analysis indicators powered by math formulas</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeIndicatorModal()" title="Close (Esc)">✕</button>
+      </header>
+
+      <div class="ind-modal-search-bar">
+        <input
+          type="text"
+          [(ngModel)]="indicatorSearchQuery"
+          placeholder="Search indicators by name or keyword (e.g., RSI, Bollinger, MACD, EMA)..."
+          class="ind-search-field"
+        />
+        @if (indicatorSearchQuery()) {
+          <button type="button" class="ind-search-clear" (click)="indicatorSearchQuery.set('')">✕</button>
+        }
+      </div>
+
+      <div class="ind-category-pills">
+        @for (cat of indicatorCategories; track cat.id) {
+          <button
+            type="button"
+            class="cat-pill-btn"
+            [class.active]="selectedIndicatorCategory() === cat.id"
+            (click)="setIndicatorCategory(cat.id)"
+          >
+            <span>{{ cat.label }}</span>
+            <span class="cat-pill-count">{{ getCategoryCount(cat.id) }}</span>
+          </button>
+        }
+      </div>
+
+      <div class="ind-modal-grid">
+        @for (def of filteredIndicators(); track def.id) {
+          <div class="ind-card" [class.is-added]="isIndicatorActive(def.id)">
+            <div class="ind-card-top">
+              <span class="ind-short-tag">{{ def.shortName }}</span>
+              <h4 class="ind-card-title">{{ def.name }}</h4>
+              <span class="ind-cat-tag">{{ def.category | uppercase }}</span>
+            </div>
+            <p class="ind-card-desc">{{ def.description }}</p>
+            <div class="ind-card-footer">
+              <div class="ind-meta-tags">
+                <span class="overlay-badge" [class.overlay-yes]="def.isOverlay" [class.overlay-no]="!def.isOverlay">
+                  {{ def.isOverlay ? 'Price Overlay' : 'Oscillator Pane' }}
+                </span>
+                @if (isIndicatorActive(def.id)) {
+                  <span class="active-count-tag">Active</span>
+                }
+              </div>
+              <button
+                type="button"
+                class="btn-add-indicator"
+                [class.added]="isIndicatorActive(def.id)"
+                (click)="addIndicator(def)"
+              >
+                {{ isIndicatorActive(def.id) ? '+ Add Again' : 'Add to Chart' }}
+              </button>
+            </div>
+          </div>
+        } @empty {
+          <div class="ind-no-results">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <h4>No indicators match "{{ indicatorSearchQuery() }}"</h4>
+            <p>Try searching for RSI, Moving Average, Bollinger, Volume, MACD, or select All Categories.</p>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- =========================================================================
+     INDICATOR PARAMETERS EDITING MODAL
+     ========================================================================= -->
+@if (editingIndicator(); as ind) {
+  <div class="indicator-modal-backdrop" (click)="closeIndicatorSettings()">
+    <div class="indicator-settings-dialog" (click)="$event.stopPropagation()">
+      <header class="settings-modal-header">
+        <div class="modal-badge-title">
+          <span class="fx-badge sm">ƒx</span>
+          <div>
+            <h3>{{ ind.name }} Settings</h3>
+            <span class="ind-sub-id">{{ ind.shortName }} Parameters</span>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeIndicatorSettings()">✕</button>
+      </header>
+
+      <div class="settings-modal-body">
+        @if (getEditingDefinition(); as def) {
+          <div class="settings-fields-group">
+            <h5 class="field-group-title">Input Parameters</h5>
+            @for (p of def.paramSchema; track p.key) {
+              <div class="settings-form-row">
+                <label [for]="'param_' + p.key" class="param-label">{{ p.label }}</label>
+                <div class="param-input-wrap">
+                  <input
+                    [id]="'param_' + p.key"
+                    [type]="p.type === 'number' ? 'number' : 'text'"
+                    [min]="p.min ?? null"
+                    [max]="p.max ?? null"
+                    [step]="p.step ?? 1"
+                    [ngModel]="editingParams()[p.key]"
+                    (ngModelChange)="updateEditingParam(p.key, $event)"
+                    class="param-input"
+                  />
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <div class="settings-fields-group">
+          <h5 class="field-group-title">Visual Styling</h5>
+          <div class="settings-form-row">
+            <label class="param-label">Line Color</label>
+            <div class="color-picker-wrap">
+              <input type="color" [ngModel]="editingColor()" (ngModelChange)="editingColor.set($event)" class="color-picker-input" />
+              <span class="color-hex-val">{{ editingColor() }}</span>
+            </div>
+          </div>
+          <div class="settings-form-row">
+            <label class="param-label">Line Thickness</label>
+            <div class="line-width-selector">
+              @for (w of [1, 2, 3, 4]; track w) {
+                <button
+                  type="button"
+                  class="width-btn"
+                  [class.active]="editingLineWidth() === w"
+                  (click)="editingLineWidth.set(w)"
+                >
+                  <span class="sample-bar" [style.height.px]="w"></span>
+                  <span>{{ w }}px</span>
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="settings-modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeIndicatorSettings()">Cancel</button>
+        <button type="button" class="btn-save-settings" (click)="saveIndicatorSettings()">Apply to Chart</button>
+      </footer>
+    </div>
+  </div>
+}
