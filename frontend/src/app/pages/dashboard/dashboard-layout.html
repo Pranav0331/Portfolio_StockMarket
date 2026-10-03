@@ -15,45 +15,42 @@
     [class.mobile-open]="isMobileSidebarOpen()"
     (click)="$event.stopPropagation()"
   >
+    <!-- Brand Header -->
     <div class="sidebar-header">
-      <a routerLink="/dashboard" class="sidebar-brand">
+      <a routerLink="/dashboard" class="sidebar-brand" [title]="isSidebarCollapsed() ? 'Portfolio Pro - Stock Market' : ''">
         <div class="brand-logo-icon">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
             <polyline points="16 7 22 7 22 13"></polyline>
           </svg>
         </div>
         @if (!isSidebarCollapsed()) {
-          <span class="sidebar-brand-name">Portfolio StockMarket</span>
+          <div class="brand-text-block">
+            <span class="brand-title">Portfolio Pro</span>
+            <span class="brand-subtitle">Stock Market</span>
+          </div>
         }
       </a>
-      
-      <button 
-        type="button" 
-        class="sidebar-collapse-btn desktop-only" 
-        (click)="toggleSidebar()" 
-        [title]="isSidebarCollapsed() ? 'Expand sidebar' : 'Collapse sidebar'"
-      >
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-          @if (!isSidebarCollapsed()) {
-            <polyline points="15 18 9 12 15 6"></polyline>
-          } @else {
-            <polyline points="9 18 15 12 9 6"></polyline>
-          }
-        </svg>
-      </button>
 
       <button 
         type="button" 
         class="sidebar-close-btn mobile-only" 
         (click)="closeMobileSidebar()"
+        aria-label="Close Sidebar"
       >
         ✕
       </button>
     </div>
 
-    <!-- Navigation List -->
+    <!-- Navigation List with Section Groups -->
     <nav class="sidebar-nav">
+      <!-- Section: Market -->
+      @if (!isSidebarCollapsed()) {
+        <div class="nav-section-header">Market</div>
+      } @else {
+        <div class="nav-section-divider"></div>
+      }
+
       <a 
         routerLink="/dashboard" 
         routerLinkActive="active" 
@@ -123,6 +120,13 @@
         }
       </a>
 
+      <!-- Section: Portfolio -->
+      @if (!isSidebarCollapsed()) {
+        <div class="nav-section-header">Portfolio</div>
+      } @else {
+        <div class="nav-section-divider"></div>
+      }
+
       <a 
         routerLink="/dashboard/portfolio" 
         routerLinkActive="active" 
@@ -169,6 +173,13 @@
           <span class="nav-label">Watchlist</span>
         }
       </a>
+
+      <!-- Section: Tools -->
+      @if (!isSidebarCollapsed()) {
+        <div class="nav-section-header">Tools</div>
+      } @else {
+        <div class="nav-section-divider"></div>
+      }
 
       <a 
         routerLink="/dashboard/orders" 
@@ -220,6 +231,13 @@
         }
       </a>
 
+      <!-- Section: General -->
+      @if (!isSidebarCollapsed()) {
+        <div class="nav-section-header">General</div>
+      } @else {
+        <div class="nav-section-divider"></div>
+      }
+
       @if (authService.currentUser()?.role === 'ROLE_ADMIN' || authService.currentUser()?.role === 'ADMIN') {
         <a 
           routerLink="/dashboard/admin" 
@@ -244,7 +262,6 @@
         (click)="closeMobileSidebar()"
         title="Settings"
       >
-
         <svg class="nav-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"></circle>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -255,7 +272,7 @@
       </a>
     </nav>
 
-    <!-- Sidebar Bottom Status -->
+    <!-- Sidebar Bottom Status & Logout -->
     <div class="sidebar-footer">
       @if (!isSidebarCollapsed()) {
         <div class="system-status-pill">
@@ -286,14 +303,16 @@
     <!-- TOP NAVBAR -->
     <header class="dashboard-topbar">
       <div class="topbar-left">
-        <!-- Mobile Sidebar Toggle -->
+        <!-- SINGLE UNIFIED SIDEBAR TOGGLE BUTTON -->
         <button 
+          id="dashboard-sidebar-toggle-btn"
           type="button" 
-          class="mobile-toggle-btn" 
-          (click)="toggleMobileSidebar(); $event.stopPropagation()"
+          class="header-toggle-btn" 
+          (click)="onHeaderToggle(); $event.stopPropagation()"
+          [title]="isSidebarCollapsed() ? 'Expand sidebar' : 'Collapse sidebar'"
           aria-label="Toggle Sidebar Navigation"
         >
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>

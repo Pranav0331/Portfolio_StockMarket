@@ -58,6 +58,14 @@ export class DashboardLayoutComponent implements OnInit {
     this.isSidebarCollapsed.update((val) => !val);
   }
 
+  onHeaderToggle(): void {
+    if (typeof window !== 'undefined' && window.innerWidth <= 1024) {
+      this.toggleMobileSidebar();
+    } else {
+      this.toggleSidebar();
+    }
+  }
+
   toggleMobileSidebar(): void {
     this.isMobileSidebarOpen.update((val) => !val);
   }

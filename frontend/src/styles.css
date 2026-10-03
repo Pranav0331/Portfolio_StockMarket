@@ -85,6 +85,45 @@
   --glow-radial: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.08), transparent 70%);
 }
 
+/* Explicit Global Light Theme Overrides for Risk Page */
+[data-theme="light"] app-risk .glass-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-theme="light"] app-risk .page-title,
+[data-theme="light"] app-risk .card-title,
+[data-theme="light"] app-risk .metric-big-val,
+[data-theme="light"] app-risk .c-stat-val,
+[data-theme="light"] app-risk .beta-title,
+[data-theme="light"] app-risk .ts-val,
+[data-theme="light"] app-risk .risk-table td {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] app-risk .page-subtitle,
+[data-theme="light"] app-risk .card-sub,
+[data-theme="light"] app-risk .exp-labels,
+[data-theme="light"] app-risk .hhi-value-pill,
+[data-theme="light"] app-risk .beta-subtitle,
+[data-theme="light"] app-risk .chart-legend-row {
+  color: #334155 !important;
+}
+
+[data-theme="light"] app-risk .metric-title,
+[data-theme="light"] app-risk .ts-label,
+[data-theme="light"] app-risk .metric-footnote,
+[data-theme="light"] app-risk .hhi-scale-labels,
+[data-theme="light"] app-risk .c-stat-lbl,
+[data-theme="light"] app-risk .beta-info-row,
+[data-theme="light"] app-risk .insufficient-data-box,
+[data-theme="light"] app-risk .risk-table th,
+[data-theme="light"] app-risk .stock-company-sub {
+  color: #475569 !important;
+}
+
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;

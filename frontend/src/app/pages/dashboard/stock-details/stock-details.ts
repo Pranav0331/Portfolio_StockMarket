@@ -525,7 +525,9 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
           this.resizeObserver = new ResizeObserver((entries) => {
             if (entries.length === 0 || !this.chart) return;
             const { width, height } = entries[0].contentRect;
-            this.chart.applyOptions({ width, height: height || 480 });
+            if (width > 0 && height > 0) {
+              this.chart.applyOptions({ width, height });
+            }
           });
           this.resizeObserver.observe(container);
         }

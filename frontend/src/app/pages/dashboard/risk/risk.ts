@@ -151,19 +151,24 @@ export class RiskComponent implements OnInit, OnDestroy, AfterViewInit {
         const width = container.clientWidth || 800;
         const height = 360;
 
+        const isLight = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light';
+        const textColor = isLight ? '#334155' : '#94a3b8';
+        const gridColor = isLight ? 'rgba(15, 23, 42, 0.08)' : 'rgba(255, 255, 255, 0.05)';
+        const borderColor = isLight ? 'rgba(15, 23, 42, 0.12)' : 'rgba(255, 255, 255, 0.1)';
+
         this.riskChart = createChart(container, {
           width,
           height,
           layout: {
             background: { type: ColorType.Solid, color: 'transparent' },
-            textColor: '#94a3b8'
+            textColor
           },
           grid: {
-            vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
-            horzLines: { color: 'rgba(255, 255, 255, 0.05)' }
+            vertLines: { color: gridColor },
+            horzLines: { color: gridColor }
           },
           timeScale: {
-            borderColor: 'rgba(255, 255, 255, 0.1)',
+            borderColor,
             timeVisible: true
           }
         });
