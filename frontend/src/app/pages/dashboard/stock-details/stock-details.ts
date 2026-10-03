@@ -31,8 +31,10 @@ import {
 import { MarketService } from '../../../services/market.service';
 import { AuthService } from '../../../services/auth.service';
 import { TradingService } from '../../../services/trading.service';
+import { AlertService } from '../../../services/alert.service';
 import { StockQuote, Candle } from '../../../models/market.model';
 import { TradeResponse, VirtualWallet, UserHolding } from '../../../models/trading.model';
+import { AlertConditionType } from '../../../models/alert.model';
 
 export type ChartType = 'candles' | 'line' | 'area';
 export type TimeframeRange = '1D' | '1W' | '1M' | '3M' | '6M' | '1Y';
@@ -57,6 +59,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly marketService = inject(MarketService);
   readonly authService = inject(AuthService);
   readonly tradingService = inject(TradingService);
+  readonly alertService = inject(AlertService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -94,6 +97,17 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
   // Timeframe Ranges Available
   readonly timeframes: TimeframeRange[] = ['1D', '1W', '1M', '3M', '6M', '1Y'];
+
+  // =========================================================================
+  // PRICE ALERT MODAL STATE
+  // =========================================================================
+  readonly isAlertModalOpen = signal<boolean>(false);
+  readonly alertCondition = signal<AlertConditionType>('ABOVE');
+  readonly alertTargetPrice = signal<number>(100);
+  readonly alertNotes = signal<string>('');
+  readonly isSavingAlert = signal<boolean>(false);
+  readonly alertErrorMessage = signal<string | null>(null);
+  readonly alertSuccessMessage = signal<string | null>(null);
 
   // =========================================================================
   // SIMULATED TRADING STATE
@@ -251,7 +265,18 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       next: (series) => {
         this.isLoadingCandles.set(false);
         if (series && series.candles && series.candles.length > 0) {
-          this.candleData.set(series.candles);
+          // Sort chronologically and deduplicate timestamps to ensure clean and correct rendering
+          const seenTimes = new Set<number>();
+          const sortedCandles = [...series.candles]
+            .filter(c => c && c.timestamp != null && !isNaN(c.timestamp))
+            .sort((a, b) => a.timestamp - b.timestamp)
+            .filter(c => {
+              if (seenTimes.has(c.timestamp)) return false;
+              seenTimes.add(c.timestamp);
+              return true;
+            });
+
+          this.candleData.set(sortedCandles);
           if (series.exchange) this.exchange.set(series.exchange);
           if (series.type) this.instrumentType.set(series.type);
         } else {
@@ -314,6 +339,38 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   // =========================================================================
   // LIGHTWEIGHT CHARTS RENDERING
   // =========================================================================
+
+  formatBarDateTime(timeVal: any): string {
+    if (!timeVal) return '';
+    if (typeof timeVal === 'number') {
+      const d = new Date(timeVal * 1000);
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+    if (typeof timeVal === 'object' && timeVal !== null && 'year' in timeVal) {
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const h = 'hour' in timeVal ? ` ${pad((timeVal as any).hour)}:${pad((timeVal as any).minute)}:${pad((timeVal as any).second || 0)}` : ' 00:00:00';
+      return `${timeVal.year}-${pad(timeVal.month)}-${pad(timeVal.day)}${h}`;
+    }
+    if (typeof timeVal === 'string') {
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(timeVal)) {
+        return timeVal;
+      }
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(timeVal)) {
+        return `${timeVal}:00`;
+      }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(timeVal)) {
+        return `${timeVal} 00:00:00`;
+      }
+      const d = new Date(timeVal);
+      if (!isNaN(d.getTime())) {
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      }
+      return timeVal;
+    }
+    return String(timeVal);
+  }
 
   private initOrUpdateChart(container: HTMLDivElement, candles: Candle[], chartType: ChartType): void {
     if (!container || candles.length === 0 || typeof window === 'undefined') return;
@@ -382,7 +439,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
             const latest = candles[candles.length - 1];
             if (latest) {
               this.hoveredBar.set({
-                timeStr: latest.datetime || new Date(latest.timestamp * 1000).toLocaleString(),
+                timeStr: this.formatBarDateTime(latest.datetime || latest.timestamp),
                 open: latest.open,
                 high: latest.high,
                 low: latest.low,
@@ -403,17 +460,19 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
           }
 
           if (bar) {
-            const timeVal = typeof param.time === 'number'
-              ? new Date(param.time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              : String(param.time);
+            let vol: number | null = null;
+            if (this.volumeSeries && param.seriesData.has(this.volumeSeries)) {
+              const vData: any = param.seriesData.get(this.volumeSeries);
+              vol = vData?.value ?? null;
+            }
 
             this.hoveredBar.set({
-              timeStr: timeVal,
+              timeStr: this.formatBarDateTime(param.time),
               open: bar.open ?? bar.value ?? 0,
               high: bar.high ?? bar.value ?? 0,
               low: bar.low ?? bar.value ?? 0,
               close: bar.close ?? bar.value ?? 0,
-              volume: null
+              volume: vol
             });
           }
         });
@@ -506,7 +565,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       const latest = candles[candles.length - 1];
       if (latest) {
         this.hoveredBar.set({
-          timeStr: latest.datetime || new Date(latest.timestamp * 1000).toLocaleString(),
+          timeStr: this.formatBarDateTime(latest.datetime || latest.timestamp),
           open: latest.open,
           high: latest.high,
           low: latest.low,
@@ -519,6 +578,66 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     } catch (e) {
       // Ignore headless canvas error
     }
+  }
+
+  // =========================================================================
+  // PRICE ALERT ACTIONS & STATE HANDLERS
+  // =========================================================================
+
+  openAlertModal(): void {
+    const currentP = this.currentQuote()?.price ?? 100;
+    this.alertTargetPrice.set(Number(currentP.toFixed(2)));
+    this.alertCondition.set('ABOVE');
+    this.alertNotes.set('');
+    this.alertErrorMessage.set(null);
+    this.alertSuccessMessage.set(null);
+    this.isAlertModalOpen.set(true);
+  }
+
+  closeAlertModal(): void {
+    this.isAlertModalOpen.set(false);
+    this.alertErrorMessage.set(null);
+    this.alertSuccessMessage.set(null);
+  }
+
+  setAlertCondition(cond: AlertConditionType): void {
+    this.alertCondition.set(cond);
+  }
+
+  saveAlert(): void {
+    if (!this.authService.isAuthenticated()) {
+      this.alertErrorMessage.set('Please log in to create price alerts.');
+      return;
+    }
+
+    const price = this.alertTargetPrice();
+    if (!price || price <= 0) {
+      this.alertErrorMessage.set('Please enter a valid target price greater than 0.');
+      return;
+    }
+
+    this.isSavingAlert.set(true);
+    this.alertErrorMessage.set(null);
+    this.alertSuccessMessage.set(null);
+
+    this.alertService.createAlert({
+      symbol: this.symbol(),
+      condition: this.alertCondition(),
+      targetPrice: price,
+      notes: this.alertNotes().trim() || undefined
+    }).subscribe({
+      next: () => {
+        this.isSavingAlert.set(false);
+        this.alertSuccessMessage.set(`Alert set: ${this.symbol()} ${this.alertCondition()} ${this.formatCurrencySymbol(this.symbol())}${price.toFixed(2)}`);
+        setTimeout(() => {
+          this.closeAlertModal();
+        }, 1200);
+      },
+      error: (err) => {
+        this.isSavingAlert.set(false);
+        this.alertErrorMessage.set(err.error?.message || err.message || 'Failed to create price alert');
+      }
+    });
   }
 
   // =========================================================================

@@ -7,6 +7,7 @@ import { StockDetailsComponent } from './stock-details';
 import { MarketService } from '../../../services/market.service';
 import { AuthService } from '../../../services/auth.service';
 import { TradingService } from '../../../services/trading.service';
+import { AlertService } from '../../../services/alert.service';
 import { StockQuote, CandleSeries } from '../../../models/market.model';
 import { TradeResponse, VirtualWallet, UserHolding } from '../../../models/trading.model';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -378,5 +379,60 @@ describe('StockDetailsComponent', () => {
 
     expect(component.errorMessage()).toBe('Data unavailable');
     expect(component.candleData()).toEqual([]);
+  });
+
+  it('should open alert modal with current price and close modal', () => {
+    const fixture = TestBed.createComponent(StockDetailsComponent);
+    const component = fixture.componentInstance;
+    component.currentQuote.set(mockRelianceQuote); // price 2950.5
+
+    component.openAlertModal();
+    expect(component.isAlertModalOpen()).toBe(true);
+    expect(component.alertTargetPrice()).toBe(2950.5);
+    expect(component.alertCondition()).toBe('ABOVE');
+
+    component.setAlertCondition('BELOW');
+    expect(component.alertCondition()).toBe('BELOW');
+
+    component.closeAlertModal();
+    expect(component.isAlertModalOpen()).toBe(false);
+  });
+
+  it('should save alert using AlertService for authenticated user', () => {
+    const alertService = TestBed.inject(AlertService);
+    const createAlertSpy = vi.spyOn(alertService, 'createAlert').mockReturnValue(of({
+      id: 1,
+      stockId: 1,
+      symbol: 'RELIANCE',
+      companyName: 'Reliance Industries Ltd',
+      exchange: 'NSE',
+      currency: 'INR',
+      targetPrice: 3000,
+      conditionType: 'ABOVE',
+      status: 'ACTIVE',
+      currentPrice: 2950.5,
+      priceAvailable: true,
+      triggeredPrice: null,
+      triggeredAt: null,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      provider: 'Upstox'
+    }));
+    vi.spyOn(authService, 'isAuthenticated').mockReturnValue(true);
+
+    const fixture = TestBed.createComponent(StockDetailsComponent);
+    const component = fixture.componentInstance;
+    component.symbol.set('RELIANCE');
+    component.alertTargetPrice.set(3000);
+    component.alertCondition.set('ABOVE');
+    component.alertNotes.set('Breakout target');
+
+    component.saveAlert();
+    expect(createAlertSpy).toHaveBeenCalledWith({
+      symbol: 'RELIANCE',
+      condition: 'ABOVE',
+      targetPrice: 3000,
+      notes: 'Breakout target'
+    });
   });
 });

@@ -31,6 +31,20 @@
         <span>Fundamental</span>
       </a>
 
+      <!-- Header Alert Button -->
+      <button
+        type="button"
+        class="action-icon-btn alert-action-btn"
+        (click)="openAlertModal()"
+        title="Set Price Alert for this Symbol"
+      >
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        <span>Alert</span>
+      </button>
+
       <button
         type="button"
         class="action-icon-btn"
@@ -658,4 +672,127 @@
       }
     </div>
   </div>
+
+  <!-- =========================================================================
+       PRICE ALERT POPUP / MODAL
+       ========================================================================= -->
+  @if (isAlertModalOpen()) {
+    <div class="alert-modal-backdrop" (click)="closeAlertModal()">
+      <div class="alert-modal-dialog" (click)="$event.stopPropagation()">
+        <div class="alert-modal-header">
+          <div class="modal-title-wrap">
+            <div class="alert-icon-circle">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="modal-title">Set Price Alert</h3>
+              <span class="modal-subtitle">{{ symbol() }} • {{ companyName() }}</span>
+            </div>
+          </div>
+          <button type="button" class="modal-close-btn" (click)="closeAlertModal()" title="Close">✕</button>
+        </div>
+
+        <div class="alert-modal-body">
+          @if (alertSuccessMessage()) {
+            <div class="alert-feedback-banner success">
+              <span class="check-icon">✓</span>
+              <span>{{ alertSuccessMessage() }}</span>
+            </div>
+          }
+
+          @if (alertErrorMessage()) {
+            <div class="alert-feedback-banner error">
+              <span class="err-icon">⚠️</span>
+              <span>{{ alertErrorMessage() }}</span>
+            </div>
+          }
+
+          <!-- Current Market Price Reference -->
+          <div class="alert-market-ref">
+            <span class="ref-label">Current Market Price</span>
+            <strong class="ref-val font-mono">
+              {{ formatCurrencySymbol(symbol()) }}{{ currentQuote()?.price != null ? (currentQuote()!.price | number:'1.2-4') : '—' }}
+            </strong>
+          </div>
+
+          <!-- Trigger Condition (Above / Below) -->
+          <div class="modal-form-group">
+            <label class="modal-label">Trigger Condition</label>
+            <div class="condition-segmented">
+              <button
+                type="button"
+                class="cond-btn"
+                [class.active]="alertCondition() === 'ABOVE'"
+                (click)="setAlertCondition('ABOVE')"
+              >
+                <span class="cond-icon">▲</span>
+                <span>Price Rises Above</span>
+              </button>
+              <button
+                type="button"
+                class="cond-btn"
+                [class.active]="alertCondition() === 'BELOW'"
+                (click)="setAlertCondition('BELOW')"
+              >
+                <span class="cond-icon">▼</span>
+                <span>Price Drops Below</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Target Price -->
+          <div class="modal-form-group">
+            <label class="modal-label">Target Alert Price ({{ formatCurrencySymbol(symbol()) }})</label>
+            <div class="modal-input-wrap">
+              <span class="input-currency-prefix font-mono">{{ formatCurrencySymbol(symbol()) }}</span>
+              <input
+                type="number"
+                class="modal-input font-mono"
+                [ngModel]="alertTargetPrice()"
+                (ngModelChange)="alertTargetPrice.set($event)"
+                placeholder="Target Price"
+                step="0.01"
+                min="0.01"
+              />
+            </div>
+          </div>
+
+          <!-- Notes (Optional) -->
+          <div class="modal-form-group">
+            <label class="modal-label">Notes (Optional)</label>
+            <input
+              type="text"
+              class="modal-input"
+              [ngModel]="alertNotes()"
+              (ngModelChange)="alertNotes.set($event)"
+              placeholder="e.g. Breakout target, Stop loss level"
+              maxlength="120"
+            />
+          </div>
+        </div>
+
+        <div class="alert-modal-footer">
+          <button type="button" class="modal-btn-cancel" (click)="closeAlertModal()">
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="modal-btn-save"
+            [disabled]="isSavingAlert() || !alertTargetPrice() || alertTargetPrice() <= 0"
+            (click)="saveAlert()"
+          >
+            @if (isSavingAlert()) {
+              <div class="btn-spinner"></div>
+              <span>Saving Alert...</span>
+            } @else {
+              <span>Set Alert</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 </div>
