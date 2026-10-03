@@ -7,7 +7,8 @@ import {
   OnDestroy,
   ElementRef,
   viewChild,
-  effect
+  effect,
+  HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -1043,9 +1044,109 @@ export class MarketComponent implements OnInit, OnDestroy {
     return bestSnap;
   }
 
+  private findDrawingAtPoint(x: number, y: number): ChartDrawing | null {
+    const drawings = this.drawings();
+    if (!this.chart || drawings.length === 0) return null;
+
+    const timeScale = this.chart.timeScale();
+    const threshold = 14;
+
+    for (let i = drawings.length - 1; i >= 0; i--) {
+      const d = drawings[i];
+      const coords = d.points.map(p => {
+        let px: number | null = null;
+        let py: number | null = null;
+        if (p.time != null) {
+          px = timeScale.timeToCoordinate(p.time as any) as number | null;
+        }
+        if (p.price != null && this.candlestickSeries) {
+          py = this.candlestickSeries.priceToCoordinate(p.price as any) as number | null;
+        } else if (p.price != null && this.lineSeries) {
+          py = this.lineSeries.priceToCoordinate(p.price as any) as number | null;
+        }
+        return { x: px ?? p.screenX ?? 0, y: py ?? p.screenY ?? 0 };
+      });
+
+      if (coords.length === 0) continue;
+
+      if (d.type === 'trendline' || d.type === 'ray') {
+        if (coords.length >= 2) {
+          const dist = this.distToSegment(x, y, coords[0].x, coords[0].y, coords[1].x, coords[1].y);
+          if (dist <= threshold) return d;
+        }
+      } else if (d.type === 'horizontal') {
+        if (Math.abs(y - coords[0].y) <= threshold) return d;
+      } else if (d.type === 'vertical') {
+        if (Math.abs(x - coords[0].x) <= threshold) return d;
+      } else if (d.type === 'rectangle' || d.type === 'measure') {
+        if (coords.length >= 2) {
+          const minX = Math.min(coords[0].x, coords[1].x) - 6;
+          const maxX = Math.max(coords[0].x, coords[1].x) + 6;
+          const minY = Math.min(coords[0].y, coords[1].y) - 6;
+          const maxY = Math.max(coords[0].y, coords[1].y) + 6;
+          if (x >= minX && x <= maxX && y >= minY && y <= maxY) return d;
+        }
+      } else if (d.type === 'brush') {
+        for (let j = 0; j < coords.length - 1; j++) {
+          const dist = this.distToSegment(x, y, coords[j].x, coords[j].y, coords[j + 1].x, coords[j + 1].y);
+          if (dist <= threshold) return d;
+        }
+      } else if (d.type === 'text') {
+        if (Math.hypot(x - coords[0].x, y - coords[0].y) <= 35) return d;
+      }
+    }
+    return null;
+  }
+
+  private distToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
+    const l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+    if (l2 === 0) return Math.hypot(px - x1, py - y1);
+    let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onKeyDown(e: KeyboardEvent): void {
+    if (e.key === 'Escape') {
+      if (this.currentDraftDrawing) {
+        this.currentDraftDrawing = null;
+        this.renderDrawings();
+      }
+      this.selectedDrawingId.set(null);
+      this.selectDrawingTool('cursor');
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+      if (activeTag !== 'input' && activeTag !== 'textarea') {
+        if (this.selectedDrawingId()) {
+          e.preventDefault();
+          this.deleteSelectedDrawing();
+        }
+      }
+    }
+  }
+
   onCanvasMouseDown(e: MouseEvent): void {
+    if (this.isDrawingsLocked() || this.isDrawingsHidden()) return;
+
     const tool = this.selectedDrawingTool();
-    if (tool === 'cursor' || this.isDrawingsLocked() || this.isDrawingsHidden()) return;
+    const canvas = this.drawingCanvasRef()?.nativeElement;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (tool === 'cursor') {
+      const hit = this.findDrawingAtPoint(x, y);
+      if (hit) {
+        this.selectedDrawingId.set(hit.id);
+      } else {
+        this.selectedDrawingId.set(null);
+      }
+      this.renderDrawings();
+      return;
+    }
 
     const point = this.getPointFromEvent(e);
     if (!point) return;
@@ -1077,6 +1178,7 @@ export class MarketComponent implements OnInit, OnDestroy {
 
       this.drawings.update(d => [...d, newDrawing]);
       this.saveDrawingsForSymbol(this.selectedSymbol());
+      this.selectedDrawingId.set(newDrawing.id);
       this.renderDrawings();
       this.selectDrawingTool('cursor');
       this.isDrawingMouseDown = false;
@@ -1111,8 +1213,10 @@ export class MarketComponent implements OnInit, OnDestroy {
     } else {
       // Second click completes 2-point drawing
       this.currentDraftDrawing.points[1] = point;
-      this.drawings.update(d => [...d, this.currentDraftDrawing!]);
+      const completed = this.currentDraftDrawing;
+      this.drawings.update(d => [...d, completed]);
       this.saveDrawingsForSymbol(this.selectedSymbol());
+      this.selectedDrawingId.set(completed.id);
       this.currentDraftDrawing = null;
       this.renderDrawings();
       this.selectDrawingTool('cursor');
@@ -1140,8 +1244,10 @@ export class MarketComponent implements OnInit, OnDestroy {
 
   onCanvasMouseUp(): void {
     if (this.currentDraftDrawing && this.currentDraftDrawing.type === 'brush') {
-      this.drawings.update(d => [...d, this.currentDraftDrawing!]);
+      const completed = this.currentDraftDrawing;
+      this.drawings.update(d => [...d, completed]);
       this.saveDrawingsForSymbol(this.selectedSymbol());
+      this.selectedDrawingId.set(completed.id);
       this.currentDraftDrawing = null;
       this.selectDrawingTool('cursor');
       this.renderDrawings();
@@ -1172,11 +1278,16 @@ export class MarketComponent implements OnInit, OnDestroy {
     }
 
     const timeScale = this.chart.timeScale();
+    const selId = this.selectedDrawingId();
 
     allDrawings.forEach(d => {
-      ctx.strokeStyle = d.color || '#38bdf8';
-      ctx.fillStyle = d.color || '#38bdf8';
-      ctx.lineWidth = d.lineWidth || 2;
+      const isSelected = d.id === selId;
+      const drawColor = isSelected ? '#38bdf8' : (d.color || '#38bdf8');
+      const drawLineWidth = isSelected ? Math.max(3, (d.lineWidth || 2) + 1) : (d.lineWidth || 2);
+
+      ctx.strokeStyle = drawColor;
+      ctx.fillStyle = drawColor;
+      ctx.lineWidth = drawLineWidth;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
@@ -1209,10 +1320,10 @@ export class MarketComponent implements OnInit, OnDestroy {
         ctx.stroke();
 
         // Draw handles at points
-        this.drawAnchorHandle(ctx, coords[0].x, coords[0].y, d.color);
-        this.drawAnchorHandle(ctx, coords[1].x, coords[1].y, d.color);
+        this.drawAnchorHandle(ctx, coords[0].x, coords[0].y, drawColor, isSelected);
+        this.drawAnchorHandle(ctx, coords[1].x, coords[1].y, drawColor, isSelected);
       } else if (d.type === 'horizontal' && coords.length >= 1) {
-        ctx.setLineDash([4, 4]);
+        ctx.setLineDash(isSelected ? [6, 3] : [4, 4]);
         ctx.beginPath();
         ctx.moveTo(0, coords[0].y);
         ctx.lineTo(canvas.width / dpr, coords[0].y);
@@ -1221,9 +1332,9 @@ export class MarketComponent implements OnInit, OnDestroy {
 
         // Right scale badge
         const priceLabel = d.points[0].price.toFixed(2);
-        this.drawPriceTag(ctx, canvas.width / dpr - 65, coords[0].y, priceLabel, d.color);
+        this.drawPriceTag(ctx, canvas.width / dpr - 65, coords[0].y, priceLabel, drawColor, isSelected);
       } else if (d.type === 'vertical' && coords.length >= 1) {
-        ctx.setLineDash([4, 4]);
+        ctx.setLineDash(isSelected ? [6, 3] : [4, 4]);
         ctx.beginPath();
         ctx.moveTo(coords[0].x, 0);
         ctx.lineTo(coords[0].x, canvas.height / dpr);
@@ -1241,20 +1352,20 @@ export class MarketComponent implements OnInit, OnDestroy {
         ctx.lineTo(extendedX, extendedY);
         ctx.stroke();
 
-        this.drawAnchorHandle(ctx, coords[0].x, coords[0].y, d.color);
-        this.drawAnchorHandle(ctx, coords[1].x, coords[1].y, d.color);
+        this.drawAnchorHandle(ctx, coords[0].x, coords[0].y, drawColor, isSelected);
+        this.drawAnchorHandle(ctx, coords[1].x, coords[1].y, drawColor, isSelected);
       } else if (d.type === 'rectangle' && coords.length >= 2) {
         const rx = Math.min(coords[0].x, coords[1].x);
         const ry = Math.min(coords[0].y, coords[1].y);
         const rw = Math.abs(coords[1].x - coords[0].x);
         const rh = Math.abs(coords[1].y - coords[0].y);
 
-        ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
+        ctx.fillStyle = isSelected ? 'rgba(56, 189, 248, 0.22)' : 'rgba(56, 189, 248, 0.12)';
         ctx.fillRect(rx, ry, rw, rh);
         ctx.strokeRect(rx, ry, rw, rh);
 
-        this.drawAnchorHandle(ctx, coords[0].x, coords[0].y, d.color);
-        this.drawAnchorHandle(ctx, coords[1].x, coords[1].y, d.color);
+        this.drawAnchorHandle(ctx, coords[0].x, coords[0].y, drawColor, isSelected);
+        this.drawAnchorHandle(ctx, coords[1].x, coords[1].y, drawColor, isSelected);
       } else if (d.type === 'brush' && coords.length > 1) {
         ctx.beginPath();
         ctx.moveTo(coords[0].x, coords[0].y);
@@ -1267,9 +1378,9 @@ export class MarketComponent implements OnInit, OnDestroy {
         ctx.font = '600 12px "Plus Jakarta Sans", sans-serif';
         const textW = ctx.measureText(text).width;
 
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-        ctx.strokeStyle = d.color;
-        ctx.lineWidth = 1;
+        ctx.fillStyle = isSelected ? 'rgba(30, 58, 138, 0.95)' : 'rgba(15, 23, 42, 0.85)';
+        ctx.strokeStyle = drawColor;
+        ctx.lineWidth = isSelected ? 2 : 1;
         ctx.beginPath();
         ctx.roundRect(coords[0].x - 4, coords[0].y - 18, textW + 16, 24, 4);
         ctx.fill();
@@ -1302,17 +1413,17 @@ export class MarketComponent implements OnInit, OnDestroy {
     ctx.restore();
   }
 
-  private drawAnchorHandle(ctx: CanvasRenderingContext2D, x: number, y: number, color: string): void {
+  private drawAnchorHandle(ctx: CanvasRenderingContext2D, x: number, y: number, color: string, isSelected: boolean = false): void {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = isSelected ? 2.5 : 2;
     ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.arc(x, y, isSelected ? 5.5 : 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
   }
 
-  private drawPriceTag(ctx: CanvasRenderingContext2D, x: number, y: number, text: string, color: string): void {
+  private drawPriceTag(ctx: CanvasRenderingContext2D, x: number, y: number, text: string, color: string, isSelected: boolean = false): void {
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.roundRect(x, y - 9, 60, 18, 3);

@@ -426,15 +426,19 @@
 }
 
 /* ==========================================================================
-   2. MAIN TWO-COLUMN WORKSPACE (78% Chart | 22% Watchlist)
+   2. MAIN TWO-COLUMN WORKSPACE (Left: Chart | Right: Watchlist)
    ========================================================================= */
 .terminal-body-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 330px;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
   gap: 0.5rem;
   flex: 1;
   min-height: 0;
   height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* Left / Center Dominant Chart Pane */
@@ -448,7 +452,10 @@
   padding: 0.5rem;
   min-height: 0;
   height: 100%;
+  flex: 1 1 0%;
+  min-width: 0;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* Chart Controls Toolbar (32px) */
@@ -2438,12 +2445,6 @@
 /* ==========================================================================
    7. RESPONSIVE BREAKPOINTS
    ========================================================================== */
-@media (max-width: 1200px) {
-  .terminal-body-grid {
-    grid-template-columns: minmax(0, 1fr) 230px;
-  }
-}
-
 @media (max-width: 900px) {
   .market-trading-terminal {
     height: auto;
@@ -2462,7 +2463,7 @@
   }
 
   .terminal-body-grid {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     height: auto;
   }
 
@@ -2472,7 +2473,8 @@
   }
 
   .watchlist-compact-pane {
-    max-height: 340px;
+    max-height: 380px;
+    width: 100% !important;
   }
 
   .ind-grid {
