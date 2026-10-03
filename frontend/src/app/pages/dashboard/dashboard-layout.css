@@ -232,16 +232,23 @@
 .dashboard-main {
   flex-grow: 1;
   margin-left: 256px;
+  width: calc(100% - 256px);
+  max-width: calc(100vw - 256px);
+  min-width: 0;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   transition: margin-left var(--transition-smooth);
   position: relative;
   z-index: 1;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .dashboard-main.sidebar-collapsed {
   margin-left: 78px;
+  width: calc(100% - 78px);
+  max-width: calc(100vw - 78px);
 }
 
 .dashboard-topbar {
@@ -588,12 +595,17 @@
 
 /* Dashboard Content Area */
 .dashboard-content-area {
-  padding: 2rem 2.25rem;
+  padding: 1.5rem 1.75rem;
   flex-grow: 1;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
-.dashboard-content-area:has(app-market) {
-  padding: 0.5rem 0.75rem;
+.dashboard-content-area:has(app-market),
+.dashboard-content-area:has(app-stock-details) {
+  padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
 }
