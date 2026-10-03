@@ -25,6 +25,7 @@ import {
   HistogramSeries,
   ColorType,
   CrosshairMode,
+  LineStyle,
   Time,
   CandlestickData,
   LineData,
@@ -673,16 +674,13 @@ export class MarketComponent implements OnInit, OnDestroy {
             vertLine: {
               color: '#818cf8',
               width: 1,
-              style: 3,
+              style: LineStyle.Dotted,
               visible: true,
               labelVisible: true,
               labelBackgroundColor: '#4f46e5'
             },
             horzLine: {
-              color: '#818cf8',
-              width: 1,
-              style: 3,
-              visible: true,
+              visible: false,
               labelVisible: true,
               labelBackgroundColor: '#4f46e5'
             }
