@@ -23,6 +23,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private final JwtTokenProvider tokenProvider;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
+    private final com.portfolio.repository.UserRepository userRepository;
 
     @Value("${app.oauth2.authorized-redirect-uri:http://localhost:4200/oauth2/redirect}")
     private String redirectUri;
@@ -30,11 +31,13 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     public OAuth2AuthenticationSuccessHandler(
             JwtTokenProvider tokenProvider,
             CustomOAuth2UserService customOAuth2UserService,
-            HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository
+            HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository,
+            com.portfolio.repository.UserRepository userRepository
     ) {
         this.tokenProvider = tokenProvider;
         this.customOAuth2UserService = customOAuth2UserService;
         this.cookieAuthorizationRequestRepository = cookieAuthorizationRequestRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -65,6 +68,21 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             Authentication authentication
     ) {
         UserPrincipal userPrincipal = resolveUserPrincipal(authentication);
+
+        // Ensure user is upgraded in users table if matching ADMIN_EMAIL
+        if (customOAuth2UserService.isAdminEmail(userPrincipal.getEmail())) {
+            var userOpt = userRepository.findByEmail(userPrincipal.getEmail().trim().toLowerCase());
+            if (userOpt.isPresent()) {
+                var user = userOpt.get();
+                if (user.getRole() != com.portfolio.entity.enums.UserRole.ROLE_ADMIN) {
+                    user.setRole(com.portfolio.entity.enums.UserRole.ROLE_ADMIN);
+                    user = userRepository.saveAndFlush(user);
+                    log.info("OAuth2SuccessHandler: Upgraded user {} to ROLE_ADMIN in users table", user.getEmail());
+                }
+                userPrincipal = UserPrincipal.create(user, userPrincipal.getAttributes());
+            }
+        }
+
         String token = tokenProvider.generateToken(userPrincipal);
 
         String role = userPrincipal.getAuthorities().isEmpty() ? "ROLE_USER" :

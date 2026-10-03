@@ -8,6 +8,7 @@ import com.portfolio.repository.UserRepository;
 import com.portfolio.security.UserPrincipal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -25,21 +26,45 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private static final Logger log = LoggerFactory.getLogger(CustomOAuth2UserService.class);
 
     private final UserRepository userRepository;
-    private final String adminEmail;
+    private final Environment environment;
+    private final String configuredAdminEmail;
 
     public CustomOAuth2UserService(
             UserRepository userRepository,
+            Environment environment,
             @org.springframework.beans.factory.annotation.Value("${app.admin.email:}") String adminEmail
     ) {
         this.userRepository = userRepository;
-        this.adminEmail = adminEmail;
+        this.environment = environment;
+        this.configuredAdminEmail = adminEmail;
     }
 
-    private boolean isAdminEmail(String email) {
-        if (adminEmail == null || adminEmail.trim().isEmpty() || email == null || email.trim().isEmpty()) {
+    public boolean isAdminEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
             return false;
         }
-        return adminEmail.trim().equalsIgnoreCase(email.trim());
+        String admin = getAdminEmail();
+        if (admin == null || admin.trim().isEmpty()) {
+            return false;
+        }
+        return admin.trim().equalsIgnoreCase(email.trim());
+    }
+
+    public String getAdminEmail() {
+        if (configuredAdminEmail != null && !configuredAdminEmail.trim().isEmpty()) {
+            return configuredAdminEmail.trim();
+        }
+        if (environment != null) {
+            String val = environment.getProperty("app.admin.email");
+            if (val != null && !val.trim().isEmpty()) return val.trim();
+            val = environment.getProperty("ADMIN_EMAIL");
+            if (val != null && !val.trim().isEmpty()) return val.trim();
+            val = System.getenv("ADMIN_EMAIL");
+            if (val != null && !val.trim().isEmpty()) return val.trim();
+            val = System.getProperty("ADMIN_EMAIL");
+            if (val != null && !val.trim().isEmpty()) return val.trim();
+        }
+        return null;
     }
 
     @Override
@@ -84,10 +109,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             // If configured admin email matches and user is currently ROLE_USER, upgrade to ROLE_ADMIN
             if (isAdminEmail(normalizedEmail) && user.getRole() != UserRole.ROLE_ADMIN) {
                 user.setRole(UserRole.ROLE_ADMIN);
-                log.info("Upgraded existing OAuth user {} to ROLE_ADMIN based on ADMIN_EMAIL configuration", user.getEmail());
+                log.info("Upgraded existing OAuth user {} to ROLE_ADMIN in users table based on ADMIN_EMAIL configuration", user.getEmail());
             }
-            user = userRepository.save(user);
-            log.info("Existing user {} authenticated via Google OAuth", user.getEmail());
+            user = userRepository.saveAndFlush(user);
+            log.info("Existing user {} authenticated via Google OAuth with role {}", user.getEmail(), user.getRole());
         } else {
             // Register new Google user
             user = new User();
@@ -100,10 +125,11 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             user.setProviderId(sub);
             user.setPasswordHash(null); // No password for Google OAuth users
 
-            user = userRepository.save(user);
+            user = userRepository.saveAndFlush(user);
             log.info("Registered new user {} via Google OAuth with role {}", user.getEmail(), assignedRole);
         }
 
         return UserPrincipal.create(user, oAuth2User.getAttributes());
     }
 }
+

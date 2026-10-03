@@ -46,6 +46,7 @@ class AuthServiceTest {
                 userRepository,
                 passwordEncoder,
                 jwtTokenProvider,
+                null,
                 ADMIN_EMAIL
         );
 
@@ -53,6 +54,7 @@ class AuthServiceTest {
                 userRepository,
                 passwordEncoder,
                 jwtTokenProvider,
+                null,
                 ""
         );
     }
@@ -64,7 +66,7 @@ class AuthServiceTest {
         when(passwordEncoder.encode("Secret123")).thenReturn("hashedSecret");
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        when(userRepository.save(userCaptor.capture())).thenAnswer(invocation -> {
+        when(userRepository.saveAndFlush(userCaptor.capture())).thenAnswer(invocation -> {
             User u = invocation.getArgument(0);
             u.setId(10L);
             return u;
@@ -86,7 +88,7 @@ class AuthServiceTest {
         when(passwordEncoder.encode("Secret123")).thenReturn("hashedSecret");
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        when(userRepository.save(userCaptor.capture())).thenAnswer(invocation -> {
+        when(userRepository.saveAndFlush(userCaptor.capture())).thenAnswer(invocation -> {
             User u = invocation.getArgument(0);
             u.setId(11L);
             return u;
@@ -111,7 +113,7 @@ class AuthServiceTest {
 
         when(userRepository.findByEmail(ADMIN_EMAIL)).thenReturn(Optional.of(existingUser));
         when(passwordEncoder.matches("Pass123", "hashedPass")).thenReturn(true);
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(jwtTokenProvider.generateToken(any())).thenReturn("mock-jwt-token");
 
         LoginRequest request = new LoginRequest(ADMIN_EMAIL, "Pass123");
@@ -119,7 +121,7 @@ class AuthServiceTest {
 
         assertThat(existingUser.getRole()).isEqualTo(UserRole.ROLE_ADMIN);
         assertThat(response.role()).isEqualTo("ROLE_ADMIN");
-        verify(userRepository, times(1)).save(existingUser);
+        verify(userRepository, times(1)).saveAndFlush(existingUser);
     }
 
     @Test
@@ -141,6 +143,6 @@ class AuthServiceTest {
 
         assertThat(normalUser.getRole()).isEqualTo(UserRole.ROLE_USER);
         assertThat(response.role()).isEqualTo("ROLE_USER");
-        verify(userRepository, never()).save(any());
+        verify(userRepository, never()).saveAndFlush(any());
     }
 }
