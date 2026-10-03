@@ -693,29 +693,42 @@
             <circle cx="12" cy="12" r="3"></circle>
           </svg>
           <span class="pane-title">Watchlist</span>
+          <span class="header-count-badge">{{ filteredWatchlist().length }}</span>
         </div>
-        <div class="header-count-badge">{{ filteredWatchlist().length }}</div>
+        <button type="button" class="wl-header-refresh-btn" (click)="refreshWatchlist()" title="Refresh Watchlist Quotes">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6"></path>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+        </button>
       </div>
 
       <!-- Local Watchlist Filter -->
       <div class="watchlist-filter-box">
-        <input
-          type="text"
-          [(ngModel)]="watchlistSearch"
-          placeholder="Filter watchlist..."
-          class="watchlist-search-input"
-        />
-        @if (watchlistSearch()) {
-          <button type="button" class="clear-filter-btn" (click)="watchlistSearch.set('')">✕</button>
-        }
+        <div class="watchlist-search-wrap">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input
+            type="text"
+            [(ngModel)]="watchlistSearch"
+            placeholder="Search watchlist..."
+            class="watchlist-search-input"
+          />
+          @if (watchlistSearch()) {
+            <button type="button" class="clear-filter-btn" (click)="watchlistSearch.set('')">✕</button>
+          }
+        </div>
       </div>
 
-      <!-- Columns Header (TradingView Style) -->
+      <!-- Columns Header (TradingView Style: SYMBOL | LAST | CHG | CHG%) -->
       <div class="wl-columns-header">
-        <span class="col-hdr-sym">Symbol</span>
-        <span class="col-hdr-last">Last</span>
-        <span class="col-hdr-chg">Chg</span>
-        <span class="col-hdr-pct">Chg%</span>
+        <span class="wl-col-grip"></span>
+        <span class="col-hdr col-sym">Symbol</span>
+        <span class="col-hdr col-last">Last</span>
+        <span class="col-hdr col-chg">Chg</span>
+        <span class="col-hdr col-pct">Chg%</span>
       </div>
 
       <!-- Watchlist Categories Accordion -->
@@ -748,20 +761,16 @@
                   >
                     <div class="wl-drag-grip" title="Drag to reorder">⋮⋮</div>
                     <div class="row-left col-sym">
-                      <span class="row-symbol">{{ item.symbol }}</span>
-                      <span class="row-name" [title]="item.name">{{ item.name }}</span>
+                      <span class="row-symbol" [title]="item.name">{{ item.symbol }}</span>
+                      <span class="row-exchange">{{ getExchangeLabel(item) }}</span>
                     </div>
-                    <div class="row-right">
-                      <span class="row-price col-last">{{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}</span>
-                      @if (item.change != null) {
-                        <span class="row-change-pill col-chg" [class.up]="item.change >= 0" [class.down]="item.change < 0">
-                          {{ item.change >= 0 ? '+' : '' }}{{ item.change | number:'1.2-2' }}
-                        </span>
-                        <span class="col-pct" [class.up]="item.change >= 0" [class.down]="item.change < 0">
-                          {{ item.changePercent || ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-2')) }}
-                        </span>
-                      }
-                    </div>
+                    <span class="row-price col-last">{{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}</span>
+                    <span class="row-change col-chg" [class.up]="(item.change ?? 0) >= 0" [class.down]="(item.change ?? 0) < 0">
+                      {{ item.change != null ? (((item.change >= 0) ? '+' : '') + (item.change | number:'1.2-2')) : '—' }}
+                    </span>
+                    <span class="row-change-pill col-pct" [class.up]="(item.change ?? 0) >= 0" [class.down]="(item.change ?? 0) < 0">
+                      {{ item.changePercent || (item.change != null ? (((item.change >= 0) ? '+' : '') + (item.change | number:'1.2-2') + '%') : '—') }}
+                    </span>
                   </div>
                 }
               </div>
@@ -797,20 +806,16 @@
                   >
                     <div class="wl-drag-grip" title="Drag to reorder">⋮⋮</div>
                     <div class="row-left col-sym">
-                      <span class="row-symbol">{{ item.symbol }}</span>
-                      <span class="row-name" [title]="item.name">{{ item.name }}</span>
+                      <span class="row-symbol" [title]="item.name">{{ item.symbol }}</span>
+                      <span class="row-exchange">{{ getExchangeLabel(item) }}</span>
                     </div>
-                    <div class="row-right">
-                      <span class="row-price col-last">{{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}</span>
-                      @if (item.change != null) {
-                        <span class="row-change-pill col-chg" [class.up]="item.change >= 0" [class.down]="item.change < 0">
-                          {{ item.change >= 0 ? '+' : '' }}{{ item.change | number:'1.2-2' }}
-                        </span>
-                        <span class="col-pct" [class.up]="item.change >= 0" [class.down]="item.change < 0">
-                          {{ item.changePercent || ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-2')) }}
-                        </span>
-                      }
-                    </div>
+                    <span class="row-price col-last">{{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}</span>
+                    <span class="row-change col-chg" [class.up]="(item.change ?? 0) >= 0" [class.down]="(item.change ?? 0) < 0">
+                      {{ item.change != null ? (((item.change >= 0) ? '+' : '') + (item.change | number:'1.2-2')) : '—' }}
+                    </span>
+                    <span class="row-change-pill col-pct" [class.up]="(item.change ?? 0) >= 0" [class.down]="(item.change ?? 0) < 0">
+                      {{ item.changePercent || (item.change != null ? (((item.change >= 0) ? '+' : '') + (item.change | number:'1.2-2') + '%') : '—') }}
+                    </span>
                   </div>
                 }
               </div>
@@ -846,20 +851,16 @@
                   >
                     <div class="wl-drag-grip" title="Drag to reorder">⋮⋮</div>
                     <div class="row-left col-sym">
-                      <span class="row-symbol">{{ item.symbol }}</span>
-                      <span class="row-name" [title]="item.name">{{ item.name }}</span>
+                      <span class="row-symbol" [title]="item.name">{{ item.symbol }}</span>
+                      <span class="row-exchange">{{ getExchangeLabel(item) }}</span>
                     </div>
-                    <div class="row-right">
-                      <span class="row-price col-last">{{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.4-4')) : '—' }}</span>
-                      @if (item.change != null) {
-                        <span class="row-change-pill col-chg" [class.up]="item.change >= 0" [class.down]="item.change < 0">
-                          {{ item.change >= 0 ? '+' : '' }}{{ item.change | number:'1.2-2' }}
-                        </span>
-                        <span class="col-pct" [class.up]="item.change >= 0" [class.down]="item.change < 0">
-                          {{ item.changePercent || ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-2')) }}
-                        </span>
-                      }
-                    </div>
+                    <span class="row-price col-last">{{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.4-4')) : '—' }}</span>
+                    <span class="row-change col-chg" [class.up]="(item.change ?? 0) >= 0" [class.down]="(item.change ?? 0) < 0">
+                      {{ item.change != null ? (((item.change >= 0) ? '+' : '') + (item.change | number:'1.2-2')) : '—' }}
+                    </span>
+                    <span class="row-change-pill col-pct" [class.up]="(item.change ?? 0) >= 0" [class.down]="(item.change ?? 0) < 0">
+                      {{ item.changePercent || (item.change != null ? (((item.change >= 0) ? '+' : '') + (item.change | number:'1.2-2') + '%') : '—') }}
+                    </span>
                   </div>
                 }
               </div>
@@ -895,24 +896,28 @@
                   >
                     <div class="wl-drag-grip" title="Drag to reorder">⋮⋮</div>
                     <div class="row-left col-sym">
-                      <span class="row-symbol">{{ item.symbol }}</span>
-                      <span class="row-name" [title]="item.name">{{ item.name }}</span>
+                      <span class="row-symbol" [title]="item.name">{{ item.symbol }}</span>
+                      <span class="row-exchange">{{ getExchangeLabel(item) }}</span>
                     </div>
-                    <div class="row-right">
-                      <span class="row-price col-last">{{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}</span>
-                      @if (item.change != null) {
-                        <span class="row-change-pill col-chg" [class.up]="item.change >= 0" [class.down]="item.change < 0">
-                          {{ item.change >= 0 ? '+' : '' }}{{ item.change | number:'1.2-2' }}
-                        </span>
-                        <span class="col-pct" [class.up]="item.change >= 0" [class.down]="item.change < 0">
-                          {{ item.changePercent || ((item.change >= 0 ? '+' : '') + (item.change | number:'1.2-2')) }}
-                        </span>
-                      }
-                    </div>
+                    <span class="row-price col-last">{{ item.price != null ? (formatCurrencySymbol(item.symbol) + (item.price | number:'1.2-2')) : '—' }}</span>
+                    <span class="row-change col-chg" [class.up]="(item.change ?? 0) >= 0" [class.down]="(item.change ?? 0) < 0">
+                      {{ item.change != null ? (((item.change >= 0) ? '+' : '') + (item.change | number:'1.2-2')) : '—' }}
+                    </span>
+                    <span class="row-change-pill col-pct" [class.up]="(item.change ?? 0) >= 0" [class.down]="(item.change ?? 0) < 0">
+                      {{ item.changePercent || (item.change != null ? (((item.change >= 0) ? '+' : '') + (item.change | number:'1.2-2') + '%') : '—') }}
+                    </span>
                   </div>
                 }
               </div>
             }
+          </div>
+        }
+
+        <!-- Empty State -->
+        @if (filteredWatchlist().length === 0) {
+          <div class="wl-empty-state">
+            <p>No symbols match "<strong>{{ watchlistSearch() }}</strong>"</p>
+            <button type="button" class="wl-reset-filter-btn" (click)="watchlistSearch.set('')">Clear Filter</button>
           </div>
         }
       </div>

@@ -1718,6 +1718,10 @@ export class MarketComponent implements OnInit, OnDestroy {
     );
   }
 
+  refreshWatchlist(): void {
+    this.refreshWatchlistQuotes();
+  }
+
   refreshWatchlistQuotes(): void {
     const items = this.watchlist();
     const batch = items.slice(0, 10);
@@ -1729,6 +1733,19 @@ export class MarketComponent implements OnInit, OnDestroy {
         error: () => {}
       });
     });
+  }
+
+  getExchangeLabel(item: WatchlistItem): string {
+    if (item.exchange) return item.exchange;
+    if (item.category === 'indices') {
+      return item.symbol.toUpperCase().includes('SENSEX') ? 'BSE' : 'NSE';
+    }
+    if (item.category === 'stocks') {
+      return this.marketService.isIndianSymbol(item.symbol) ? 'NSE' : 'NASDAQ';
+    }
+    if (item.category === 'forex') return 'FX';
+    if (item.category === 'crypto') return 'Coinbase';
+    return 'NSE';
   }
 
   // Watchlist collapsing
