@@ -110,5 +110,25 @@ export class TradingService {
       })
     );
   }
+
+  depositCash(amount: number): Observable<VirtualWallet> {
+    return this.http.post<VirtualWallet>(`${this.baseUrl}/trading/wallet/deposit`, { amount }).pipe(
+      tap(wallet => {
+        this.wallet.set(wallet);
+        this.getPortfolio().subscribe({ error: () => {} });
+      })
+    );
+  }
+
+  resetCashBalance(targetBalance?: number): Observable<VirtualWallet> {
+    const body = targetBalance !== undefined && targetBalance !== null ? { targetBalance } : {};
+    return this.http.post<VirtualWallet>(`${this.baseUrl}/trading/wallet/reset`, body).pipe(
+      tap(wallet => {
+        this.wallet.set(wallet);
+        this.getPortfolio().subscribe({ error: () => {} });
+      })
+    );
+  }
 }
+
 

@@ -366,6 +366,75 @@ public class TradingService {
         return balance.setScale(4, RoundingMode.HALF_UP);
     }
 
+    @Transactional
+    public VirtualWalletDto depositCash(Long userId, BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Deposit amount must be greater than zero");
+        }
+
+        synchronized (getUserLock(userId)) {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + userId));
+
+            BigDecimal depositAmount = amount.setScale(4, RoundingMode.HALF_UP);
+
+            Transaction transaction = new Transaction();
+            transaction.setUser(user);
+            transaction.setTransactionType(TransactionType.DEPOSIT);
+            transaction.setStatus(TransactionStatus.SUCCESS);
+            transaction.setTotalAmount(depositAmount);
+            transaction.setFees(BigDecimal.ZERO);
+            transaction.setPnl(BigDecimal.ZERO);
+            transaction.setPnlPercent(BigDecimal.ZERO);
+            transactionRepository.save(transaction);
+
+            log.info("Virtual cash deposit of {} for user {}", depositAmount, userId);
+
+            return getWallet(userId);
+        }
+    }
+
+    @Transactional
+    public VirtualWalletDto resetCashBalance(Long userId, BigDecimal requestedTargetBalance) {
+        synchronized (getUserLock(userId)) {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + userId));
+
+            BigDecimal targetBalance = (requestedTargetBalance != null && requestedTargetBalance.compareTo(BigDecimal.ZERO) > 0)
+                    ? requestedTargetBalance.setScale(4, RoundingMode.HALF_UP)
+                    : DEFAULT_INITIAL_BALANCE;
+
+            BigDecimal currentCash = calculateCashBalance(userId);
+            BigDecimal diff = targetBalance.subtract(currentCash).setScale(4, RoundingMode.HALF_UP);
+
+            if (diff.compareTo(BigDecimal.ZERO) > 0) {
+                Transaction tx = new Transaction();
+                tx.setUser(user);
+                tx.setTransactionType(TransactionType.DEPOSIT);
+                tx.setStatus(TransactionStatus.SUCCESS);
+                tx.setTotalAmount(diff);
+                tx.setFees(BigDecimal.ZERO);
+                tx.setPnl(BigDecimal.ZERO);
+                tx.setPnlPercent(BigDecimal.ZERO);
+                transactionRepository.save(tx);
+            } else if (diff.compareTo(BigDecimal.ZERO) < 0) {
+                Transaction tx = new Transaction();
+                tx.setUser(user);
+                tx.setTransactionType(TransactionType.WITHDRAWAL);
+                tx.setStatus(TransactionStatus.SUCCESS);
+                tx.setTotalAmount(diff.abs());
+                tx.setFees(BigDecimal.ZERO);
+                tx.setPnl(BigDecimal.ZERO);
+                tx.setPnlPercent(BigDecimal.ZERO);
+                transactionRepository.save(tx);
+            }
+
+            log.info("Virtual cash balance reset to {} for user {}", targetBalance, userId);
+
+            return getWallet(userId);
+        }
+    }
+
     // =========================================================================
     // 4. USER HOLDINGS
     // =========================================================================

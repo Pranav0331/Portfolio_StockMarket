@@ -264,6 +264,38 @@ class TradingServiceTest {
     }
 
     @Test
+    @DisplayName("DEPOSIT - Adds virtual cash and records transaction")
+    void testDepositCash() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(transactionRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
+        when(holdingRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
+
+        VirtualWalletDto wallet = tradingService.depositCash(1L, new BigDecimal("25000"));
+
+        assertThat(wallet).isNotNull();
+        verify(transactionRepository).save(argThat(tx ->
+                tx.getTransactionType() == TransactionType.DEPOSIT &&
+                tx.getTotalAmount().compareTo(new BigDecimal("25000")) == 0
+        ));
+    }
+
+    @Test
+    @DisplayName("RESET BALANCE - Adjusts virtual cash to target amount")
+    void testResetCashBalance() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(transactionRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
+        when(holdingRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
+
+        VirtualWalletDto wallet = tradingService.resetCashBalance(1L, new BigDecimal("150000"));
+
+        assertThat(wallet).isNotNull();
+        verify(transactionRepository).save(argThat(tx ->
+                tx.getTransactionType() == TransactionType.DEPOSIT &&
+                tx.getTotalAmount().compareTo(new BigDecimal("50000")) == 0
+        ));
+    }
+
+    @Test
     @DisplayName("USER ISOLATION - Ensures queries are strictly scoped to authenticated user ID")
     void testUserIsolation() {
         Long userA = 1L;

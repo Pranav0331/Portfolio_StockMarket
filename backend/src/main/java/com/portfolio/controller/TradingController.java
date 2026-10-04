@@ -61,6 +61,31 @@ public class TradingController {
         return ResponseEntity.ok(wallet);
     }
 
+    @PostMapping("/wallet/deposit")
+    public ResponseEntity<VirtualWalletDto> depositCash(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @Valid @RequestBody com.portfolio.dto.trading.DepositRequestDto request
+    ) {
+        if (userPrincipal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User must be authenticated to deposit funds");
+        }
+        VirtualWalletDto wallet = tradingService.depositCash(userPrincipal.getId(), request.amount());
+        return ResponseEntity.ok(wallet);
+    }
+
+    @PostMapping("/wallet/reset")
+    public ResponseEntity<VirtualWalletDto> resetBalance(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestBody(required = false) com.portfolio.dto.trading.ResetBalanceRequestDto request
+    ) {
+        if (userPrincipal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User must be authenticated to reset balance");
+        }
+        java.math.BigDecimal target = request != null ? request.targetBalance() : null;
+        VirtualWalletDto wallet = tradingService.resetCashBalance(userPrincipal.getId(), target);
+        return ResponseEntity.ok(wallet);
+    }
+
     @GetMapping("/holdings")
     public ResponseEntity<List<UserHoldingDto>> getHoldings(
             @AuthenticationPrincipal UserPrincipal userPrincipal

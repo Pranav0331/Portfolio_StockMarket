@@ -6,11 +6,23 @@
         Welcome back, <span class="gradient-text">{{ authService.currentUser()?.name || 'Investor' }}</span>
       </h1>
       <p class="welcome-sub">
-        Here is the current overview of your investment portfolio and market telemetry.
+        Here is the live telemetry and audited performance of your paper trading portfolio.
       </p>
     </div>
 
     <div class="header-actions-group">
+      <button 
+        type="button" 
+        class="btn btn-glass-action" 
+        (click)="openManageBalanceModal('deposit')"
+        title="Deposit or reset virtual paper trading cash">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+          <line x1="1" y1="10" x2="23" y2="10"></line>
+        </svg>
+        <span>Manage Paper Balance</span>
+      </button>
+
       <a routerLink="/dashboard/watchlist" class="btn btn-glass-action">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -43,10 +55,14 @@
         </div>
       </div>
       <div class="metric-value-row">
-        <span class="metric-value font-mono">$0.00</span>
+        <span class="metric-value font-mono">
+          ${{ (portfolio()?.totalPortfolioValue || tradingService.wallet()?.totalPortfolioValue || 0) | number:'1.2-2' }}
+        </span>
       </div>
       <div class="metric-footer-row">
-        <span class="metric-tag neutral">No active positions</span>
+        <span class="metric-tag" [ngClass]="(portfolio()?.totalHoldingsCount || 0) > 0 ? 'bullish' : 'neutral'">
+          {{ (portfolio()?.totalHoldingsCount || 0) }} Active Position{{ (portfolio()?.totalHoldingsCount || 0) !== 1 ? 's' : '' }}
+        </span>
       </div>
     </div>
 
@@ -62,11 +78,15 @@
         </div>
       </div>
       <div class="metric-value-row">
-        <span class="metric-value font-mono">$0.00</span>
-        <span class="metric-change neutral font-mono">0.00%</span>
+        <span class="metric-value font-mono" [ngClass]="(portfolio()?.todayPnL || 0) >= 0 ? 'cost-inflow' : 'cost-outflow'">
+          {{ (portfolio()?.todayPnL || 0) >= 0 ? '+' : '' }}${{ (portfolio()?.todayPnL || 0) | number:'1.2-2' }}
+        </span>
+        <span class="metric-change font-mono" [ngClass]="(portfolio()?.todayPnLPercent || 0) >= 0 ? 'bullish' : 'bearish'">
+          {{ (portfolio()?.todayPnLPercent || 0) >= 0 ? '+' : '' }}{{ (portfolio()?.todayPnLPercent || 0) | number:'1.2-2' }}%
+        </span>
       </div>
       <div class="metric-footer-row">
-        <span class="metric-subtext">Daily return</span>
+        <span class="metric-subtext">Day return based on real quotes</span>
       </div>
     </div>
 
@@ -82,8 +102,12 @@
         </div>
       </div>
       <div class="metric-value-row">
-        <span class="metric-value font-mono">$0.00</span>
-        <span class="metric-change neutral font-mono">0.00%</span>
+        <span class="metric-value font-mono" [ngClass]="(portfolio()?.totalUnrealizedPnL || 0) >= 0 ? 'cost-inflow' : 'cost-outflow'">
+          {{ (portfolio()?.totalUnrealizedPnL || 0) >= 0 ? '+' : '' }}${{ (portfolio()?.totalUnrealizedPnL || 0) | number:'1.2-2' }}
+        </span>
+        <span class="metric-change font-mono" [ngClass]="(portfolio()?.totalUnrealizedPnLPercent || 0) >= 0 ? 'bullish' : 'bearish'">
+          {{ (portfolio()?.totalUnrealizedPnLPercent || 0) >= 0 ? '+' : '' }}{{ (portfolio()?.totalUnrealizedPnLPercent || 0) | number:'1.2-2' }}%
+        </span>
       </div>
       <div class="metric-footer-row">
         <span class="metric-subtext">All-time unrealized P&L</span>
@@ -102,10 +126,15 @@
         </div>
       </div>
       <div class="metric-value-row">
-        <span class="metric-value font-mono">$0.00</span>
+        <span class="metric-value font-mono">
+          ${{ (portfolio()?.cashBalance || tradingService.wallet()?.cashBalance || 0) | number:'1.2-2' }}
+        </span>
       </div>
-      <div class="metric-footer-row">
-        <span class="metric-subtext">Liquid cash reserves</span>
+      <div class="metric-footer-row balance-footer-actions">
+        <span class="metric-subtext">Virtual cash reserves</span>
+        <button type="button" class="btn-balance-quick" (click)="openManageBalanceModal('deposit')">
+          + Funds / Reset
+        </button>
       </div>
     </div>
   </div>
@@ -124,7 +153,7 @@
           </div>
           <div>
             <h2 class="card-heading">Portfolio Holdings</h2>
-            <span class="card-caption">Current active asset distribution</span>
+            <span class="card-caption">Real-time valuation across active instruments</span>
           </div>
         </div>
         <a routerLink="/dashboard/portfolio" class="card-action-link">View Details →</a>
@@ -140,7 +169,7 @@
           </div>
           <h3 class="empty-title">No active holdings in portfolio</h3>
           <p class="empty-desc">
-            You haven't recorded or executed any equity or asset orders yet. Start trading to build your portfolio.
+            You haven't executed any simulated BUY orders yet. Explore the market to start building your portfolio.
           </p>
           <a routerLink="/dashboard/market" class="btn btn-primary btn-sm">
             <span>Explore Market</span>
@@ -150,108 +179,49 @@
             </svg>
           </a>
         </div>
-      }
-    </div>
-
-    <!-- SECTION: Market Overview -->
-    <div class="dashboard-card market-card">
-      <div class="card-header-clean">
-        <div class="card-title-group">
-          <div class="title-icon-circle icon-cyan">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 3v18h18"></path>
-              <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
-            </svg>
-          </div>
-          <div>
-            <h2 class="card-heading">Market Overview</h2>
-            <span class="card-caption">Real-time market intelligence</span>
-          </div>
-        </div>
-        <a routerLink="/dashboard/market" class="card-action-link">Market Hub →</a>
-      </div>
-
-      <div class="market-tabs">
-        <button 
-          type="button" 
-          class="tab-btn" 
-          [class.active]="activeTab() === 'indices'"
-          (click)="setActiveTab('indices')"
-        >
-          Indices
-        </button>
-        <button 
-          type="button" 
-          class="tab-btn" 
-          [class.active]="activeTab() === 'gainers'"
-          (click)="setActiveTab('gainers')"
-        >
-          Top Gainers
-        </button>
-        <button 
-          type="button" 
-          class="tab-btn" 
-          [class.active]="activeTab() === 'losers'"
-          (click)="setActiveTab('losers')"
-        >
-          Top Losers
-        </button>
-        <button 
-          type="button" 
-          class="tab-btn" 
-          [class.active]="activeTab() === 'volume'"
-          (click)="setActiveTab('volume')"
-        >
-          Active Volume
-        </button>
-      </div>
-
-      <div class="empty-state-container min-h-200">
-        <div class="empty-icon-box sm">
-          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
-            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-            <polyline points="17 6 23 6 23 12"></polyline>
-          </svg>
-        </div>
-        <h4 class="empty-title sm">Market telemetry feed standing by</h4>
-        <p class="empty-desc sm">
-          Connect your live market data provider or brokerage API to stream real-time price quotes.
-        </p>
-      </div>
-    </div>
-
-    <!-- SECTION: Watchlist -->
-    <div class="dashboard-card watchlist-card">
-      <div class="card-header-clean">
-        <div class="card-title-group">
-          <div class="title-icon-circle icon-emerald">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-          </div>
-          <div>
-            <h2 class="card-heading">Watchlist</h2>
-            <span class="card-caption">Monitored assets and alerts</span>
-          </div>
-        </div>
-        <a routerLink="/dashboard/watchlist" class="card-action-link">Manage →</a>
-      </div>
-
-      @if (watchlist().length === 0) {
-        <div class="empty-state-container min-h-200">
-          <div class="empty-icon-box sm">
-            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
-              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-            </svg>
-          </div>
-          <h4 class="empty-title sm">Your watchlist is empty</h4>
-          <p class="empty-desc sm">
-            Search for stocks, indices, or ETFs and click 'Add to Watchlist' to monitor price alerts.
-          </p>
-          <a routerLink="/dashboard/watchlist" class="btn btn-secondary btn-sm">
-            <span>Add Symbol</span>
-          </a>
+      } @else {
+        <div class="table-responsive">
+          <table class="dash-table">
+            <thead>
+              <tr>
+                <th>Instrument</th>
+                <th class="text-right">Qty</th>
+                <th class="text-right">Avg Buy</th>
+                <th class="text-right">Current Price</th>
+                <th class="text-right">Market Value</th>
+                <th class="text-right">Unrealized P&L</th>
+                <th class="text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (h of holdings(); track h.symbol) {
+                <tr class="table-row" (click)="navigateToStock(h.symbol)">
+                  <td>
+                    <div class="symbol-cell">
+                      <div class="symbol-top">
+                        <span class="sym-name">{{ h.symbol }}</span>
+                        <span class="ex-tag">{{ h.exchange }}</span>
+                      </div>
+                      <span class="comp-sub">{{ h.companyName }}</span>
+                    </div>
+                  </td>
+                  <td class="text-right font-mono">{{ h.quantity | number:'1.0-4' }}</td>
+                  <td class="text-right font-mono">${{ h.averageBuyPrice | number:'1.2-4' }}</td>
+                  <td class="text-right font-mono font-bold">${{ (h.currentPrice || h.averageBuyPrice) | number:'1.2-4' }}</td>
+                  <td class="text-right font-mono">${{ (h.currentValue || (h.quantity * h.averageBuyPrice)) | number:'1.2-2' }}</td>
+                  <td class="text-right font-mono">
+                    <div class="pnl-cell-simple" [ngClass]="(h.unrealizedPnL || 0) >= 0 ? 'cost-inflow' : 'cost-outflow'">
+                      <span>{{ (h.unrealizedPnL || 0) >= 0 ? '+' : '' }}${{ (h.unrealizedPnL || 0) | number:'1.2-2' }}</span>
+                      <span class="pct-chip">({{ (h.unrealizedPnLPercent || 0) >= 0 ? '+' : '' }}{{ (h.unrealizedPnLPercent || 0) | number:'1.2-2' }}%)</span>
+                    </div>
+                  </td>
+                  <td class="text-center" (click)="$event.stopPropagation()">
+                    <a [routerLink]="['/dashboard/stock', h.symbol]" class="btn-link-sm">Trade</a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
       }
     </div>
@@ -267,8 +237,8 @@
             </svg>
           </div>
           <div>
-            <h2 class="card-heading">Recent Transactions</h2>
-            <span class="card-caption">Audit ledger of trades and distributions</span>
+            <h2 class="card-heading">Recent Executions</h2>
+            <span class="card-caption">Latest executed trades & transactions</span>
           </div>
         </div>
         <a routerLink="/dashboard/transactions" class="card-action-link">View All →</a>
@@ -286,10 +256,307 @@
           </div>
           <h4 class="empty-title sm">No transactions recorded yet</h4>
           <p class="empty-desc sm">
-            Completed buy and sell orders, deposits, and dividend records will appear here.
+            Completed simulated BUY and SELL orders will immediately show up in your ledger.
           </p>
+        </div>
+      } @else {
+        <div class="recent-list">
+          @for (tx of recentTransactions(); track tx.transactionId) {
+            <div class="recent-row" (click)="navigateToStock(tx.symbol)">
+              <div class="recent-left">
+                <span class="tx-badge" [ngClass]="tx.type === 'BUY' ? 'badge-buy' : 'badge-sell'">
+                  {{ tx.type }}
+                </span>
+                <div class="recent-info">
+                  <div class="recent-sym-line">
+                    <span class="sym-name">{{ tx.symbol }}</span>
+                    <span class="recent-date">{{ tx.executedAt | date:'MMM d, hh:mm a' }}</span>
+                  </div>
+                  <span class="recent-sub">Qty: {{ tx.quantity | number:'1.0-4' }} @ ${{ tx.executionPrice | number:'1.2-4' }}</span>
+                </div>
+              </div>
+              <div class="recent-right font-mono">
+                <span class="recent-amount" [ngClass]="tx.type === 'BUY' ? 'cost-outflow' : 'cost-inflow'">
+                  {{ tx.type === 'BUY' ? '-' : '+' }}${{ tx.totalAmount | number:'1.2-2' }}
+                </span>
+                <span class="recent-status">{{ tx.status }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- SECTION: Watchlist -->
+    <div class="dashboard-card watchlist-card">
+      <div class="card-header-clean">
+        <div class="card-title-group">
+          <div class="title-icon-circle icon-emerald">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
+          <div>
+            <h2 class="card-heading">Watchlist</h2>
+            <span class="card-caption">Monitored assets and market quotes</span>
+          </div>
+        </div>
+        <a routerLink="/dashboard/watchlist" class="card-action-link">Manage →</a>
+      </div>
+
+      @if (watchlist().length === 0) {
+        <div class="empty-state-container min-h-200">
+          <div class="empty-icon-box sm">
+            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </div>
+          <h4 class="empty-title sm">Your watchlist is empty</h4>
+          <p class="empty-desc sm">
+            Pin AAPL, RELIANCE, BTC/USD or your favorite assets to monitor live streams.
+          </p>
+          <a routerLink="/dashboard/watchlist" class="btn btn-secondary btn-sm">
+            <span>Add Symbol</span>
+          </a>
+        </div>
+      } @else {
+        <div class="watchlist-grid-items">
+          @for (item of watchlist(); track item.id || item.symbol) {
+            <div class="watch-chip-row" (click)="navigateToStock(item.symbol)">
+              <div class="watch-chip-left">
+                <span class="sym-name">{{ item.symbol }}</span>
+                <span class="comp-sub">{{ item.companyName || item.symbol }}</span>
+              </div>
+              <div class="watch-chip-right">
+                <span class="font-mono font-bold">${{ (item.currentPrice || 0) | number:'1.2-4' }}</span>
+                <span class="change-tag" [ngClass]="isPositiveChange(item.changePercent) ? 'bullish' : 'bearish'">
+                  {{ item.changePercent || '0.00%' }}
+                </span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- SECTION: Recent Orders -->
+    <div class="dashboard-card orders-card">
+      <div class="card-header-clean">
+        <div class="card-title-group">
+          <div class="title-icon-circle icon-cyan">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="17 1 21 5 17 9"></polyline>
+              <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+              <polyline points="7 23 3 19 7 15"></polyline>
+              <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+            </svg>
+          </div>
+          <div>
+            <h2 class="card-heading">Order Book</h2>
+            <span class="card-caption">Executed market and limit orders</span>
+          </div>
+        </div>
+        <a routerLink="/dashboard/orders" class="card-action-link">View Orders →</a>
+      </div>
+
+      @if (recentOrders().length === 0) {
+        <div class="empty-state-container min-h-200">
+          <div class="empty-icon-box sm">
+            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--text-muted)" stroke-width="1.5">
+              <polyline points="17 1 21 5 17 9"></polyline>
+              <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+              <polyline points="7 23 3 19 7 15"></polyline>
+              <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+            </svg>
+          </div>
+          <h4 class="empty-title sm">No orders placed</h4>
+          <p class="empty-desc sm">
+            Market and limit order records will be listed here.
+          </p>
+        </div>
+      } @else {
+        <div class="recent-list">
+          @for (ord of recentOrders(); track ord.id) {
+            <div class="recent-row" (click)="navigateToStock(ord.symbol)">
+              <div class="recent-left">
+                <span class="tx-badge" [ngClass]="ord.orderType === 'BUY' ? 'badge-buy' : 'badge-sell'">
+                  {{ ord.orderType }}
+                </span>
+                <div class="recent-info">
+                  <div class="recent-sym-line">
+                    <span class="sym-name">{{ ord.symbol }}</span>
+                    <span class="order-tag">ORD #{{ ord.id }}</span>
+                  </div>
+                  <span class="recent-sub">Qty: {{ ord.quantity | number:'1.0-4' }} @ ${{ ord.executedPrice | number:'1.2-4' }}</span>
+                </div>
+              </div>
+              <div class="recent-right font-mono">
+                <span class="recent-amount">${{ ord.totalAmount | number:'1.2-2' }}</span>
+                <span class="status-executed">{{ ord.orderStatus }}</span>
+              </div>
+            </div>
+          }
         </div>
       }
     </div>
   </div>
+
+  <!-- MANAGE PAPER BALANCE MODAL -->
+  @if (showManageBalanceModal()) {
+    <div class="modal-backdrop" (click)="closeManageBalanceModal()">
+      <div class="modal-card glass-modal" (click)="$event.stopPropagation()">
+        <!-- Modal Header -->
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <div class="modal-icon-box">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                <line x1="1" y1="10" x2="23" y2="10"></line>
+              </svg>
+            </div>
+            <div>
+              <h3 class="modal-title">Manage Paper Trading Balance</h3>
+              <p class="modal-sub">Add virtual cash or reset your paper account balance</p>
+            </div>
+          </div>
+          <button type="button" class="btn-close-modal" (click)="closeManageBalanceModal()">&times;</button>
+        </div>
+
+        <!-- Current Balance Summary -->
+        <div class="current-balance-banner">
+          <span class="banner-lbl">Current Available Cash</span>
+          <span class="banner-val font-mono">
+            ${{ (portfolio()?.cashBalance || tradingService.wallet()?.cashBalance || 0) | number:'1.2-2' }}
+          </span>
+        </div>
+
+        <!-- Tabs: Deposit / Reset -->
+        <div class="modal-tabs">
+          <button 
+            type="button" 
+            class="modal-tab-btn" 
+            [class.active]="balanceActionTab() === 'deposit'"
+            (click)="balanceActionTab.set('deposit')">
+            Add Virtual Funds
+          </button>
+          <button 
+            type="button" 
+            class="modal-tab-btn" 
+            [class.active]="balanceActionTab() === 'reset'"
+            (click)="balanceActionTab.set('reset')">
+            Reset Balance
+          </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="modal-body">
+          @if (manageBalanceSuccess()) {
+            <div class="alert-banner alert-success">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <span>{{ manageBalanceSuccess() }}</span>
+            </div>
+          }
+
+          @if (manageBalanceError()) {
+            <div class="alert-banner alert-error">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span>{{ manageBalanceError() }}</span>
+            </div>
+          }
+
+          <!-- TAB 1: ADD FUNDS -->
+          @if (balanceActionTab() === 'deposit') {
+            <div class="tab-content">
+              <label class="input-label" for="deposit-input">Deposit Amount ($)</label>
+              <div class="input-prefix-wrap">
+                <span class="input-prefix">$</span>
+                <input 
+                  id="deposit-input"
+                  type="number" 
+                  class="modal-input" 
+                  min="1" 
+                  step="1000"
+                  [ngModel]="depositAmount()" 
+                  (ngModelChange)="depositAmount.set($event)">
+              </div>
+
+              <!-- Quick Presets -->
+              <div class="preset-chips">
+                <button type="button" class="preset-chip" (click)="setDepositPreset(5000)">+$5,000</button>
+                <button type="button" class="preset-chip" (click)="setDepositPreset(10000)">+$10,000</button>
+                <button type="button" class="preset-chip" (click)="setDepositPreset(25000)">+$25,000</button>
+                <button type="button" class="preset-chip" (click)="setDepositPreset(50000)">+$50,000</button>
+                <button type="button" class="preset-chip" (click)="setDepositPreset(100000)">+$100,000</button>
+              </div>
+
+              <p class="modal-note">
+                Deposit creates an immediate audit transaction in your account ledger.
+              </p>
+
+              <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" (click)="closeManageBalanceModal()">Cancel</button>
+                <button 
+                  type="button" 
+                  class="btn btn-primary" 
+                  [disabled]="isManagingBalance()" 
+                  (click)="submitDeposit()">
+                  {{ isManagingBalance() ? 'Processing...' : 'Deposit Virtual Cash' }}
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- TAB 2: RESET BALANCE -->
+          @if (balanceActionTab() === 'reset') {
+            <div class="tab-content">
+              <label class="input-label" for="reset-target-input">Target Cash Balance ($)</label>
+              <div class="input-prefix-wrap">
+                <span class="input-prefix">$</span>
+                <input 
+                  id="reset-target-input"
+                  type="number" 
+                  class="modal-input" 
+                  min="1" 
+                  step="10000"
+                  [ngModel]="resetTargetAmount()" 
+                  (ngModelChange)="resetTargetAmount.set($event)">
+              </div>
+
+              <!-- Reset Presets -->
+              <div class="preset-chips">
+                <button type="button" class="preset-chip" (click)="setResetPreset(10000)">$10,000</button>
+                <button type="button" class="preset-chip" (click)="setResetPreset(50000)">$50,000</button>
+                <button type="button" class="preset-chip highlight" (click)="setResetPreset(100000)">$100,000 (Default)</button>
+                <button type="button" class="preset-chip" (click)="setResetPreset(250000)">$250,000</button>
+                <button type="button" class="preset-chip" (click)="setResetPreset(500000)">$500,000</button>
+              </div>
+
+              <p class="modal-note warning-text">
+                Note: Resetting your cash balance will adjust your available liquidity. Your existing stock holdings will remain untouched.
+              </p>
+
+              <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" (click)="closeManageBalanceModal()">Cancel</button>
+                <button 
+                  type="button" 
+                  class="btn btn-primary" 
+                  [disabled]="isManagingBalance()" 
+                  (click)="submitReset()">
+                  {{ isManagingBalance() ? 'Resetting...' : 'Reset Cash Balance' }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
 </div>

@@ -57,6 +57,8 @@ export interface PortfolioSummary {
   totalHoldingsCount: number;
   cashAllocationPercent: number;
   holdings: UserHolding[];
+  todayPnL?: number;
+  todayPnLPercent?: number;
 }
 
 export interface TransactionItem {

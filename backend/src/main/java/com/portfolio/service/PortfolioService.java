@@ -91,6 +91,10 @@ public class PortfolioService {
                         .setScale(2, RoundingMode.HALF_UP);
             }
 
+            BigDecimal prevClose = stock != null && stock.getPreviousClose() != null ? stock.getPreviousClose() : currentPrice;
+            BigDecimal dayChangePerShare = currentPrice.subtract(prevClose);
+            BigDecimal dayChangeTotal = dayChangePerShare.multiply(qty).setScale(4, RoundingMode.HALF_UP);
+
             totalInvested = totalInvested.add(invested);
             totalHoldingsMarketValue = totalHoldingsMarketValue.add(currentValue);
 
@@ -99,7 +103,8 @@ public class PortfolioService {
                     stock != null ? stock.getExchange() : "NSE",
                     stock != null ? stock.getCurrency() : "USD",
                     qty, avgPrice, invested, currentPrice, currentValue,
-                    unrealizedPnL, unrealizedPnLPercent, priceAvailable
+                    unrealizedPnL, unrealizedPnLPercent, priceAvailable,
+                    dayChangeTotal
             ));
         }
 
@@ -111,6 +116,23 @@ public class PortfolioService {
             totalUnrealizedPnLPercent = totalUnrealizedPnL.divide(totalInvested, 4, RoundingMode.HALF_UP)
                     .multiply(new BigDecimal("100"))
                     .setScale(2, RoundingMode.HALF_UP);
+        }
+
+        BigDecimal totalTodayPnL = BigDecimal.ZERO;
+        for (HoldingCalculation calc : calculatedHoldings) {
+            if (calc.dayChange != null) {
+                totalTodayPnL = totalTodayPnL.add(calc.dayChange);
+            }
+        }
+
+        BigDecimal totalTodayPnLPercent = BigDecimal.ZERO;
+        if (totalPortfolioValue.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal baseline = totalPortfolioValue.subtract(totalTodayPnL);
+            if (baseline.compareTo(BigDecimal.ZERO) > 0) {
+                totalTodayPnLPercent = totalTodayPnL.divide(baseline, 4, RoundingMode.HALF_UP)
+                        .multiply(new BigDecimal("100"))
+                        .setScale(2, RoundingMode.HALF_UP);
+            }
         }
 
         BigDecimal cashAllocationPercent = BigDecimal.ZERO;
@@ -156,7 +178,9 @@ public class PortfolioService {
                 totalUnrealizedPnLPercent,
                 holdingDtos.size(),
                 cashAllocationPercent,
-                holdingDtos
+                holdingDtos,
+                totalTodayPnL.setScale(2, RoundingMode.HALF_UP),
+                totalTodayPnLPercent
         );
     }
 
@@ -174,12 +198,13 @@ public class PortfolioService {
         final BigDecimal unrealizedPnL;
         final BigDecimal unrealizedPnLPercent;
         final boolean priceAvailable;
+        final BigDecimal dayChange;
 
         HoldingCalculation(
                 Holding holding, String symbol, String companyName, String exchange, String currency,
                 BigDecimal quantity, BigDecimal avgPrice, BigDecimal invested, BigDecimal currentPrice,
                 BigDecimal currentValue, BigDecimal unrealizedPnL, BigDecimal unrealizedPnLPercent,
-                boolean priceAvailable
+                boolean priceAvailable, BigDecimal dayChange
         ) {
             this.holding = holding;
             this.symbol = symbol;
@@ -194,6 +219,7 @@ public class PortfolioService {
             this.unrealizedPnL = unrealizedPnL;
             this.unrealizedPnLPercent = unrealizedPnLPercent;
             this.priceAvailable = priceAvailable;
+            this.dayChange = dayChange;
         }
     }
 }
