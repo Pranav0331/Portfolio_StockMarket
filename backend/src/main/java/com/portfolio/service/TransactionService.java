@@ -5,6 +5,7 @@ import com.portfolio.dto.market.StockQuoteDto;
 import com.portfolio.dto.transaction.TransactionDto;
 import com.portfolio.entity.Stock;
 import com.portfolio.entity.Transaction;
+import com.portfolio.entity.enums.TradingMode;
 import com.portfolio.entity.enums.TransactionType;
 import com.portfolio.repository.TransactionRepository;
 import org.slf4j.Logger;
@@ -52,6 +53,7 @@ public class TransactionService {
     public PageResponseDto<TransactionDto> getUserTransactions(
             Long userId,
             String type,
+            String tradingMode,
             String symbol,
             Instant startDate,
             Instant endDate,
@@ -83,17 +85,28 @@ public class TransactionService {
             }
         }
 
+        // Parse TradingMode filter
+        TradingMode mode = null;
+        if (tradingMode != null && !tradingMode.trim().isEmpty() && !"ALL".equalsIgnoreCase(tradingMode.trim())) {
+            try {
+                mode = TradingMode.valueOf(tradingMode.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Unknown trading mode filter: {}", tradingMode);
+            }
+        }
+
         // Parse symbol filter
         String cleanSymbol = (symbol != null && !symbol.trim().isEmpty())
                 ? symbol.trim()
                 : null;
 
-        log.debug("Fetching transactions for user {}: type={}, symbol={}, startDate={}, endDate={}, page={}, size={}",
-                userId, transactionType, cleanSymbol, startDate, endDate, pageIndex, pageSize);
+        log.debug("Fetching transactions for user {}: type={}, mode={}, symbol={}, startDate={}, endDate={}, page={}, size={}",
+                userId, transactionType, mode, cleanSymbol, startDate, endDate, pageIndex, pageSize);
 
         Page<Transaction> transactionPage = transactionRepository.findUserTransactions(
                 userId,
                 transactionType,
+                mode,
                 cleanSymbol,
                 startDate,
                 endDate,
@@ -117,6 +130,20 @@ public class TransactionService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public PageResponseDto<TransactionDto> getUserTransactions(
+            Long userId,
+            String type,
+            String symbol,
+            Instant startDate,
+            Instant endDate,
+            int page,
+            int size,
+            String sortDirection
+    ) {
+        return getUserTransactions(userId, type, null, symbol, startDate, endDate, page, size, sortDirection);
+    }
+
     private TransactionDto mapToDto(Transaction t, Map<String, BigDecimal> currentPricesCache) {
         Stock stock = t.getStock();
         String symbol = stock != null ? stock.getSymbol() : "UNKNOWN";
@@ -131,6 +158,13 @@ public class TransactionService {
             status = t.getOrder().getOrderStatus().name();
         } else if (t.getStatus() != null) {
             status = t.getStatus().name();
+        }
+
+        String tradingMode = "INTRADAY";
+        if (t.getTradingMode() != null) {
+            tradingMode = t.getTradingMode().name();
+        } else if (t.getOrder() != null && t.getOrder().getTradingMode() != null) {
+            tradingMode = t.getOrder().getTradingMode().name();
         }
 
         BigDecimal executionPrice = t.getPricePerUnit();
@@ -198,6 +232,7 @@ public class TransactionService {
                 currency,
                 t.getTransactionType() != null ? t.getTransactionType().name() : "BUY",
                 status,
+                tradingMode,
                 quantity,
                 executionPrice,
                 totalAmount,

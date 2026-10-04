@@ -1,9 +1,11 @@
 export type OrderType = 'BUY' | 'SELL';
 export type OrderStatus = 'PENDING' | 'EXECUTED' | 'CANCELLED' | 'REJECTED';
+export type TradingMode = 'SCALPING' | 'INTRADAY' | 'SWING' | 'LONG_TERM';
 
 export interface TradeRequest {
   symbol: string;
   quantity: number;
+  tradingMode?: TradingMode;
 }
 
 export interface TradeResponse {
@@ -13,6 +15,7 @@ export interface TradeResponse {
   companyName: string;
   orderType: OrderType;
   orderStatus: OrderStatus;
+  tradingMode?: TradingMode;
   quantity: number;
   executionPrice: number;
   totalAmount: number;
@@ -70,6 +73,7 @@ export interface TransactionItem {
   currency: string;
   type: 'BUY' | 'SELL';
   status: string;
+  tradingMode?: TradingMode | string;
   quantity: number;
   executionPrice: number;
   totalAmount: number;
@@ -93,6 +97,7 @@ export interface TransactionPageResponse {
 
 export interface TransactionFilterParams {
   type?: 'BUY' | 'SELL' | 'ALL';
+  tradingMode?: TradingMode | 'ALL';
   symbol?: string;
   startDate?: string;
   endDate?: string;
@@ -109,6 +114,7 @@ export interface OrderItem {
   currency: string;
   orderType: OrderType;
   orderStatus: OrderStatus;
+  tradingMode?: TradingMode | string;
   quantity: number;
   price: number;
   executedPrice: number;
@@ -130,6 +136,7 @@ export interface OrderPageResponse {
 export interface OrderFilterParams {
   type?: 'BUY' | 'SELL' | 'ALL';
   status?: 'EXECUTED' | 'PENDING' | 'CANCELLED' | 'REJECTED' | 'ALL';
+  tradingMode?: TradingMode | 'ALL';
   symbol?: string;
   startDate?: string;
   endDate?: string;
@@ -137,4 +144,3 @@ export interface OrderFilterParams {
   size?: number;
   sort?: 'desc' | 'asc';
 }
-

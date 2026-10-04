@@ -519,6 +519,35 @@
           </div>
         }
 
+        <!-- TRADING MODE SELECTOR (SCALPING, INTRADAY, SWING, LONG_TERM) -->
+        <div class="trading-mode-section">
+          <div class="mode-section-header">
+            <span class="mode-section-lbl">Trading Mode</span>
+            <span class="mode-selected-pill font-mono">{{ currentTradingModeInfo().badge }}</span>
+          </div>
+          <div class="mode-selector-grid">
+            @for (m of tradingModesList; track m.mode) {
+              <button
+                type="button"
+                class="mode-card-btn"
+                [class.active]="selectedTradingMode() === m.mode"
+                (click)="selectedTradingMode.set(m.mode)"
+                [title]="m.label + ': ' + m.desc"
+              >
+                <div class="mode-card-top">
+                  <span class="mode-card-icon">{{ m.icon }}</span>
+                  <span class="mode-card-title">{{ m.label }}</span>
+                </div>
+                <span class="mode-card-badge">{{ m.badge }}</span>
+              </button>
+            }
+          </div>
+          <div class="mode-description-box">
+            <span class="mode-desc-icon">ℹ️</span>
+            <span class="mode-desc-text">{{ currentTradingModeInfo().desc }}</span>
+          </div>
+        </div>
+
         <!-- BUY / SELL SEGMENTED TABS -->
         <div class="trade-mode-segmented">
           <button
@@ -553,6 +582,10 @@
               <div class="receipt-row">
                 <span>Symbol:</span>
                 <strong>{{ receipt.symbol }}</strong>
+              </div>
+              <div class="receipt-row">
+                <span>Trading Mode:</span>
+                <strong class="receipt-mode-pill">{{ receipt.tradingMode || selectedTradingMode() }}</strong>
               </div>
               <div class="receipt-row">
                 <span>Shares:</span>

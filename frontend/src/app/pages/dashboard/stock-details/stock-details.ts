@@ -33,7 +33,7 @@ import { AuthService } from '../../../services/auth.service';
 import { TradingService } from '../../../services/trading.service';
 import { AlertService } from '../../../services/alert.service';
 import { StockQuote, Candle } from '../../../models/market.model';
-import { TradeResponse, VirtualWallet, UserHolding } from '../../../models/trading.model';
+import { TradeResponse, VirtualWallet, UserHolding, TradingMode } from '../../../models/trading.model';
 import { AlertConditionType } from '../../../models/alert.model';
 
 export type ChartType = 'candles' | 'line' | 'area';
@@ -134,11 +134,23 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   // =========================================================================
   readonly tradeType = signal<'BUY' | 'SELL'>('BUY');
   readonly tradeQuantity = signal<number>(1);
+  readonly selectedTradingMode = signal<TradingMode>('INTRADAY');
   readonly isSubmittingTrade = signal<boolean>(false);
   readonly tradeSuccessReceipt = signal<TradeResponse | null>(null);
   readonly tradeErrorMessage = signal<string | null>(null);
   readonly userWallet = signal<VirtualWallet | null>(null);
   readonly userHolding = signal<UserHolding | null>(null);
+
+  readonly tradingModesList: { mode: TradingMode; label: string; desc: string; badge: string; icon: string }[] = [
+    { mode: 'SCALPING', label: 'Scalping', desc: 'Fast momentum execution (1m/5m/15m charts, quick trades)', badge: '1m - 15m', icon: '⚡' },
+    { mode: 'INTRADAY', label: 'Intraday', desc: 'Same-day execution & positions closed within session', badge: 'Same Day', icon: '⏱️' },
+    { mode: 'SWING', label: 'Swing', desc: 'Multi-day momentum and trend holding across sessions', badge: 'Multi-Day', icon: '📈' },
+    { mode: 'LONG_TERM', label: 'Long Term', desc: 'Fundamental investment and long-duration wealth holding', badge: 'Long Hold', icon: '💎' }
+  ];
+
+  readonly currentTradingModeInfo = computed(() => {
+    return this.tradingModesList.find(m => m.mode === this.selectedTradingMode()) || this.tradingModesList[1];
+  });
 
   // Estimated Total Amount Computed
   readonly estimatedTradeTotal = computed(() => {
@@ -733,13 +745,14 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     }
 
     const sym = this.symbol();
+    const mode = this.selectedTradingMode();
     this.isSubmittingTrade.set(true);
     this.tradeErrorMessage.set(null);
     this.tradeSuccessReceipt.set(null);
 
     const action$ = this.tradeType() === 'BUY'
-      ? this.tradingService.buy({ symbol: sym, quantity: qty })
-      : this.tradingService.sell({ symbol: sym, quantity: qty });
+      ? this.tradingService.buy({ symbol: sym, quantity: qty, tradingMode: mode })
+      : this.tradingService.sell({ symbol: sym, quantity: qty, tradingMode: mode });
 
     action$.subscribe({
       next: (receipt) => {

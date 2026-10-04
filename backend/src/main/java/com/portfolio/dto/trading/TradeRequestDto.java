@@ -1,5 +1,6 @@
 package com.portfolio.dto.trading;
 
+import com.portfolio.entity.enums.TradingMode;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -11,5 +12,11 @@ public record TradeRequestDto(
 
         @NotNull(message = "Quantity is required")
         @DecimalMin(value = "0.0001", message = "Quantity must be greater than zero")
-        BigDecimal quantity
-) {}
+        BigDecimal quantity,
+
+        TradingMode tradingMode
+) {
+    public TradeRequestDto(String symbol, BigDecimal quantity) {
+        this(symbol, quantity, TradingMode.INTRADAY);
+    }
+}

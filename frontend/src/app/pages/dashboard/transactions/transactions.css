@@ -153,6 +153,26 @@
   color: #f87171;
 }
 
+.pill-mode-scalping.active {
+  background: rgba(139, 92, 246, 0.25);
+  color: #a78bfa;
+}
+
+.pill-mode-intraday.active {
+  background: rgba(2, 132, 199, 0.25);
+  color: #38bdf8;
+}
+
+.pill-mode-swing.active {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+}
+
+.pill-mode-long-term.active {
+  background: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+}
+
 /* Filter Inputs */
 .search-input-wrapper {
   position: relative;
@@ -392,6 +412,70 @@
   background: rgba(239, 68, 68, 0.15);
   color: #f87171;
   border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Trading Mode badge */
+.td-mode {
+  white-space: nowrap;
+}
+
+.trading-mode-badge {
+  display: inline-block;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.mode-scalping {
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+}
+
+.mode-intraday {
+  background: rgba(2, 132, 199, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(2, 132, 199, 0.35);
+}
+
+.mode-swing {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.mode-long-term {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+[data-theme='light'] .mode-scalping {
+  background: #ede9fe;
+  color: #6d28d9;
+  border-color: #c4b5fd;
+}
+
+[data-theme='light'] .mode-intraday {
+  background: #e0f2fe;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+
+[data-theme='light'] .mode-swing {
+  background: #fef3c7;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+[data-theme='light'] .mode-long-term {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #bbf7d0;
 }
 
 /* Symbol info */

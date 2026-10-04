@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { OrderService } from '../../../services/order.service';
-import { OrderItem, OrderPageResponse, OrderFilterParams } from '../../../models/trading.model';
+import { OrderItem, OrderPageResponse, OrderFilterParams, TradingMode } from '../../../models/trading.model';
 
 @Component({
   selector: 'app-orders',
@@ -24,6 +24,7 @@ export class OrdersComponent implements OnInit {
   // Filter signals
   readonly selectedType = signal<'ALL' | 'BUY' | 'SELL'>('ALL');
   readonly selectedStatus = signal<'ALL' | 'EXECUTED' | 'PENDING' | 'CANCELLED' | 'REJECTED'>('ALL');
+  readonly selectedTradingMode = signal<'ALL' | TradingMode>('ALL');
   readonly symbolSearch = signal<string>('');
   readonly startDate = signal<string>('');
   readonly endDate = signal<string>('');
@@ -44,6 +45,7 @@ export class OrdersComponent implements OnInit {
     const filterParams: OrderFilterParams = {
       type: this.selectedType(),
       status: this.selectedStatus(),
+      tradingMode: this.selectedTradingMode(),
       symbol: this.symbolSearch().trim() || undefined,
       startDate: this.startDate() || undefined,
       endDate: this.endDate() || undefined,
@@ -81,6 +83,13 @@ export class OrdersComponent implements OnInit {
   setStatusFilter(status: 'ALL' | 'EXECUTED' | 'PENDING' | 'CANCELLED' | 'REJECTED'): void {
     if (this.selectedStatus() === status) return;
     this.selectedStatus.set(status);
+    this.currentPage.set(0);
+    this.loadOrders();
+  }
+
+  setTradingModeFilter(mode: 'ALL' | TradingMode): void {
+    if (this.selectedTradingMode() === mode) return;
+    this.selectedTradingMode.set(mode);
     this.currentPage.set(0);
     this.loadOrders();
   }
@@ -129,6 +138,7 @@ export class OrdersComponent implements OnInit {
   resetFilters(): void {
     this.selectedType.set('ALL');
     this.selectedStatus.set('ALL');
+    this.selectedTradingMode.set('ALL');
     this.symbolSearch.set('');
     this.startDate.set('');
     this.endDate.set('');
@@ -140,6 +150,7 @@ export class OrdersComponent implements OnInit {
   hasActiveFilters(): boolean {
     return this.selectedType() !== 'ALL' ||
       this.selectedStatus() !== 'ALL' ||
+      this.selectedTradingMode() !== 'ALL' ||
       this.symbolSearch().trim().length > 0 ||
       this.startDate().length > 0 ||
       this.endDate().length > 0;
@@ -173,6 +184,24 @@ export class OrdersComponent implements OnInit {
     if (s === 'PENDING') return 'status-pending';
     if (s === 'CANCELLED') return 'status-cancelled';
     return 'status-rejected';
+  }
+
+  getTradingModeLabel(mode?: string): string {
+    if (!mode) return 'Intraday';
+    const m = mode.toUpperCase();
+    if (m === 'SCALPING') return 'Scalping';
+    if (m === 'SWING') return 'Swing';
+    if (m === 'LONG_TERM' || m === 'LONG TERM') return 'Long Term';
+    return 'Intraday';
+  }
+
+  getTradingModeBadgeClass(mode?: string): string {
+    if (!mode) return 'mode-intraday';
+    const m = mode.toUpperCase();
+    if (m === 'SCALPING') return 'mode-scalping';
+    if (m === 'SWING') return 'mode-swing';
+    if (m === 'LONG_TERM' || m === 'LONG TERM') return 'mode-long-term';
+    return 'mode-intraday';
   }
 
   getPageNumbers(totalPages: number): number[] {

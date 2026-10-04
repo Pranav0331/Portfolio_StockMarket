@@ -2,6 +2,7 @@ package com.portfolio.entity;
 
 import com.portfolio.entity.enums.OrderStatus;
 import com.portfolio.entity.enums.OrderType;
+import com.portfolio.entity.enums.TradingMode;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -39,6 +40,10 @@ public class Order {
     @Enumerated(EnumType.STRING)
     @Column(name = "order_status", nullable = false, length = 30)
     private OrderStatus orderStatus = OrderStatus.PENDING;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "trading_mode", nullable = false, length = 32)
+    private TradingMode tradingMode = TradingMode.INTRADAY;
 
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal quantity;
@@ -148,6 +153,14 @@ public class Order {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public TradingMode getTradingMode() {
+        return tradingMode;
+    }
+
+    public void setTradingMode(TradingMode tradingMode) {
+        this.tradingMode = tradingMode;
     }
 
     public Instant getUpdatedAt() {

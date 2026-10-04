@@ -23,7 +23,6 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
@@ -76,8 +75,9 @@ class TransactionControllerTest {
     void testGetTransactionsAuthenticated() throws Exception {
         TransactionDto tx = new TransactionDto(
                 101L, 501L, "RELIANCE", "Reliance Industries Ltd", "NSE", "INR",
-                "BUY", "EXECUTED", new BigDecimal("10"), new BigDecimal("2950.00"),
-                new BigDecimal("29500.00"), BigDecimal.ZERO, Instant.parse("2026-09-30T10:00:00Z")
+                "BUY", "EXECUTED", "INTRADAY", new BigDecimal("10"), new BigDecimal("2950.00"),
+                new BigDecimal("29500.00"), BigDecimal.ZERO, Instant.parse("2026-09-30T10:00:00Z"),
+                BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("2950.00"), new BigDecimal("2950.00")
         );
 
         PageResponseDto<TransactionDto> pageResponse = new PageResponseDto<>(
@@ -85,7 +85,7 @@ class TransactionControllerTest {
         );
 
         when(transactionService.getUserTransactions(
-                eq(testUser.getId()), isNull(), isNull(), isNull(), isNull(), eq(0), eq(15), eq("desc")
+                eq(testUser.getId()), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(15), eq("desc")
         )).thenReturn(pageResponse);
 
         mockMvc.perform(get("/api/transactions")
@@ -95,6 +95,7 @@ class TransactionControllerTest {
                 .andExpect(jsonPath("$.content[0].transactionId").value(101))
                 .andExpect(jsonPath("$.content[0].symbol").value("RELIANCE"))
                 .andExpect(jsonPath("$.content[0].type").value("BUY"))
+                .andExpect(jsonPath("$.content[0].tradingMode").value("INTRADAY"))
                 .andExpect(jsonPath("$.content[0].quantity").value(10))
                 .andExpect(jsonPath("$.content[0].executionPrice").value(2950.00))
                 .andExpect(jsonPath("$.content[0].totalAmount").value(29500.00))
@@ -106,8 +107,9 @@ class TransactionControllerTest {
     void testGetTransactionsWithFilters() throws Exception {
         TransactionDto tx = new TransactionDto(
                 102L, 502L, "AAPL", "Apple Inc.", "NASDAQ", "USD",
-                "SELL", "EXECUTED", new BigDecimal("5"), new BigDecimal("230.00"),
-                new BigDecimal("1150.00"), BigDecimal.ZERO, Instant.parse("2026-09-30T14:30:00Z")
+                "SELL", "EXECUTED", "SWING", new BigDecimal("5"), new BigDecimal("230.00"),
+                new BigDecimal("1150.00"), BigDecimal.ZERO, Instant.parse("2026-09-30T14:30:00Z"),
+                BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("230.00"), new BigDecimal("230.00")
         );
 
         PageResponseDto<TransactionDto> pageResponse = new PageResponseDto<>(
@@ -115,12 +117,13 @@ class TransactionControllerTest {
         );
 
         when(transactionService.getUserTransactions(
-                eq(testUser.getId()), eq("SELL"), eq("AAPL"), any(), any(), eq(0), eq(10), eq("asc")
+                eq(testUser.getId()), eq("SELL"), eq("SWING"), eq("AAPL"), any(), any(), eq(0), eq(10), eq("asc")
         )).thenReturn(pageResponse);
 
         mockMvc.perform(get("/api/transactions")
                         .header("Authorization", "Bearer " + jwtToken)
                         .param("type", "SELL")
+                        .param("tradingMode", "SWING")
                         .param("symbol", "AAPL")
                         .param("startDate", "2026-09-01")
                         .param("endDate", "2026-09-30")
@@ -129,6 +132,7 @@ class TransactionControllerTest {
                         .param("sort", "asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].symbol").value("AAPL"))
-                .andExpect(jsonPath("$.content[0].type").value("SELL"));
+                .andExpect(jsonPath("$.content[0].type").value("SELL"))
+                .andExpect(jsonPath("$.content[0].tradingMode").value("SWING"));
     }
 }

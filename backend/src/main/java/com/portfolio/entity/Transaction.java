@@ -1,5 +1,6 @@
 package com.portfolio.entity;
 
+import com.portfolio.entity.enums.TradingMode;
 import com.portfolio.entity.enums.TransactionStatus;
 import com.portfolio.entity.enums.TransactionType;
 import jakarta.persistence.*;
@@ -42,6 +43,10 @@ public class Transaction {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private TransactionStatus status = TransactionStatus.SUCCESS;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "trading_mode", nullable = false, length = 32)
+    private TradingMode tradingMode = TradingMode.INTRADAY;
 
     @Column(precision = 19, scale = 4)
     private BigDecimal quantity;
@@ -179,6 +184,14 @@ public class Transaction {
 
     public void setAvgBuyPrice(BigDecimal avgBuyPrice) {
         this.avgBuyPrice = avgBuyPrice;
+    }
+
+    public TradingMode getTradingMode() {
+        return tradingMode;
+    }
+
+    public void setTradingMode(TradingMode tradingMode) {
+        this.tradingMode = tradingMode;
     }
 
     public Instant getCreatedAt() {

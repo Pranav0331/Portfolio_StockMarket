@@ -282,11 +282,11 @@ describe('StockDetailsComponent', () => {
     component.setTradeQuantity(5);
     component.submitTrade();
 
-    expect(buySpy).toHaveBeenCalledWith({ symbol: 'RELIANCE', quantity: 5 });
+    expect(buySpy).toHaveBeenCalledWith({ symbol: 'RELIANCE', quantity: 5, tradingMode: 'INTRADAY' });
     expect(component.tradeSuccessReceipt()).toEqual(mockTradeRes);
   });
 
-  it('should handle simulated SELL trade execution', () => {
+  it('should handle simulated SELL trade execution with selected trading mode', () => {
     paramMap$.next({ get: (k: string) => (k === 'symbol' ? 'RELIANCE' : null) });
     vi.spyOn(marketService, 'getQuote').mockReturnValue(of(mockRelianceQuote));
     vi.spyOn(marketService, 'getCandles').mockReturnValue(of(mockRelianceCandles));
@@ -299,6 +299,7 @@ describe('StockDetailsComponent', () => {
       companyName: 'Reliance Industries Ltd',
       orderType: 'SELL',
       orderStatus: 'EXECUTED',
+      tradingMode: 'SWING',
       quantity: 5,
       executionPrice: 2950.5,
       totalAmount: 14752.5,
@@ -316,11 +317,12 @@ describe('StockDetailsComponent', () => {
     const component = fixture.componentInstance;
     fixture.detectChanges();
 
+    component.selectedTradingMode.set('SWING');
     component.setTradeType('SELL');
     component.setTradeQuantity(5);
     component.submitTrade();
 
-    expect(sellSpy).toHaveBeenCalledWith({ symbol: 'RELIANCE', quantity: 5 });
+    expect(sellSpy).toHaveBeenCalledWith({ symbol: 'RELIANCE', quantity: 5, tradingMode: 'SWING' });
     expect(component.tradeSuccessReceipt()).toEqual(mockTradeRes);
   });
 

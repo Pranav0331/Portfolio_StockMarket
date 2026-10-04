@@ -12,6 +12,7 @@ import com.portfolio.entity.Transaction;
 import com.portfolio.entity.User;
 import com.portfolio.entity.enums.OrderStatus;
 import com.portfolio.entity.enums.OrderType;
+import com.portfolio.entity.enums.TradingMode;
 import com.portfolio.entity.enums.TransactionStatus;
 import com.portfolio.entity.enums.TransactionType;
 import com.portfolio.repository.HoldingRepository;
@@ -116,12 +117,15 @@ public class TradingService {
             // Upsert Stock entity
             Stock stock = findOrCreateStock(quote, symbol);
 
+            TradingMode tradingMode = request.tradingMode() != null ? request.tradingMode() : TradingMode.INTRADAY;
+
             // Create and execute Order
             Order order = new Order();
             order.setUser(user);
             order.setStock(stock);
             order.setOrderType(OrderType.BUY);
             order.setOrderStatus(OrderStatus.EXECUTED);
+            order.setTradingMode(tradingMode);
             order.setQuantity(quantity);
             order.setPrice(executionPrice);
             order.setExecutedPrice(executionPrice);
@@ -155,6 +159,7 @@ public class TradingService {
             transaction.setOrder(order);
             transaction.setTransactionType(TransactionType.BUY);
             transaction.setStatus(TransactionStatus.SUCCESS);
+            transaction.setTradingMode(tradingMode);
             transaction.setQuantity(quantity);
             transaction.setPricePerUnit(executionPrice);
             transaction.setTotalAmount(totalAmount);
@@ -166,8 +171,8 @@ public class TradingService {
 
             BigDecimal remainingBalance = currentCashBalance.subtract(totalAmount).setScale(4, RoundingMode.HALF_UP);
 
-            log.info("Simulated BUY executed for user {} on {}: qty={}, price={}, total={}",
-                    userId, symbol, quantity, executionPrice, totalAmount);
+            log.info("Simulated BUY executed for user {} on {} with mode {}: qty={}, price={}, total={}",
+                    userId, symbol, tradingMode, quantity, executionPrice, totalAmount);
 
             return new TradeResponseDto(
                     order.getId(),
@@ -176,13 +181,14 @@ public class TradingService {
                     stock.getCompanyName(),
                     OrderType.BUY,
                     OrderStatus.EXECUTED,
+                    tradingMode,
                     quantity,
                     executionPrice,
                     totalAmount,
                     remainingBalance,
                     newHoldingQuantity,
                     order.getExecutedAt(),
-                    String.format("Successfully bought %s shares of %s at %s", quantity, symbol, executionPrice)
+                    String.format("Successfully bought %s shares of %s at %s (%s)", quantity, symbol, executionPrice, tradingMode)
             );
         }
     }
@@ -243,12 +249,15 @@ public class TradingService {
 
             Stock stock = findOrCreateStock(quote, symbol);
 
+            TradingMode tradingMode = request.tradingMode() != null ? request.tradingMode() : TradingMode.INTRADAY;
+
             // Create and execute Order
             Order order = new Order();
             order.setUser(user);
             order.setStock(stock);
             order.setOrderType(OrderType.SELL);
             order.setOrderStatus(OrderStatus.EXECUTED);
+            order.setTradingMode(tradingMode);
             order.setQuantity(sellQuantity);
             order.setPrice(executionPrice);
             order.setExecutedPrice(executionPrice);
@@ -275,6 +284,7 @@ public class TradingService {
             transaction.setOrder(order);
             transaction.setTransactionType(TransactionType.SELL);
             transaction.setStatus(TransactionStatus.SUCCESS);
+            transaction.setTradingMode(tradingMode);
             transaction.setQuantity(sellQuantity);
             transaction.setPricePerUnit(executionPrice);
             transaction.setTotalAmount(totalAmount);
@@ -286,8 +296,8 @@ public class TradingService {
 
             BigDecimal currentCashBalance = calculateCashBalance(userId);
 
-            log.info("Simulated SELL executed for user {} on {}: qty={}, price={}, total={}, realizedPnL={}",
-                    userId, symbol, sellQuantity, executionPrice, totalAmount, realizedPnL);
+            log.info("Simulated SELL executed for user {} on {} with mode {}: qty={}, price={}, total={}, realizedPnL={}",
+                    userId, symbol, tradingMode, sellQuantity, executionPrice, totalAmount, realizedPnL);
 
             return new TradeResponseDto(
                     order.getId(),
@@ -296,13 +306,14 @@ public class TradingService {
                     stock.getCompanyName(),
                     OrderType.SELL,
                     OrderStatus.EXECUTED,
+                    tradingMode,
                     sellQuantity,
                     executionPrice,
                     totalAmount,
                     currentCashBalance,
                     remainingHoldingQuantity,
                     order.getExecutedAt(),
-                    String.format("Successfully sold %s shares of %s at %s", sellQuantity, symbol, executionPrice)
+                    String.format("Successfully sold %s shares of %s at %s (%s)", sellQuantity, symbol, executionPrice, tradingMode)
             );
         }
     }

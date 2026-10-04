@@ -28,6 +28,9 @@ export class OrderService {
       if (filterParams.status && filterParams.status !== 'ALL') {
         params = params.set('status', filterParams.status);
       }
+      if (filterParams.tradingMode && filterParams.tradingMode !== 'ALL') {
+        params = params.set('tradingMode', filterParams.tradingMode);
+      }
       if (filterParams.symbol && filterParams.symbol.trim()) {
         params = params.set('symbol', filterParams.symbol.trim());
       }

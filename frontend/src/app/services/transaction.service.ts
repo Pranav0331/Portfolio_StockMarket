@@ -25,6 +25,9 @@ export class TransactionService {
       if (filterParams.type && filterParams.type !== 'ALL') {
         params = params.set('type', filterParams.type);
       }
+      if (filterParams.tradingMode && filterParams.tradingMode !== 'ALL') {
+        params = params.set('tradingMode', filterParams.tradingMode);
+      }
       if (filterParams.symbol && filterParams.symbol.trim()) {
         params = params.set('symbol', filterParams.symbol.trim());
       }

@@ -36,6 +36,7 @@ public class TransactionController {
     public ResponseEntity<PageResponseDto<TransactionDto>> getTransactions(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestParam(required = false) String type,
+            @RequestParam(required = false) String tradingMode,
             @RequestParam(required = false) String symbol,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
@@ -53,6 +54,7 @@ public class TransactionController {
         PageResponseDto<TransactionDto> response = transactionService.getUserTransactions(
                 userPrincipal.getId(),
                 type,
+                tradingMode,
                 symbol,
                 startInstant,
                 endInstant,

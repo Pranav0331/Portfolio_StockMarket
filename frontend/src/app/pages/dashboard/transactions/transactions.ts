@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { TransactionService } from '../../../services/transaction.service';
-import { TransactionItem, TransactionPageResponse, TransactionFilterParams } from '../../../models/trading.model';
+import { TransactionItem, TransactionPageResponse, TransactionFilterParams, TradingMode } from '../../../models/trading.model';
 
 @Component({
   selector: 'app-transactions',
@@ -23,6 +23,7 @@ export class TransactionsComponent implements OnInit {
 
   // Filter signals
   readonly selectedType = signal<'ALL' | 'BUY' | 'SELL'>('ALL');
+  readonly selectedTradingMode = signal<'ALL' | TradingMode>('ALL');
   readonly symbolSearch = signal<string>('');
   readonly startDate = signal<string>('');
   readonly endDate = signal<string>('');
@@ -42,6 +43,7 @@ export class TransactionsComponent implements OnInit {
 
     const filterParams: TransactionFilterParams = {
       type: this.selectedType(),
+      tradingMode: this.selectedTradingMode(),
       symbol: this.symbolSearch().trim() || undefined,
       startDate: this.startDate() || undefined,
       endDate: this.endDate() || undefined,
@@ -72,6 +74,13 @@ export class TransactionsComponent implements OnInit {
   setTypeFilter(type: 'ALL' | 'BUY' | 'SELL'): void {
     if (this.selectedType() === type) return;
     this.selectedType.set(type);
+    this.currentPage.set(0);
+    this.loadTransactions();
+  }
+
+  setTradingModeFilter(mode: 'ALL' | TradingMode): void {
+    if (this.selectedTradingMode() === mode) return;
+    this.selectedTradingMode.set(mode);
     this.currentPage.set(0);
     this.loadTransactions();
   }
@@ -119,6 +128,7 @@ export class TransactionsComponent implements OnInit {
 
   resetFilters(): void {
     this.selectedType.set('ALL');
+    this.selectedTradingMode.set('ALL');
     this.symbolSearch.set('');
     this.startDate.set('');
     this.endDate.set('');
@@ -129,6 +139,7 @@ export class TransactionsComponent implements OnInit {
 
   hasActiveFilters(): boolean {
     return this.selectedType() !== 'ALL' ||
+      this.selectedTradingMode() !== 'ALL' ||
       this.symbolSearch().trim().length > 0 ||
       this.startDate().length > 0 ||
       this.endDate().length > 0;
@@ -161,6 +172,24 @@ export class TransactionsComponent implements OnInit {
     if (s === 'EXECUTED' || s === 'SUCCESS') return 'status-executed';
     if (s === 'PENDING') return 'status-pending';
     return 'status-rejected';
+  }
+
+  getTradingModeLabel(mode?: string): string {
+    if (!mode) return 'Intraday';
+    const m = mode.toUpperCase();
+    if (m === 'SCALPING') return 'Scalping';
+    if (m === 'SWING') return 'Swing';
+    if (m === 'LONG_TERM' || m === 'LONG TERM') return 'Long Term';
+    return 'Intraday';
+  }
+
+  getTradingModeBadgeClass(mode?: string): string {
+    if (!mode) return 'mode-intraday';
+    const m = mode.toUpperCase();
+    if (m === 'SCALPING') return 'mode-scalping';
+    if (m === 'SWING') return 'mode-swing';
+    if (m === 'LONG_TERM' || m === 'LONG TERM') return 'mode-long-term';
+    return 'mode-intraday';
   }
 
   getPageNumbers(totalPages: number): number[] {

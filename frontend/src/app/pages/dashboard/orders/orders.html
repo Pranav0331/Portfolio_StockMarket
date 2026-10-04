@@ -88,6 +88,48 @@
         </div>
       </div>
 
+      <!-- Trading Mode Filter (ALL / SCALPING / INTRADAY / SWING / LONG_TERM) -->
+      <div class="filter-group">
+        <label class="filter-label">Trading Mode</label>
+        <div class="pill-group">
+          <button 
+            type="button" 
+            class="pill-btn" 
+            [class.active]="selectedTradingMode() === 'ALL'"
+            (click)="setTradingModeFilter('ALL')">
+            All
+          </button>
+          <button 
+            type="button" 
+            class="pill-btn pill-mode-scalping" 
+            [class.active]="selectedTradingMode() === 'SCALPING'"
+            (click)="setTradingModeFilter('SCALPING')">
+            Scalping
+          </button>
+          <button 
+            type="button" 
+            class="pill-btn pill-mode-intraday" 
+            [class.active]="selectedTradingMode() === 'INTRADAY'"
+            (click)="setTradingModeFilter('INTRADAY')">
+            Intraday
+          </button>
+          <button 
+            type="button" 
+            class="pill-btn pill-mode-swing" 
+            [class.active]="selectedTradingMode() === 'SWING'"
+            (click)="setTradingModeFilter('SWING')">
+            Swing
+          </button>
+          <button 
+            type="button" 
+            class="pill-btn pill-mode-long-term" 
+            [class.active]="selectedTradingMode() === 'LONG_TERM'"
+            (click)="setTradingModeFilter('LONG_TERM')">
+            Long Term
+          </button>
+        </div>
+      </div>
+
       <!-- Symbol Search Input -->
       <div class="filter-group">
         <label class="filter-label" for="order-symbol-search">Symbol / Instrument</label>
@@ -217,6 +259,7 @@
           <tr>
             <th class="th-date">Order Time</th>
             <th class="th-type">Type</th>
+            <th class="th-mode">Trading Mode</th>
             <th class="th-symbol">Instrument</th>
             <th class="th-id">Order ID</th>
             <th class="th-status">Status</th>
@@ -241,6 +284,13 @@
             <td class="td-type">
               <span class="type-badge" [ngClass]="ord.orderType === 'BUY' ? 'badge-buy' : 'badge-sell'">
                 {{ ord.orderType }}
+              </span>
+            </td>
+
+            <!-- Trading Mode -->
+            <td class="td-mode">
+              <span class="trading-mode-badge" [ngClass]="getTradingModeBadgeClass(ord.tradingMode)">
+                {{ getTradingModeLabel(ord.tradingMode) }}
               </span>
             </td>
 

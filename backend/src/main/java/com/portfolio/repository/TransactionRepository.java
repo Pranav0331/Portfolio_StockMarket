@@ -1,6 +1,7 @@
 package com.portfolio.repository;
 
 import com.portfolio.entity.Transaction;
+import com.portfolio.entity.enums.TradingMode;
 import com.portfolio.entity.enums.TransactionType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,18 +20,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findByStockId(Long stockId);
     List<Transaction> findAllByOrderByCreatedAtDesc();
 
-
     @Query("SELECT t FROM Transaction t " +
            "LEFT JOIN t.stock s " +
            "LEFT JOIN t.order o " +
            "WHERE t.user.id = :userId " +
            "AND (:type IS NULL OR t.transactionType = :type) " +
+           "AND (:tradingMode IS NULL OR t.tradingMode = :tradingMode) " +
            "AND (:symbol IS NULL OR LOWER(s.symbol) LIKE LOWER(CONCAT('%', :symbol, '%')) OR LOWER(s.companyName) LIKE LOWER(CONCAT('%', :symbol, '%'))) " +
            "AND (:startDate IS NULL OR t.createdAt >= :startDate) " +
            "AND (:endDate IS NULL OR t.createdAt <= :endDate)")
     Page<Transaction> findUserTransactions(
             @Param("userId") Long userId,
             @Param("type") TransactionType type,
+            @Param("tradingMode") TradingMode tradingMode,
             @Param("symbol") String symbol,
             @Param("startDate") Instant startDate,
             @Param("endDate") Instant endDate,

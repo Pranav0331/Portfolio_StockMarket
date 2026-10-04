@@ -3,6 +3,7 @@ package com.portfolio.dto.trading;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.portfolio.entity.enums.OrderStatus;
 import com.portfolio.entity.enums.OrderType;
+import com.portfolio.entity.enums.TradingMode;
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -14,6 +15,7 @@ public record TradeResponseDto(
         String companyName,
         OrderType orderType,
         OrderStatus orderStatus,
+        TradingMode tradingMode,
         BigDecimal quantity,
         BigDecimal executionPrice,
         BigDecimal totalAmount,
@@ -21,4 +23,22 @@ public record TradeResponseDto(
         BigDecimal currentHoldingQuantity,
         Instant executedAt,
         String message
-) {}
+) {
+    public TradeResponseDto(
+            Long orderId,
+            Long transactionId,
+            String symbol,
+            String companyName,
+            OrderType orderType,
+            OrderStatus orderStatus,
+            BigDecimal quantity,
+            BigDecimal executionPrice,
+            BigDecimal totalAmount,
+            BigDecimal remainingCashBalance,
+            BigDecimal currentHoldingQuantity,
+            Instant executedAt,
+            String message
+    ) {
+        this(orderId, transactionId, symbol, companyName, orderType, orderStatus, TradingMode.INTRADAY, quantity, executionPrice, totalAmount, remainingCashBalance, currentHoldingQuantity, executedAt, message);
+    }
+}

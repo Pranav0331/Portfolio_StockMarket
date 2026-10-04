@@ -3,6 +3,7 @@ package com.portfolio.repository;
 import com.portfolio.entity.Order;
 import com.portfolio.entity.enums.OrderStatus;
 import com.portfolio.entity.enums.OrderType;
+import com.portfolio.entity.enums.TradingMode;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -25,6 +26,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
            "WHERE o.user.id = :userId " +
            "AND (:orderType IS NULL OR o.orderType = :orderType) " +
            "AND (:orderStatus IS NULL OR o.orderStatus = :orderStatus) " +
+           "AND (:tradingMode IS NULL OR o.tradingMode = :tradingMode) " +
            "AND (:symbol IS NULL OR LOWER(s.symbol) LIKE LOWER(CONCAT('%', :symbol, '%')) OR LOWER(s.companyName) LIKE LOWER(CONCAT('%', :symbol, '%'))) " +
            "AND (:startDate IS NULL OR o.createdAt >= :startDate) " +
            "AND (:endDate IS NULL OR o.createdAt <= :endDate)")
@@ -32,10 +34,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("userId") Long userId,
             @Param("orderType") OrderType orderType,
             @Param("orderStatus") OrderStatus orderStatus,
+            @Param("tradingMode") TradingMode tradingMode,
             @Param("symbol") String symbol,
             @Param("startDate") Instant startDate,
             @Param("endDate") Instant endDate,
             Pageable pageable
     );
 }
-

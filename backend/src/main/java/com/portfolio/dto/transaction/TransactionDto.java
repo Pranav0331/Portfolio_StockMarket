@@ -14,6 +14,7 @@ public record TransactionDto(
         String currency,
         String type,
         String status,
+        String tradingMode,
         BigDecimal quantity,
         BigDecimal executionPrice,
         BigDecimal totalAmount,
@@ -39,6 +40,28 @@ public record TransactionDto(
             BigDecimal fees,
             Instant executedAt
     ) {
-        this(transactionId, orderId, symbol, companyName, exchange, currency, type, status, quantity, executionPrice, totalAmount, fees, executedAt, BigDecimal.ZERO, BigDecimal.ZERO, executionPrice, executionPrice);
+        this(transactionId, orderId, symbol, companyName, exchange, currency, type, status, "INTRADAY", quantity, executionPrice, totalAmount, fees, executedAt, BigDecimal.ZERO, BigDecimal.ZERO, executionPrice, executionPrice);
+    }
+
+    public TransactionDto(
+            Long transactionId,
+            Long orderId,
+            String symbol,
+            String companyName,
+            String exchange,
+            String currency,
+            String type,
+            String status,
+            BigDecimal quantity,
+            BigDecimal executionPrice,
+            BigDecimal totalAmount,
+            BigDecimal fees,
+            Instant executedAt,
+            BigDecimal pnl,
+            BigDecimal pnlPercent,
+            BigDecimal avgBuyPrice,
+            BigDecimal currentPrice
+    ) {
+        this(transactionId, orderId, symbol, companyName, exchange, currency, type, status, "INTRADAY", quantity, executionPrice, totalAmount, fees, executedAt, pnl, pnlPercent, avgBuyPrice, currentPrice);
     }
 }

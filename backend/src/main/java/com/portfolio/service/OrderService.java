@@ -6,6 +6,7 @@ import com.portfolio.entity.Order;
 import com.portfolio.entity.Stock;
 import com.portfolio.entity.enums.OrderStatus;
 import com.portfolio.entity.enums.OrderType;
+import com.portfolio.entity.enums.TradingMode;
 import com.portfolio.repository.OrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,7 @@ public class OrderService {
             Long userId,
             String type,
             String status,
+            String tradingMode,
             String symbol,
             Instant startDate,
             Instant endDate,
@@ -74,17 +76,27 @@ public class OrderService {
             }
         }
 
+        TradingMode mode = null;
+        if (tradingMode != null && !tradingMode.trim().isEmpty() && !"ALL".equalsIgnoreCase(tradingMode.trim())) {
+            try {
+                mode = TradingMode.valueOf(tradingMode.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Unknown trading mode filter: {}", tradingMode);
+            }
+        }
+
         String cleanSymbol = (symbol != null && !symbol.trim().isEmpty())
                 ? symbol.trim()
                 : null;
 
-        log.debug("Fetching orders for user {}: type={}, status={}, symbol={}, page={}, size={}",
-                userId, orderType, orderStatus, cleanSymbol, pageIndex, pageSize);
+        log.debug("Fetching orders for user {}: type={}, status={}, mode={}, symbol={}, page={}, size={}",
+                userId, orderType, orderStatus, mode, cleanSymbol, pageIndex, pageSize);
 
         Page<Order> orderPage = orderRepository.findUserOrders(
                 userId,
                 orderType,
                 orderStatus,
+                mode,
                 cleanSymbol,
                 startDate,
                 endDate,
@@ -106,6 +118,21 @@ public class OrderService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public PageResponseDto<OrderDto> getUserOrders(
+            Long userId,
+            String type,
+            String status,
+            String symbol,
+            Instant startDate,
+            Instant endDate,
+            int page,
+            int size,
+            String sortDirection
+    ) {
+        return getUserOrders(userId, type, status, null, symbol, startDate, endDate, page, size, sortDirection);
+    }
+
     private OrderDto mapToDto(Order o) {
         Stock stock = o.getStock();
         String symbol = stock != null ? stock.getSymbol() : "UNKNOWN";
@@ -117,6 +144,7 @@ public class OrderService {
         BigDecimal execPrice = o.getExecutedPrice() != null ? o.getExecutedPrice() : price;
         BigDecimal quantity = o.getQuantity() != null ? o.getQuantity() : BigDecimal.ZERO;
         BigDecimal totalAmount = execPrice.multiply(quantity).setScale(4, RoundingMode.HALF_UP);
+        String tradingMode = o.getTradingMode() != null ? o.getTradingMode().name() : "INTRADAY";
 
         return new OrderDto(
                 o.getId(),
@@ -126,6 +154,7 @@ public class OrderService {
                 currency,
                 o.getOrderType() != null ? o.getOrderType().name() : "BUY",
                 o.getOrderStatus() != null ? o.getOrderStatus().name() : "EXECUTED",
+                tradingMode,
                 quantity,
                 price,
                 execPrice,
