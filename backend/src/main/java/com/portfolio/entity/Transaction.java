@@ -48,6 +48,19 @@ public class Transaction {
     @Column(name = "trading_mode", nullable = false, length = 32)
     private TradingMode tradingMode = TradingMode.INTRADAY;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "position_side", length = 10)
+    private com.portfolio.entity.enums.PositionSide positionSide;
+
+    @Column(name = "leverage")
+    private Integer leverage = 1;
+
+    @Column(name = "margin_used", precision = 19, scale = 4)
+    private BigDecimal marginUsed = BigDecimal.ZERO;
+
+    @Column(name = "position_id")
+    private Long positionId;
+
     @Column(precision = 19, scale = 4)
     private BigDecimal quantity;
 
@@ -192,6 +205,38 @@ public class Transaction {
 
     public void setTradingMode(TradingMode tradingMode) {
         this.tradingMode = tradingMode;
+    }
+
+    public com.portfolio.entity.enums.PositionSide getPositionSide() {
+        return positionSide;
+    }
+
+    public void setPositionSide(com.portfolio.entity.enums.PositionSide positionSide) {
+        this.positionSide = positionSide;
+    }
+
+    public Integer getLeverage() {
+        return leverage;
+    }
+
+    public void setLeverage(Integer leverage) {
+        this.leverage = leverage;
+    }
+
+    public BigDecimal getMarginUsed() {
+        return marginUsed;
+    }
+
+    public void setMarginUsed(BigDecimal marginUsed) {
+        this.marginUsed = marginUsed;
+    }
+
+    public Long getPositionId() {
+        return positionId;
+    }
+
+    public void setPositionId(Long positionId) {
+        this.positionId = positionId;
     }
 
     public Instant getCreatedAt() {

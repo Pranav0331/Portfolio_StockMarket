@@ -4,7 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { PortfolioService } from '../../../services/portfolio.service';
 import { TradingService } from '../../../services/trading.service';
-import { PortfolioSummary } from '../../../models/trading.model';
+import { PortfolioSummary, PositionItem } from '../../../models/trading.model';
 
 @Component({
   selector: 'app-portfolio',
@@ -19,8 +19,11 @@ export class PortfolioComponent implements OnInit {
   private readonly router = inject(Router);
 
   readonly portfolio = signal<PortfolioSummary | null>(null);
+  readonly openPositions = signal<PositionItem[]>([]);
   readonly isLoading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
+  readonly closingPositionId = signal<number | null>(null);
+  readonly positionActionMsg = signal<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Manage Paper Balance Modal State
   readonly showManageBalanceModal = signal<boolean>(false);
@@ -51,6 +54,46 @@ export class PortfolioComponent implements OnInit {
         this.error.set(errorMsg);
       }
     });
+
+    this.tradingService.getPositions('OPEN').subscribe({
+      next: (pos) => {
+        this.openPositions.set(pos);
+      },
+      error: () => {}
+    });
+  }
+
+  closePosition(pos: PositionItem): void {
+    if (!pos || this.closingPositionId() === pos.id) return;
+    this.closingPositionId.set(pos.id);
+    this.positionActionMsg.set(null);
+
+    this.tradingService.closePosition(pos.id).subscribe({
+      next: (resp) => {
+        this.closingPositionId.set(null);
+        const pnlStr = resp.realizedPnl != null ? (resp.realizedPnl >= 0 ? '+' : '') + '$' + Number(resp.realizedPnl).toFixed(2) : '$0.00';
+        this.positionActionMsg.set({
+          type: 'success',
+          text: `Position #${pos.id} (${pos.symbol} ${pos.side}) closed. Realized P&L: ${pnlStr}`
+        });
+        this.loadPortfolio();
+      },
+      error: (err) => {
+        this.closingPositionId.set(null);
+        this.positionActionMsg.set({
+          type: 'error',
+          text: err?.error?.message || `Failed to close position #${pos.id}`
+        });
+      }
+    });
+  }
+
+  getTotalMarginUsed(): number {
+    return this.openPositions().reduce((acc, p) => acc + (p.marginUsed || 0), 0);
+  }
+
+  getTotalFloatingPnl(): number {
+    return this.openPositions().reduce((acc, p) => acc + (p.unrealizedPnl || 0), 0);
   }
 
   openManageBalanceModal(action: 'deposit' | 'reset' = 'deposit'): void {

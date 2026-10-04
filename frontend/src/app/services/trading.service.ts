@@ -1,8 +1,16 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { TradeRequest, TradeResponse, VirtualWallet, UserHolding, PortfolioSummary } from '../models/trading.model';
+import {
+  TradeRequest,
+  TradeResponse,
+  VirtualWallet,
+  UserHolding,
+  PortfolioSummary,
+  PositionItem,
+  PositionStatus
+} from '../models/trading.model';
 
 @Injectable({
   providedIn: 'root'
@@ -16,17 +24,17 @@ export class TradingService {
   readonly holdings = signal<UserHolding[]>([]);
   readonly holdingsMap = signal<Map<string, UserHolding>>(new Map());
   readonly portfolio = signal<PortfolioSummary | null>(null);
+  readonly openPositions = signal<PositionItem[]>([]);
 
   buy(request: TradeRequest): Observable<TradeResponse> {
     return this.http.post<TradeResponse>(`${this.baseUrl}/trading/buy`, request).pipe(
       tap((res) => {
-        // Refresh wallet balance signal with remaining balance
         if (this.wallet()) {
           this.wallet.update(w => w ? { ...w, cashBalance: res.remainingCashBalance } : null);
         }
-        // Immediately sync holdings, active holding, and portfolio everywhere
         this.getHoldings().subscribe({ error: () => {} });
         this.getPortfolio().subscribe({ error: () => {} });
+        this.getPositions(request.symbol, 'OPEN').subscribe({ error: () => {} });
         if (request.symbol) {
           this.getHoldingForSymbol(request.symbol).subscribe({ error: () => {} });
         }
@@ -40,12 +48,51 @@ export class TradingService {
         if (this.wallet()) {
           this.wallet.update(w => w ? { ...w, cashBalance: res.remainingCashBalance } : null);
         }
-        // Immediately sync holdings, active holding, and portfolio everywhere
         this.getHoldings().subscribe({ error: () => {} });
         this.getPortfolio().subscribe({ error: () => {} });
+        this.getPositions(request.symbol, 'OPEN').subscribe({ error: () => {} });
         if (request.symbol) {
           this.getHoldingForSymbol(request.symbol).subscribe({ error: () => {} });
         }
+      })
+    );
+  }
+
+  getPositions(symbol?: string, status?: PositionStatus): Observable<PositionItem[]> {
+    let params = new HttpParams();
+    if (symbol) params = params.set('symbol', symbol.trim().toUpperCase());
+    if (status) params = params.set('status', status);
+
+    return this.http.get<PositionItem[]>(`${this.baseUrl}/trading/positions`, { params }).pipe(
+      tap(positions => {
+        if (!status || status === 'OPEN') {
+          this.openPositions.set(positions || []);
+        }
+      })
+    );
+  }
+
+  closePosition(positionId: number, quantity?: number): Observable<PositionItem> {
+    const body = quantity ? { quantity } : {};
+    return this.http.post<PositionItem>(`${this.baseUrl}/trading/positions/${positionId}/close`, body).pipe(
+      tap(() => {
+        this.getWallet().subscribe({ error: () => {} });
+        this.getHoldings().subscribe({ error: () => {} });
+        this.getPortfolio().subscribe({ error: () => {} });
+        this.getPositions(undefined, 'OPEN').subscribe({ error: () => {} });
+      })
+    );
+  }
+
+  updateSlTp(positionId: number, stopLoss?: number, takeProfit?: number): Observable<PositionItem> {
+    return this.http.put<PositionItem>(`${this.baseUrl}/trading/positions/${positionId}/sl-tp`, {
+      stopLoss: stopLoss ?? null,
+      takeProfit: takeProfit ?? null
+    }).pipe(
+      tap(updatedPos => {
+        this.openPositions.update(positions =>
+          positions.map(p => p.id === positionId ? updatedPos : p)
+        );
       })
     );
   }
@@ -130,5 +177,3 @@ export class TradingService {
     );
   }
 }
-
-

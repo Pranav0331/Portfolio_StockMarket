@@ -1,68 +1,96 @@
-<div class="stock-details-page" [class.page-fullscreen]="isFullscreen()">
-  <!-- TOP BREADCRUMB & BACK NAVIGATION -->
-  <div class="details-nav-header">
-    <a routerLink="/dashboard/market" class="back-link">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="19" y1="12" x2="5" y2="12"></line>
-        <polyline points="12 19 5 12 12 5"></polyline>
-      </svg>
-      <span>Back to Market Dashboard</span>
-    </a>
-
-    <div class="header-right-actions">
-      <!-- Virtual Cash Balance Badge -->
-      @if (authService.isAuthenticated() && userWallet(); as wallet) {
-        <div class="wallet-badge" title="Virtual Paper Trading Cash Balance">
-          <span class="wallet-lbl">Paper Balance:</span>
-          <strong class="wallet-amt font-mono">${{ wallet.cashBalance | number:'1.2-2' }}</strong>
+<div class="stock-details-container">
+  <!-- TOP TOOLBAR & INSTRUMENT HERO BAR -->
+  <div class="instrument-header-card">
+    <div class="instrument-main-info">
+      <div class="title-and-badges">
+        <h1 class="stock-title font-mono">{{ symbol() }}</h1>
+        <span class="company-name-text">{{ companyName() }}</span>
+        <div class="badge-cluster">
+          <span class="exchange-badge">{{ exchange() }}</span>
+          <span class="instrument-type-badge">{{ instrumentType() }}</span>
+          <span class="provider-pill" [class.upstox]="currentProvider() === 'Upstox'" [class.twelvedata]="currentProvider() === 'Twelve Data'">
+            <span class="live-dot"></span>
+            {{ currentProvider() }} Live
+          </span>
         </div>
-      }
+      </div>
 
-      <span class="provider-pill">
-        <span class="pulse-dot"></span>
-        Provider: <strong>{{ currentProvider() }}</strong>
-      </span>
+      <!-- PRICE AND CHANGE METRICS -->
+      <div class="price-metrics-block">
+        @if (isLoadingQuote() && !currentQuote()) {
+          <div class="price-skeleton-loader">
+            <div class="sk-line sk-price"></div>
+            <div class="sk-line sk-change"></div>
+          </div>
+        } @else if (currentQuote(); as quote) {
+          <div class="current-price-row">
+            <span class="symbol-curr-prefix">{{ formatCurrencySymbol(symbol()) }}</span>
+            <span class="live-price-val font-mono">
+              @if (quote.price != null) {
+                {{ quote.price | number:'1.2-4' }}
+              } @else {
+                <span class="price-na">Data unavailable</span>
+              }
+            </span>
+          </div>
 
-      <a [routerLink]="['/dashboard/technical', symbol()]" class="action-icon-btn" title="Technical Analysis">
-        <span>Technical</span>
-      </a>
+          <div
+            class="price-delta-row font-mono"
+            [class.text-emerald]="(quote.change || 0) >= 0"
+            [class.text-rose]="(quote.change || 0) < 0"
+          >
+            <span class="delta-arrow">
+              {{ (quote.change || 0) >= 0 ? '▲' : '▼' }}
+            </span>
+            <span class="delta-change">
+              {{ (quote.change || 0) >= 0 ? '+' : '' }}{{ quote.change | number:'1.2-4' }}
+            </span>
+            <span class="delta-percent">
+              ({{ quote.changePercent || '0.00%' }})
+            </span>
+            <span class="delta-session-label">Today</span>
+          </div>
+        } @else {
+          <div class="price-error-placeholder">
+            <span class="price-na font-mono">Data unavailable</span>
+          </div>
+        }
+      </div>
+    </div>
 
-      <a [routerLink]="['/dashboard/fundamental', symbol()]" class="action-icon-btn" title="Fundamental Analysis">
-        <span>Fundamental</span>
-      </a>
-
-      <!-- Header Alert Button -->
+    <!-- HEADER RIGHT CONTROLS (REFRESH, SET ALERT, WATCHLIST) -->
+    <div class="header-action-controls">
       <button
         type="button"
-        class="action-icon-btn alert-action-btn"
+        class="btn-action-hdr btn-alert-trigger"
         (click)="openAlertModal()"
-        title="Set Price Alert for this Symbol"
+        title="Set Real-Time Price Alert"
       >
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
         </svg>
-        <span>Alert</span>
+        <span>Set Alert</span>
       </button>
 
       <button
         type="button"
-        class="action-icon-btn"
+        class="btn-action-hdr btn-refresh-trigger"
         (click)="refreshData()"
-        [disabled]="isLoadingQuote() || isLoadingCandles() || isSubmittingTrade()"
-        title="Refresh Data"
+        [disabled]="isLoadingQuote() || isLoadingCandles()"
+        title="Force Refresh Data"
       >
         <svg
-          [class.spinning]="isLoadingQuote() || isLoadingCandles()"
           viewBox="0 0 24 24"
           width="16"
           height="16"
           fill="none"
           stroke="currentColor"
           stroke-width="2"
+          [class.animate-spin]="isLoadingQuote() || isLoadingCandles()"
         >
-          <path d="M23 4v6h-6"></path>
-          <path d="M1 20v-6h6"></path>
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
           <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
         </svg>
         <span>Refresh</span>
@@ -70,73 +98,9 @@
     </div>
   </div>
 
-  <!-- INSTRUMENT HERO CARD -->
-  <div class="hero-instrument-card">
-    <div class="instrument-primary-info">
-      <div class="symbol-large-box">
-        <span class="symbol-tag">{{ symbol() }}</span>
-      </div>
-      <div class="instrument-titles">
-        <div class="title-row">
-          <h1 class="instrument-name">{{ companyName() }}</h1>
-          <div class="badge-group">
-            <span class="meta-badge exchange">{{ exchange() }}</span>
-            <span class="meta-badge type">{{ instrumentType() }}</span>
-            <span class="meta-badge currency">{{ formatCurrencySymbol(symbol()) }}</span>
-          </div>
-        </div>
-        <div class="sub-meta-row">
-          <span class="meta-label">Symbol: <strong class="font-mono">{{ symbol() }}</strong></span>
-          <span class="meta-sep">•</span>
-          <span class="meta-label">Exchange: <strong>{{ exchange() }}</strong></span>
-          @if (currentQuote()?.latestTradingDay) {
-            <span class="meta-sep">•</span>
-            <span class="meta-label">Trading Day: <strong>{{ currentQuote()!.latestTradingDay }}</strong></span>
-          }
-          @if (userHolding(); as holding) {
-            <span class="meta-sep">•</span>
-            <span class="holding-badge">
-              You own: <strong class="font-mono">{{ holding.quantity | number:'1.0-4' }}</strong> shares
-            </span>
-          }
-        </div>
-      </div>
-    </div>
-
-    <!-- Live Price Block -->
-    <div class="price-hero-block">
-      <div class="price-val-hero">
-        @if (isLoadingQuote() && !currentQuote()) {
-          <div class="skeleton-shimmer price-skeleton"></div>
-        } @else if (currentQuote()?.price != null) {
-          <span class="currency-prefix">{{ formatCurrencySymbol(symbol()) }}</span>
-          <span class="price-number font-mono">{{ currentQuote()!.price | number:'1.2-4' }}</span>
-        } @else {
-          <span class="price-unavailable">Data unavailable</span>
-        }
-      </div>
-
-      @if (currentQuote(); as quote) {
-        @if (quote.change != null) {
-          <div
-            class="change-hero-badge"
-            [class.positive]="quote.change >= 0"
-            [class.negative]="quote.change < 0"
-          >
-            <span class="arrow-icon">{{ quote.change >= 0 ? '▲' : '▼' }}</span>
-            <span class="change-amount font-mono">
-              {{ quote.change >= 0 ? '+' : '' }}{{ quote.change | number:'1.2-4' }}
-            </span>
-            <span class="change-pct font-mono">({{ quote.changePercent }})</span>
-          </div>
-        }
-      }
-    </div>
-  </div>
-
-  <!-- ERROR NOTIFICATION BANNER -->
+  <!-- NOTICE / RATE LIMIT BANNER -->
   @if (errorMessage()) {
-    <div class="error-banner" [class.warning-rate-limit]="isRateLimited()">
+    <div class="notice-alert-banner" [class.rate-limited-alert]="isRateLimited()">
       <div class="error-icon">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"></circle>
@@ -156,7 +120,6 @@
 
   <!-- KEY METRICS STATS BAR -->
   <div class="key-metrics-grid">
-    <!-- Open Price -->
     <div class="stat-card">
       <span class="stat-label">Open</span>
       <div class="stat-value font-mono">
@@ -168,7 +131,6 @@
       </div>
     </div>
 
-    <!-- Previous Close -->
     <div class="stat-card">
       <span class="stat-label">Previous Close</span>
       <div class="stat-value font-mono">
@@ -180,7 +142,6 @@
       </div>
     </div>
 
-    <!-- Day High -->
     <div class="stat-card">
       <span class="stat-label">Day High</span>
       <div class="stat-value font-mono text-emerald">
@@ -192,7 +153,6 @@
       </div>
     </div>
 
-    <!-- Day Low -->
     <div class="stat-card">
       <span class="stat-label">Day Low</span>
       <div class="stat-value font-mono text-rose">
@@ -204,7 +164,6 @@
       </div>
     </div>
 
-    <!-- Volume -->
     <div class="stat-card">
       <span class="stat-label">Volume</span>
       <div class="stat-value font-mono">
@@ -216,7 +175,6 @@
       </div>
     </div>
 
-    <!-- Day Range Indicator -->
     <div class="stat-card range-card">
       <div class="range-header">
         <span class="stat-label">Day's Range</span>
@@ -244,109 +202,94 @@
     </div>
   </div>
 
-  <!-- MAIN INTERACTIVE SECTION: CHART + SIMULATED TRADING PANEL -->
+  <!-- MAIN INTERACTIVE SECTION: CHART + EXNESS SIMULATED TRADING PANEL -->
   <div class="main-terminal-grid">
     <!-- CHART SECTION -->
     <div class="chart-section-card">
-      <!-- Chart Controls Toolbar -->
-      <div class="chart-toolbar">
-        <!-- Intervals (1m, 5m, 15m, 30m, 1H, 4H, 1D, 1W) -->
-        <div class="toolbar-group intervals-group">
-          <span class="toolbar-label">Timeframe</span>
-          <div class="btn-segmented">
-            @for (iv of intervals; track iv.value) {
-              <button
-                type="button"
-                class="seg-btn"
-                [class.active]="currentInterval() === iv.value"
-                (click)="setInterval(iv.value)"
-                [title]="iv.label + ' Candle Interval'"
-              >
-                {{ iv.label }}
-              </button>
-            }
-          </div>
-        </div>
-
-        <!-- Ranges (1D, 1W, 1M, 3M, 6M, 1Y) -->
-        <div class="toolbar-group timeframes-group">
-          <span class="toolbar-label">Range</span>
-          <div class="btn-segmented">
-            @for (tf of timeframes; track tf) {
-              <button
-                type="button"
-                class="seg-btn"
-                [class.active]="currentTimeframe() === tf"
-                (click)="setTimeframe(tf)"
-              >
-                {{ tf }}
-              </button>
-            }
-          </div>
-        </div>
-
-        <!-- Center: Chart Type (Candles, Line, Area) -->
-        <div class="toolbar-group types-group">
-          <span class="toolbar-label">Type</span>
-          <div class="btn-segmented">
+      <!-- Chart Controls Bar -->
+      <div class="chart-control-strip">
+        <!-- Interval Pills -->
+        <div class="timeframe-pill-group">
+          @for (item of intervals; track item.value) {
             <button
               type="button"
-              class="seg-btn"
-              [class.active]="currentChartType() === 'candles'"
-              (click)="setChartType('candles')"
-              title="Candlestick Chart"
+              class="tf-pill-btn"
+              [class.active]="currentInterval() === item.value"
+              (click)="setInterval(item.value)"
             >
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="5" y="8" width="4" height="8" rx="1"></rect>
-                <line x1="7" y1="3" x2="7" y2="8"></line>
-                <line x1="7" y1="16" x2="7" y2="21"></line>
-                <rect x="15" y="5" width="4" height="10" rx="1"></rect>
-                <line x1="17" y1="2" x2="17" y2="5"></line>
-                <line x1="17" y1="15" x2="17" y2="22"></line>
-              </svg>
-              <span>Candles</span>
+              {{ item.label }}
             </button>
-            <button
-              type="button"
-              class="seg-btn"
-              [class.active]="currentChartType() === 'line'"
-              (click)="setChartType('line')"
-              title="Line Chart"
-            >
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-              </svg>
-              <span>Line</span>
-            </button>
-            <button
-              type="button"
-              class="seg-btn"
-              [class.active]="currentChartType() === 'area'"
-              (click)="setChartType('area')"
-              title="Mountain / Area Chart"
-            >
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 3v18h18"></path>
-                <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
-              </svg>
-              <span>Area</span>
-            </button>
-          </div>
+          }
         </div>
 
-        <!-- Right: Actions (Fit/Reset, Fullscreen) -->
-        <div class="toolbar-group actions-group">
+        <!-- Range Presets -->
+        <div class="range-preset-group">
+          @for (tf of timeframes; track tf) {
+            <button
+              type="button"
+              class="range-pill-btn"
+              [class.active]="currentTimeframe() === tf"
+              (click)="setTimeframe(tf)"
+            >
+              {{ tf }}
+            </button>
+          }
+        </div>
+
+        <!-- Chart Type Selectors & Fullscreen -->
+        <div class="chart-type-cluster">
+          <button
+            type="button"
+            class="chart-type-btn"
+            [class.active]="currentChartType() === 'candles'"
+            (click)="setChartType('candles')"
+            title="Candlestick Chart"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="4" y="8" width="4" height="8" rx="1"></rect>
+              <line x1="6" y1="4" x2="6" y2="8"></line>
+              <line x1="6" y1="16" x2="6" y2="20"></line>
+              <rect x="14" y="6" width="4" height="12" rx="1"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="16" y1="18" x2="16" y2="22"></line>
+            </svg>
+            <span>Candles</span>
+          </button>
+
+          <button
+            type="button"
+            class="chart-type-btn"
+            [class.active]="currentChartType() === 'line'"
+            (click)="setChartType('line')"
+            title="Line Chart"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            <span>Line</span>
+          </button>
+
+          <button
+            type="button"
+            class="chart-type-btn"
+            [class.active]="currentChartType() === 'area'"
+            (click)="setChartType('area')"
+            title="Mountain / Area Chart"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 20h18L18 8l-6 8-4-4z"></path>
+            </svg>
+            <span>Area</span>
+          </button>
+
           <button
             type="button"
             class="tool-btn"
             (click)="fitChart()"
-            title="Reset Scale & Fit Content"
+            title="Reset Chart View"
           >
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="15 3 21 3 21 9"></polyline>
-              <polyline points="9 21 3 21 3 15"></polyline>
-              <line x1="21" y1="3" x2="14" y2="10"></line>
-              <line x1="3" y1="21" x2="10" y2="14"></line>
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
             </svg>
             <span>Fit</span>
           </button>
@@ -440,7 +383,7 @@
     </div>
 
     <!-- =========================================================================
-         SIMULATED TRADING ORDER PANEL
+         EXNESS-STYLE SIMULATED TRADING ORDER PANEL
          ========================================================================= -->
     <div class="trading-order-panel">
       <!-- Panel Header -->
@@ -453,11 +396,11 @@
             </svg>
           </div>
           <div>
-            <h3 class="panel-heading">Simulated Trading</h3>
-            <span class="panel-sub">Instant Market Execution</span>
+            <h3 class="panel-heading">Exness Paper Terminal</h3>
+            <span class="panel-sub">Real Market Feed • Margin Trading</span>
           </div>
         </div>
-        <span class="paper-mode-tag">Paper Trade</span>
+        <span class="paper-mode-tag">Simulated</span>
       </div>
 
       <!-- User Auth State Guard -->
@@ -471,7 +414,7 @@
           </div>
           <h4 class="unauth-title">Authentication Required</h4>
           <p class="unauth-desc">
-            Sign in to execute paper trades, build your simulated portfolio, and track performance.
+            Sign in to execute paper trades, build your leveraged portfolio, and track performance.
           </p>
           <a routerLink="/login" class="btn-trade-login">
             <span>Log In to Trade</span>
@@ -482,43 +425,6 @@
           </a>
         </div>
       } @else {
-        <!-- POSITION OVERVIEW CARD -->
-        @if (userHolding(); as holding) {
-          <div class="user-position-card font-mono" [class.pos-profit]="(holding.unrealizedPnL || 0) >= 0" [class.pos-loss]="(holding.unrealizedPnL || 0) < 0">
-            <div class="position-card-header">
-              <span class="pos-badge">
-                <span class="pos-dot"></span>
-                ACTIVE POSITION
-              </span>
-              <span class="pos-pnl-pill" [class.pnl-positive]="(holding.unrealizedPnL || 0) >= 0" [class.pnl-negative]="(holding.unrealizedPnL || 0) < 0">
-                P&L: {{ (holding.unrealizedPnL || 0) >= 0 ? '+' : '' }}{{ formatCurrencySymbol(symbol()) }}{{ holding.unrealizedPnL | number:'1.2-2' }} ({{ (holding.unrealizedPnLPercent || 0) >= 0 ? '+' : '' }}{{ holding.unrealizedPnLPercent | number:'1.2-2' }}%)
-              </span>
-            </div>
-            <div class="position-metrics-grid">
-              <div class="pos-m-item">
-                <span class="pos-m-lbl">Qty Owned</span>
-                <strong class="pos-m-val">{{ holding.quantity }}</strong>
-              </div>
-              <div class="pos-m-item">
-                <span class="pos-m-lbl">Avg Buy Price</span>
-                <strong class="pos-m-val">{{ formatCurrencySymbol(symbol()) }}{{ holding.averageBuyPrice | number:'1.2-2' }}</strong>
-              </div>
-              <div class="pos-m-item">
-                <span class="pos-m-lbl">Current Price</span>
-                <strong class="pos-m-val">{{ formatCurrencySymbol(symbol()) }}{{ (holding.currentPrice || currentQuote()?.price || 0) | number:'1.2-2' }}</strong>
-              </div>
-              <div class="pos-m-item">
-                <span class="pos-m-lbl">Current Value</span>
-                <strong class="pos-m-val">{{ formatCurrencySymbol(symbol()) }}{{ (holding.currentValue || (holding.quantity * (holding.currentPrice || currentQuote()?.price || 0))) | number:'1.2-2' }}</strong>
-              </div>
-            </div>
-          </div>
-        } @else {
-          <div class="no-position-card">
-            <span class="no-pos-txt">No active holding in <strong>{{ symbol() }}</strong></span>
-          </div>
-        }
-
         <!-- TRADING MODE SELECTOR (SCALPING, INTRADAY, SWING, LONG_TERM) -->
         <div class="trading-mode-section">
           <div class="mode-section-header">
@@ -531,7 +437,7 @@
                 type="button"
                 class="mode-card-btn"
                 [class.active]="selectedTradingMode() === m.mode"
-                (click)="selectedTradingMode.set(m.mode)"
+                (click)="setTradingMode(m.mode)"
                 [title]="m.label + ': ' + m.desc"
               >
                 <div class="mode-card-top">
@@ -548,23 +454,55 @@
           </div>
         </div>
 
-        <!-- BUY / SELL SEGMENTED TABS -->
-        <div class="trade-mode-segmented">
+        <!-- LEVERAGE SELECTOR (SCALPING & INTRADAY) -->
+        @if (isLeverageEnabled()) {
+          <div class="leverage-selector-section">
+            <div class="leverage-header">
+              <span class="leverage-lbl">Leverage Multiplier</span>
+              <span class="leverage-active-badge font-mono">1:{{ selectedLeverage() }}</span>
+            </div>
+            <div class="leverage-pills-row font-mono">
+              @for (lev of leverageOptions; track lev) {
+                <button
+                  type="button"
+                  class="leverage-pill-btn"
+                  [class.active]="selectedLeverage() === lev"
+                  (click)="setLeverage(lev)"
+                >
+                  1:{{ lev }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- BUY / LONG & SELL / SHORT ACTION BUTTONS -->
+        <div class="trade-side-selector">
           <button
             type="button"
-            class="trade-tab-btn buy-tab"
-            [class.active]="tradeType() === 'BUY'"
-            (click)="setTradeType('BUY')"
+            class="side-btn side-buy"
+            [class.active]="tradeSide() === 'LONG'"
+            (click)="setTradeSide('LONG')"
           >
-            BUY
+            <div class="side-btn-content">
+              <span class="side-title">BUY / LONG</span>
+              <span class="side-price font-mono">
+                {{ formatCurrencySymbol(symbol()) }}{{ (currentQuote()?.price || 0) | number:'1.2-4' }}
+              </span>
+            </div>
           </button>
           <button
             type="button"
-            class="trade-tab-btn sell-tab"
-            [class.active]="tradeType() === 'SELL'"
-            (click)="setTradeType('SELL')"
+            class="side-btn side-sell"
+            [class.active]="tradeSide() === 'SHORT'"
+            (click)="setTradeSide('SHORT')"
           >
-            SELL
+            <div class="side-btn-content">
+              <span class="side-title">SELL / SHORT</span>
+              <span class="side-price font-mono">
+                {{ formatCurrencySymbol(symbol()) }}{{ (currentQuote()?.price || 0) | number:'1.2-4' }}
+              </span>
+            </div>
           </button>
         </div>
 
@@ -574,7 +512,7 @@
             <div class="receipt-header">
               <div class="receipt-title">
                 <span class="check-icon">✓</span>
-                <strong>{{ receipt.orderType === 'BUY' ? 'Simulated Buy' : 'Simulated Sell' }} Executed!</strong>
+                <strong>{{ receipt.orderType === 'BUY' ? 'Buy / Long' : 'Sell / Short' }} Executed!</strong>
               </div>
               <button type="button" class="btn-dismiss-receipt" (click)="dismissTradeSuccess()" title="Dismiss">✕</button>
             </div>
@@ -584,23 +522,29 @@
                 <strong>{{ receipt.symbol }}</strong>
               </div>
               <div class="receipt-row">
-                <span>Trading Mode:</span>
-                <strong class="receipt-mode-pill">{{ receipt.tradingMode || selectedTradingMode() }}</strong>
+                <span>Mode & Leverage:</span>
+                <strong class="receipt-mode-pill">{{ receipt.tradingMode }} 1:{{ receipt.leverage || 1 }}x</strong>
               </div>
               <div class="receipt-row">
-                <span>Shares:</span>
+                <span>Quantity / Lot:</span>
                 <strong>{{ receipt.quantity }}</strong>
               </div>
               <div class="receipt-row">
                 <span>Execution Price:</span>
                 <strong>{{ formatCurrencySymbol(receipt.symbol) }}{{ receipt.executionPrice | number:'1.2-4' }}</strong>
               </div>
+              @if (receipt.marginUsed) {
+                <div class="receipt-row">
+                  <span>Margin Locked:</span>
+                  <strong>${{ receipt.marginUsed | number:'1.2-2' }}</strong>
+                </div>
+              }
               <div class="receipt-row total-row">
-                <span>Total Value:</span>
+                <span>Position Value:</span>
                 <strong>{{ formatCurrencySymbol(receipt.symbol) }}{{ receipt.totalAmount | number:'1.2-2' }}</strong>
               </div>
               <div class="receipt-row">
-                <span>Remaining Cash:</span>
+                <span>Free Paper Cash:</span>
                 <strong>${{ receipt.remainingCashBalance | number:'1.2-2' }}</strong>
               </div>
             </div>
@@ -621,34 +565,13 @@
 
         <!-- FORM CONTROLS -->
         <div class="trade-form-body">
-          <!-- Real Execution Price Display -->
-          <div class="trade-field-group">
-            <span class="field-label">Market Execution Price</span>
-            <div class="live-price-strip">
-              <div class="price-side font-mono">
-                @if (currentQuote()?.price != null) {
-                  <span class="price-val-trade">
-                    {{ formatCurrencySymbol(symbol()) }}{{ currentQuote()!.price | number:'1.2-4' }}
-                  </span>
-                } @else {
-                  <span class="text-dim">Fetching real price...</span>
-                }
-              </div>
-              <span class="market-order-pill">Market (Real-Time)</span>
-            </div>
-          </div>
-
-          <!-- Quantity Input & Stepper -->
+          <!-- Quantity / Lot Size Input & Steppers -->
           <div class="trade-field-group">
             <div class="field-label-row">
-              <span class="field-label">Quantity (Shares)</span>
-              @if (tradeType() === 'SELL' && userHolding(); as holding) {
+              <span class="field-label">Quantity / Lot Size</span>
+              @if (userWallet(); as wallet) {
                 <span class="owned-shares-hint font-mono">
-                  Available: <strong>{{ holding.quantity }}</strong>
-                </span>
-              } @else if (tradeType() === 'BUY' && userWallet(); as wallet) {
-                <span class="owned-shares-hint font-mono">
-                  Cash: <strong>${{ wallet.cashBalance | number:'1.2-2' }}</strong>
+                  Available: <strong>${{ wallet.cashBalance | number:'1.2-2' }}</strong>
                 </span>
               }
             </div>
@@ -657,8 +580,8 @@
               <button
                 type="button"
                 class="qty-stepper-btn"
-                (click)="adjustQuantity(-1)"
-                [disabled]="tradeQuantity() <= 1"
+                (click)="adjustQuantity(-0.1)"
+                [disabled]="tradeQuantity() <= 0.01"
               >
                 −
               </button>
@@ -667,58 +590,144 @@
                 class="qty-input font-mono"
                 [ngModel]="tradeQuantity()"
                 (ngModelChange)="setTradeQuantity($event)"
-                min="1"
-                step="1"
+                min="0.0001"
+                step="0.01"
               />
               <button
                 type="button"
                 class="qty-stepper-btn"
-                (click)="adjustQuantity(1)"
+                (click)="adjustQuantity(0.1)"
               >
                 +
               </button>
             </div>
 
             <!-- Quick Add Chips -->
-            <div class="quick-qty-chips">
-              <button type="button" class="chip-qty-btn" (click)="adjustQuantity(1)">+1</button>
-              <button type="button" class="chip-qty-btn" (click)="adjustQuantity(5)">+5</button>
-              <button type="button" class="chip-qty-btn" (click)="adjustQuantity(10)">+10</button>
-              <button type="button" class="chip-qty-btn" (click)="adjustQuantity(50)">+50</button>
+            <div class="quick-qty-chips font-mono">
+              <button type="button" class="chip-qty-btn" (click)="setQuickLot(0.01)">0.01</button>
+              <button type="button" class="chip-qty-btn" (click)="setQuickLot(0.1)">0.10</button>
+              <button type="button" class="chip-qty-btn" (click)="setQuickLot(0.5)">0.50</button>
+              <button type="button" class="chip-qty-btn" (click)="setQuickLot(1.0)">1.00</button>
+              <button type="button" class="chip-qty-btn" (click)="setQuickLot(5.0)">5.00</button>
               <button type="button" class="chip-qty-btn max-chip" (click)="setMaxQuantity()">Max</button>
             </div>
           </div>
 
-          <!-- Order Summary Breakdown -->
-          <div class="order-summary-box">
+          <!-- STOP LOSS & TAKE PROFIT CONTROLS -->
+          <div class="sl-tp-container">
+            <div class="sl-tp-row">
+              <!-- Stop Loss -->
+              <div class="sl-tp-input-card">
+                <div class="sl-tp-header">
+                  <span class="sl-tp-title text-rose">Stop Loss</span>
+                  <div class="quick-pct-cluster">
+                    <button type="button" class="pct-btn" (click)="setQuickSlPercent(1)">-1%</button>
+                    <button type="button" class="pct-btn" (click)="setQuickSlPercent(2)">-2%</button>
+                    <button type="button" class="pct-btn" (click)="setQuickSlPercent(5)">-5%</button>
+                  </div>
+                </div>
+                <div class="sl-tp-field-wrap">
+                  <span class="curr-prefix">{{ formatCurrencySymbol(symbol()) }}</span>
+                  <input
+                    type="number"
+                    class="sl-tp-input font-mono"
+                    [ngModel]="stopLossPrice()"
+                    (ngModelChange)="stopLossPrice.set($event)"
+                    placeholder="Optional"
+                    step="0.01"
+                  />
+                  @if (stopLossPrice()) {
+                    <button type="button" class="btn-clear-sltp" (click)="stopLossPrice.set(null)">✕</button>
+                  }
+                </div>
+                @if (slProjection(); as slp) {
+                  <div class="projection-strip font-mono" [class.text-rose]="slp.valid" [class.text-warning]="!slp.valid">
+                    @if (slp.valid) {
+                      Est: {{ slp.pnl | number:'1.2-2' }} ({{ slp.roi | number:'1.2-2' }}%)
+                    } @else {
+                      ⚠️ Invalid SL Direction
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- Take Profit -->
+              <div class="sl-tp-input-card">
+                <div class="sl-tp-header">
+                  <span class="sl-tp-title text-emerald">Take Profit</span>
+                  <div class="quick-pct-cluster">
+                    <button type="button" class="pct-btn" (click)="setQuickTpPercent(2)">+2%</button>
+                    <button type="button" class="pct-btn" (click)="setQuickTpPercent(5)">+5%</button>
+                    <button type="button" class="pct-btn" (click)="setQuickTpPercent(10)">+10%</button>
+                  </div>
+                </div>
+                <div class="sl-tp-field-wrap">
+                  <span class="curr-prefix">{{ formatCurrencySymbol(symbol()) }}</span>
+                  <input
+                    type="number"
+                    class="sl-tp-input font-mono"
+                    [ngModel]="takeProfitPrice()"
+                    (ngModelChange)="takeProfitPrice.set($event)"
+                    placeholder="Optional"
+                    step="0.01"
+                  />
+                  @if (takeProfitPrice()) {
+                    <button type="button" class="btn-clear-sltp" (click)="takeProfitPrice.set(null)">✕</button>
+                  }
+                </div>
+                @if (tpProjection(); as tpp) {
+                  <div class="projection-strip font-mono" [class.text-emerald]="tpp.valid" [class.text-warning]="!tpp.valid">
+                    @if (tpp.valid) {
+                      Est: +{{ tpp.pnl | number:'1.2-2' }} (+{{ tpp.roi | number:'1.2-2' }}%)
+                    } @else {
+                      ⚠️ Invalid TP Direction
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- EXNESS MARGIN CALCULATOR BREAKDOWN -->
+          <div class="order-summary-box font-mono">
             <div class="summary-line">
-              <span>Estimated Total</span>
-              <strong class="summary-val font-mono">
-                {{ formatCurrencySymbol(symbol()) }}{{ estimatedTradeTotal() | number:'1.2-2' }}
+              <span>Entry Price</span>
+              <strong class="summary-val">
+                {{ formatCurrencySymbol(symbol()) }}{{ (currentQuote()?.price || 0) | number:'1.2-4' }}
               </strong>
             </div>
             <div class="summary-line">
-              <span>Estimated Fees</span>
-              <span class="summary-free font-mono">$0.00 (Simulated)</span>
+              <span>Position Value</span>
+              <strong class="summary-val">
+                {{ formatCurrencySymbol(symbol()) }}{{ positionValue() | number:'1.2-2' }}
+              </strong>
+            </div>
+            <div class="summary-line">
+              <span>Leverage</span>
+              <strong class="summary-val text-accent">1:{{ effectiveLeverage() }}</strong>
             </div>
             <div class="summary-line highlight-line">
-              <span>Total Settlement</span>
-              <strong class="summary-val font-mono">
-                {{ formatCurrencySymbol(symbol()) }}{{ estimatedTradeTotal() | number:'1.2-2' }}
+              <span>Required Margin</span>
+              <strong class="summary-val text-emerald">
+                ${{ requiredMargin() | number:'1.2-2' }}
               </strong>
+            </div>
+            <div class="summary-line">
+              <span>Available Cash</span>
+              <span class="summary-free">${{ userWallet()?.cashBalance | number:'1.2-2' }}</span>
             </div>
           </div>
 
           <!-- Validation Warning Messages -->
-          @if (hasInsufficientBalance()) {
+          @if (hasInsufficientMargin()) {
             <div class="trade-validation-warning">
-              ⚠️ Insufficient virtual balance (${{ userWallet()?.cashBalance | number:'1.2-2' }} available).
+              ⚠️ Insufficient virtual balance. Required Margin: ${{ requiredMargin() | number:'1.2-2' }} vs Available: ${{ userWallet()?.cashBalance | number:'1.2-2' }}.
             </div>
           }
 
           @if (hasInsufficientHoldings()) {
             <div class="trade-validation-warning">
-              ⚠️ Insufficient holdings. You own {{ userHolding()?.quantity || 0 }} shares.
+              ⚠️ Insufficient spot holdings to sell. Owned: {{ userHolding()?.quantity || 0 }}.
             </div>
           }
 
@@ -726,22 +735,127 @@
           <button
             type="button"
             class="btn-execute-trade"
-            [class.btn-buy-mode]="tradeType() === 'BUY'"
-            [class.btn-sell-mode]="tradeType() === 'SELL'"
-            [disabled]="isSubmittingTrade() || hasInsufficientBalance() || hasInsufficientHoldings() || !currentQuote()?.price || (tradeQuantity() <= 0)"
+            [class.btn-buy-mode]="tradeSide() === 'LONG'"
+            [class.btn-sell-mode]="tradeSide() === 'SHORT'"
+            [disabled]="isSubmittingTrade() || hasInsufficientMargin() || hasInsufficientHoldings() || !currentQuote()?.price || (tradeQuantity() <= 0)"
             (click)="submitTrade()"
           >
             @if (isSubmittingTrade()) {
               <div class="btn-spinner"></div>
               <span>Executing Order...</span>
             } @else {
-              <span>{{ tradeType() === 'BUY' ? 'Buy' : 'Sell' }} {{ tradeQuantity() }} {{ symbol() }}</span>
+              <span>
+                {{ tradeSide() === 'LONG' ? 'BUY / LONG' : 'SELL / SHORT' }} {{ tradeQuantity() }} {{ symbol() }}
+                (Margin: ${{ requiredMargin() | number:'1.2-2' }})
+              </span>
             }
           </button>
         </div>
       }
     </div>
   </div>
+
+  <!-- =========================================================================
+       ACTIVE OPEN POSITIONS & LIVE FLOATING P&L PANEL
+       ========================================================================= -->
+  @if (authService.isAuthenticated()) {
+    <div class="positions-panel-card">
+      <div class="positions-panel-header">
+        <div class="pos-hdr-left">
+          <div class="pos-pulse-icon"></div>
+          <h3 class="pos-heading">Open Leveraged Positions</h3>
+          <span class="pos-count-badge font-mono">{{ activeSymbolPositions().length }} on {{ symbol() }}</span>
+        </div>
+        @if (activeSymbolPositions().length > 0) {
+          <div class="total-floating-pnl font-mono" [class.text-emerald]="totalSymbolFloatingPnl() >= 0" [class.text-rose]="totalSymbolFloatingPnl() < 0">
+            <span>Symbol Floating P&L:</span>
+            <strong>{{ totalSymbolFloatingPnl() >= 0 ? '+' : '' }}${{ totalSymbolFloatingPnl() | number:'1.2-2' }}</strong>
+          </div>
+        }
+      </div>
+
+      @if (activeSymbolPositions().length === 0) {
+        <div class="no-positions-box">
+          <span class="no-pos-icon">📊</span>
+          <p class="no-pos-text">No open leveraged positions for <strong>{{ symbol() }}</strong>. Execute a Scalping or Intraday order to start paper trading.</p>
+        </div>
+      } @else {
+        <div class="positions-table-wrapper">
+          <table class="positions-table font-mono">
+            <thead>
+              <tr>
+                <th>Side / Mode</th>
+                <th>Lots / Qty</th>
+                <th>Entry Price</th>
+                <th>Live Price</th>
+                <th>Leverage</th>
+                <th>Margin</th>
+                <th>Stop Loss</th>
+                <th>Take Profit</th>
+                <th>Floating P&L</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (pos of activeSymbolPositions(); track pos.id) {
+                <tr>
+                  <td>
+                    <div class="pos-side-cell">
+                      <span class="side-badge" [class.side-long]="pos.side === 'LONG'" [class.side-short]="pos.side === 'SHORT'">
+                        {{ pos.side }}
+                      </span>
+                      <span class="mode-mini-tag">{{ pos.tradingMode }}</span>
+                    </div>
+                  </td>
+                  <td><strong>{{ pos.quantity }}</strong></td>
+                  <td>{{ formatCurrencySymbol(pos.symbol) }}{{ pos.entryPrice | number:'1.2-4' }}</td>
+                  <td>{{ formatCurrencySymbol(pos.symbol) }}{{ pos.currentPrice | number:'1.2-4' }}</td>
+                  <td><span class="lev-badge">1:{{ pos.leverage }}</span></td>
+                  <td>${{ pos.marginUsed | number:'1.2-2' }}</td>
+                  <td>
+                    @if (pos.stopLoss) {
+                      <span class="sl-tag font-mono text-rose">{{ formatCurrencySymbol(pos.symbol) }}{{ pos.stopLoss | number:'1.2-2' }}</span>
+                    } @else {
+                      <span class="text-dim">—</span>
+                    }
+                  </td>
+                  <td>
+                    @if (pos.takeProfit) {
+                      <span class="tp-tag font-mono text-emerald">{{ formatCurrencySymbol(pos.symbol) }}{{ pos.takeProfit | number:'1.2-2' }}</span>
+                    } @else {
+                      <span class="text-dim">—</span>
+                    }
+                  </td>
+                  <td>
+                    <div class="floating-pnl-cell" [class.text-emerald]="(pos.unrealizedPnl || 0) >= 0" [class.text-rose]="(pos.unrealizedPnl || 0) < 0">
+                      <strong>{{ (pos.unrealizedPnl || 0) >= 0 ? '+' : '' }}${{ pos.unrealizedPnl | number:'1.2-2' }}</strong>
+                      <span class="pnl-roi">({{ (pos.unrealizedPnlPercent || 0) >= 0 ? '+' : '' }}{{ pos.unrealizedPnlPercent | number:'1.2-2' }}%)</span>
+                    </div>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      class="btn-close-pos"
+                      [disabled]="isClosingPositionId() === pos.id"
+                      (click)="closePosition(pos)"
+                      title="Close position at live market price"
+                    >
+                      @if (isClosingPositionId() === pos.id) {
+                        <span class="mini-spinner"></span>
+                        <span>Closing...</span>
+                      } @else {
+                        <span>Close</span>
+                      }
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
 
   <!-- POPULAR INSTRUMENTS QUICK SHORTCUTS -->
   <div class="popular-instruments-section">
@@ -750,137 +864,125 @@
       @for (item of quickShortcuts; track item.symbol) {
         <button
           type="button"
-          class="instrument-chip"
-          [class.active]="item.symbol === symbol()"
+          class="instrument-chip-btn font-mono"
+          [class.active]="symbol() === item.symbol"
           (click)="navigateToStock(item.symbol)"
         >
           <span class="chip-sym">{{ item.symbol }}</span>
-          <span class="chip-name">{{ item.name }}</span>
+          <span class="chip-category">{{ item.category }}</span>
         </button>
       }
     </div>
   </div>
+</div>
 
-  <!-- =========================================================================
-       PRICE ALERT POPUP / MODAL
-       ========================================================================= -->
-  @if (isAlertModalOpen()) {
-    <div class="alert-modal-backdrop" (click)="closeAlertModal()">
-      <div class="alert-modal-dialog" (click)="$event.stopPropagation()">
-        <div class="alert-modal-header">
-          <div class="modal-title-wrap">
-            <div class="alert-icon-circle">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-              </svg>
-            </div>
-            <div>
-              <h3 class="modal-title">Set Price Alert</h3>
-              <span class="modal-subtitle">{{ symbol() }} • {{ companyName() }}</span>
-            </div>
+<!-- =========================================================================
+     PRICE ALERT MODAL
+     ========================================================================= -->
+@if (isAlertModalOpen()) {
+  <div class="modal-backdrop" (click)="closeAlertModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-box">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
           </div>
-          <button type="button" class="modal-close-btn" (click)="closeAlertModal()" title="Close">✕</button>
+          <div>
+            <h3 class="modal-heading">Set Price Alert</h3>
+            <span class="modal-sub">Real-Time Notification Trigger</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="closeAlertModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-instrument-preview font-mono">
+          <div class="preview-sym">{{ symbol() }}</div>
+          <div class="preview-price">
+            <span>Current: </span>
+            <strong>{{ formatCurrencySymbol(symbol()) }}{{ (currentQuote()?.price || 0) | number:'1.2-4' }}</strong>
+          </div>
         </div>
 
-        <div class="alert-modal-body">
-          @if (alertSuccessMessage()) {
-            <div class="alert-feedback-banner success">
-              <span class="check-icon">✓</span>
-              <span>{{ alertSuccessMessage() }}</span>
-            </div>
+        <div class="alert-form-group">
+          <label class="alert-lbl">Trigger Condition</label>
+          <div class="condition-btn-group">
+            <button
+              type="button"
+              class="cond-btn"
+              [class.active]="alertCondition() === 'ABOVE'"
+              (click)="setAlertCondition('ABOVE')"
+            >
+              Price rises ABOVE
+            </button>
+            <button
+              type="button"
+              class="cond-btn"
+              [class.active]="alertCondition() === 'BELOW'"
+              (click)="setAlertCondition('BELOW')"
+            >
+              Price falls BELOW
+            </button>
+          </div>
+        </div>
+
+        <div class="alert-form-group">
+          <label class="alert-lbl">Target Price ({{ formatCurrencySymbol(symbol()) }})</label>
+          <input
+            type="number"
+            class="alert-input font-mono"
+            [ngModel]="alertTargetPrice()"
+            (ngModelChange)="alertTargetPrice.set($event)"
+            step="0.01"
+            min="0.0001"
+            placeholder="Enter target price..."
+          />
+        </div>
+
+        <div class="alert-form-group">
+          <label class="alert-lbl">Notes (Optional)</label>
+          <input
+            type="text"
+            class="alert-input"
+            [ngModel]="alertNotes()"
+            (ngModelChange)="alertNotes.set($event)"
+            placeholder="e.g., Breakout target, take profit level..."
+            maxlength="200"
+          />
+        </div>
+
+        @if (alertErrorMessage()) {
+          <div class="alert-modal-msg error font-mono">
+            ⚠️ {{ alertErrorMessage() }}
+          </div>
+        }
+
+        @if (alertSuccessMessage()) {
+          <div class="alert-modal-msg success font-mono">
+            ✓ {{ alertSuccessMessage() }}
+          </div>
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-modal-cancel" (click)="closeAlertModal()">Cancel</button>
+        <button
+          type="button"
+          class="btn-modal-save"
+          [disabled]="isSavingAlert() || !alertTargetPrice() || alertTargetPrice() <= 0"
+          (click)="saveAlert()"
+        >
+          @if (isSavingAlert()) {
+            <span class="btn-spinner"></span>
+            <span>Saving...</span>
+          } @else {
+            <span>Set Alert</span>
           }
-
-          @if (alertErrorMessage()) {
-            <div class="alert-feedback-banner error">
-              <span class="err-icon">⚠️</span>
-              <span>{{ alertErrorMessage() }}</span>
-            </div>
-          }
-
-          <!-- Current Market Price Reference -->
-          <div class="alert-market-ref">
-            <span class="ref-label">Current Market Price</span>
-            <strong class="ref-val font-mono">
-              {{ formatCurrencySymbol(symbol()) }}{{ currentQuote()?.price != null ? (currentQuote()!.price | number:'1.2-4') : '—' }}
-            </strong>
-          </div>
-
-          <!-- Trigger Condition (Above / Below) -->
-          <div class="modal-form-group">
-            <label class="modal-label">Trigger Condition</label>
-            <div class="condition-segmented">
-              <button
-                type="button"
-                class="cond-btn"
-                [class.active]="alertCondition() === 'ABOVE'"
-                (click)="setAlertCondition('ABOVE')"
-              >
-                <span class="cond-icon">▲</span>
-                <span>Price Rises Above</span>
-              </button>
-              <button
-                type="button"
-                class="cond-btn"
-                [class.active]="alertCondition() === 'BELOW'"
-                (click)="setAlertCondition('BELOW')"
-              >
-                <span class="cond-icon">▼</span>
-                <span>Price Drops Below</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Target Price -->
-          <div class="modal-form-group">
-            <label class="modal-label">Target Alert Price ({{ formatCurrencySymbol(symbol()) }})</label>
-            <div class="modal-input-wrap">
-              <span class="input-currency-prefix font-mono">{{ formatCurrencySymbol(symbol()) }}</span>
-              <input
-                type="number"
-                class="modal-input font-mono"
-                [ngModel]="alertTargetPrice()"
-                (ngModelChange)="alertTargetPrice.set($event)"
-                placeholder="Target Price"
-                step="0.01"
-                min="0.01"
-              />
-            </div>
-          </div>
-
-          <!-- Notes (Optional) -->
-          <div class="modal-form-group">
-            <label class="modal-label">Notes (Optional)</label>
-            <input
-              type="text"
-              class="modal-input"
-              [ngModel]="alertNotes()"
-              (ngModelChange)="alertNotes.set($event)"
-              placeholder="e.g. Breakout target, Stop loss level"
-              maxlength="120"
-            />
-          </div>
-        </div>
-
-        <div class="alert-modal-footer">
-          <button type="button" class="modal-btn-cancel" (click)="closeAlertModal()">
-            Cancel
-          </button>
-          <button
-            type="button"
-            class="modal-btn-save"
-            [disabled]="isSavingAlert() || !alertTargetPrice() || alertTargetPrice() <= 0"
-            (click)="saveAlert()"
-          >
-            @if (isSavingAlert()) {
-              <div class="btn-spinner"></div>
-              <span>Saving Alert...</span>
-            } @else {
-              <span>Set Alert</span>
-            }
-          </button>
-        </div>
+        </button>
       </div>
     </div>
-  }
-</div>
+  </div>
+}

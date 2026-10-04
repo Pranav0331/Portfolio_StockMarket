@@ -145,6 +145,9 @@ public class OrderService {
         BigDecimal quantity = o.getQuantity() != null ? o.getQuantity() : BigDecimal.ZERO;
         BigDecimal totalAmount = execPrice.multiply(quantity).setScale(4, RoundingMode.HALF_UP);
         String tradingMode = o.getTradingMode() != null ? o.getTradingMode().name() : "INTRADAY";
+        String positionSide = o.getPositionSide() != null ? o.getPositionSide().name() : "LONG";
+        Integer leverage = o.getLeverage() != null ? o.getLeverage() : 1;
+        BigDecimal marginUsed = o.getMarginUsed() != null ? o.getMarginUsed() : BigDecimal.ZERO;
 
         return new OrderDto(
                 o.getId(),
@@ -155,6 +158,13 @@ public class OrderService {
                 o.getOrderType() != null ? o.getOrderType().name() : "BUY",
                 o.getOrderStatus() != null ? o.getOrderStatus().name() : "EXECUTED",
                 tradingMode,
+                positionSide,
+                leverage,
+                marginUsed,
+                o.getStopLoss(),
+                o.getTakeProfit(),
+                o.getPositionId(),
+                o.getRealizedPnl(),
                 quantity,
                 price,
                 execPrice,

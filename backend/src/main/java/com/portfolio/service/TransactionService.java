@@ -223,9 +223,15 @@ public class TransactionService {
             }
         }
 
+        String positionSide = t.getPositionSide() != null ? t.getPositionSide().name() : (t.getOrder() != null && t.getOrder().getPositionSide() != null ? t.getOrder().getPositionSide().name() : null);
+        Integer leverage = t.getLeverage() != null ? t.getLeverage() : (t.getOrder() != null && t.getOrder().getLeverage() != null ? t.getOrder().getLeverage() : 1);
+        BigDecimal marginUsed = t.getMarginUsed() != null ? t.getMarginUsed() : (t.getOrder() != null && t.getOrder().getMarginUsed() != null ? t.getOrder().getMarginUsed() : BigDecimal.ZERO);
+        Long positionId = t.getPositionId() != null ? t.getPositionId() : (t.getOrder() != null ? t.getOrder().getPositionId() : null);
+
         return new TransactionDto(
                 t.getId(),
                 orderId,
+                positionId,
                 symbol,
                 companyName,
                 exchange,
@@ -233,6 +239,9 @@ public class TransactionService {
                 t.getTransactionType() != null ? t.getTransactionType().name() : "BUY",
                 status,
                 tradingMode,
+                positionSide,
+                leverage,
+                marginUsed,
                 quantity,
                 executionPrice,
                 totalAmount,

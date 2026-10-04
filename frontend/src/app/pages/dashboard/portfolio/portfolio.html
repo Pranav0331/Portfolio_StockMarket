@@ -191,6 +191,126 @@
       </div>
     </div>
 
+    <!-- Position Action Toast -->
+    <div class="position-toast" *ngIf="positionActionMsg() as msg" [ngClass]="msg.type === 'success' ? 'toast-success' : 'toast-error'">
+      <span>{{ msg.text }}</span>
+      <button type="button" class="toast-close" (click)="positionActionMsg.set(null)">&times;</button>
+    </div>
+
+    <!-- Open Leveraged Positions Section -->
+    <div class="positions-section glass-card" *ngIf="openPositions().length > 0">
+      <div class="section-header">
+        <div>
+          <div class="title-with-badge">
+            <h2 class="section-title">Open Leveraged Positions ({{ openPositions().length }})</h2>
+            <span class="live-pulse-badge">LIVE FLOATING P&L</span>
+          </div>
+          <span class="section-subtitle">
+            Total Margin Locked: <strong>${{ getTotalMarginUsed() | number:'1.2-2' }}</strong> | 
+            Floating P&L: <strong [ngClass]="getTotalFloatingPnl() >= 0 ? 'text-profit' : 'text-loss'">
+              {{ getTotalFloatingPnl() >= 0 ? '+' : '' }}${{ getTotalFloatingPnl() | number:'1.2-2' }}
+            </strong>
+          </span>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="positions-table">
+          <thead>
+            <tr>
+              <th class="th-symbol">Instrument</th>
+              <th class="th-side">Side / Mode</th>
+              <th class="th-num">Qty / Lot</th>
+              <th class="th-num">Entry Price</th>
+              <th class="th-num">Current Price</th>
+              <th class="th-num">Margin Used</th>
+              <th class="th-num">SL / TP</th>
+              <th class="th-num">Floating P&L</th>
+              <th class="th-action">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let pos of openPositions()" class="position-row" (click)="navigateToStock(pos.symbol)">
+              <!-- Symbol -->
+              <td class="td-symbol">
+                <div class="symbol-info">
+                  <div class="symbol-code-wrap">
+                    <span class="symbol-code">{{ pos.symbol }}</span>
+                    <span class="exchange-badge">{{ pos.exchange }}</span>
+                  </div>
+                  <span class="company-name" [title]="pos.companyName">{{ pos.companyName }}</span>
+                </div>
+              </td>
+
+              <!-- Side / Mode / Leverage -->
+              <td class="td-side">
+                <div class="side-cluster">
+                  <span class="pos-side-badge" [ngClass]="pos.side === 'LONG' ? 'side-long' : 'side-short'">
+                    {{ pos.side }}
+                  </span>
+                  <span class="pos-lev-badge font-mono">1:{{ pos.leverage }}</span>
+                  <span class="pos-mode-badge">{{ pos.tradingMode }}</span>
+                </div>
+              </td>
+
+              <!-- Quantity -->
+              <td class="td-num font-mono">
+                <strong>{{ pos.quantity | number:'1.0-4' }}</strong>
+              </td>
+
+              <!-- Entry Price -->
+              <td class="td-num font-mono">
+                ${{ pos.entryPrice | number:'1.2-4' }}
+              </td>
+
+              <!-- Current Price -->
+              <td class="td-num font-mono">
+                <span class="live-price">${{ pos.currentPrice | number:'1.2-4' }}</span>
+              </td>
+
+              <!-- Margin Used -->
+              <td class="td-num font-mono">
+                <span class="margin-val">${{ pos.marginUsed | number:'1.2-2' }}</span>
+              </td>
+
+              <!-- SL / TP -->
+              <td class="td-num font-mono">
+                <div class="sltp-display">
+                  <span class="sl-tag" *ngIf="pos.stopLoss">SL: ${{ pos.stopLoss | number:'1.2-2' }}</span>
+                  <span class="tp-tag" *ngIf="pos.takeProfit">TP: ${{ pos.takeProfit | number:'1.2-2' }}</span>
+                  <span class="no-sltp" *ngIf="!pos.stopLoss && !pos.takeProfit">—</span>
+                </div>
+              </td>
+
+              <!-- Floating P&L -->
+              <td class="td-num font-mono">
+                <div class="pnl-cell" [ngClass]="(pos.unrealizedPnl || 0) >= 0 ? 'text-profit' : 'text-loss'">
+                  <span class="pnl-amount">
+                    {{ (pos.unrealizedPnl || 0) >= 0 ? '+' : '' }}${{ (pos.unrealizedPnl || 0) | number:'1.2-2' }}
+                  </span>
+                  <span class="pnl-sub">
+                    ({{ (pos.unrealizedPnlPercent || 0) >= 0 ? '+' : '' }}{{ (pos.unrealizedPnlPercent || 0) | number:'1.2-2' }}%)
+                  </span>
+                </div>
+              </td>
+
+              <!-- Action: Close Position Button -->
+              <td class="td-action" (click)="$event.stopPropagation()">
+                <button 
+                  type="button" 
+                  class="btn-close-pos" 
+                  [disabled]="closingPositionId() === pos.id"
+                  (click)="closePosition(pos)"
+                  title="Close position and realize P&L">
+                  {{ closingPositionId() === pos.id ? 'Closing...' : 'Close' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Holdings Section -->
     <div class="holdings-section glass-card">
       <div class="section-header">

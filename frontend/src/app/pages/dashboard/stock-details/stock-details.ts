@@ -17,6 +17,8 @@ import {
   createChart,
   IChartApi,
   ISeriesApi,
+  IPriceLine,
+  LineStyle,
   CandlestickSeries,
   LineSeries,
   AreaSeries,
@@ -33,7 +35,14 @@ import { AuthService } from '../../../services/auth.service';
 import { TradingService } from '../../../services/trading.service';
 import { AlertService } from '../../../services/alert.service';
 import { StockQuote, Candle } from '../../../models/market.model';
-import { TradeResponse, VirtualWallet, UserHolding, TradingMode } from '../../../models/trading.model';
+import {
+  TradeResponse,
+  VirtualWallet,
+  UserHolding,
+  TradingMode,
+  PositionSide,
+  PositionItem
+} from '../../../models/trading.model';
 import { AlertConditionType } from '../../../models/alert.model';
 
 export type ChartType = 'candles' | 'line' | 'area';
@@ -130,46 +139,134 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly alertSuccessMessage = signal<string | null>(null);
 
   // =========================================================================
-  // SIMULATED TRADING STATE
+  // EXNESS-STYLE SIMULATED TRADING STATE
   // =========================================================================
-  readonly tradeType = signal<'BUY' | 'SELL'>('BUY');
+  readonly tradeSide = signal<PositionSide>('LONG');
   readonly tradeQuantity = signal<number>(1);
   readonly selectedTradingMode = signal<TradingMode>('INTRADAY');
+  readonly selectedLeverage = signal<number>(10);
+  readonly stopLossPrice = signal<number | null>(null);
+  readonly takeProfitPrice = signal<number | null>(null);
+
   readonly isSubmittingTrade = signal<boolean>(false);
+  readonly isClosingPositionId = signal<number | null>(null);
   readonly tradeSuccessReceipt = signal<TradeResponse | null>(null);
   readonly tradeErrorMessage = signal<string | null>(null);
+
   readonly userWallet = signal<VirtualWallet | null>(null);
   readonly userHolding = signal<UserHolding | null>(null);
+  readonly userPositions = signal<PositionItem[]>([]);
+
+  readonly leverageOptions = [1, 2, 5, 10, 20, 50, 100];
 
   readonly tradingModesList: { mode: TradingMode; label: string; desc: string; badge: string; icon: string }[] = [
-    { mode: 'SCALPING', label: 'Scalping', desc: 'Fast momentum execution (1m/5m/15m charts, quick trades)', badge: '1m - 15m', icon: '⚡' },
-    { mode: 'INTRADAY', label: 'Intraday', desc: 'Same-day execution & positions closed within session', badge: 'Same Day', icon: '⏱️' },
-    { mode: 'SWING', label: 'Swing', desc: 'Multi-day momentum and trend holding across sessions', badge: 'Multi-Day', icon: '📈' },
-    { mode: 'LONG_TERM', label: 'Long Term', desc: 'Fundamental investment and long-duration wealth holding', badge: 'Long Hold', icon: '💎' }
+    { mode: 'SCALPING', label: 'Scalping', desc: '1m / 5m / 15m momentum trades with dynamic leverage & tight execution', badge: '1m - 15m', icon: '⚡' },
+    { mode: 'INTRADAY', label: 'Intraday', desc: '5m / 15m / 30m / 1H same-day trading with leverage up to 1:100', badge: 'Same Day', icon: '⏱️' },
+    { mode: 'SWING', label: 'Swing', desc: 'Multi-day momentum and trend holding across sessions (Spot 1:1)', badge: 'Multi-Day', icon: '📈' },
+    { mode: 'LONG_TERM', label: 'Long Term', desc: 'Fundamental investment and long-duration wealth holding (Spot 1:1)', badge: 'Long Hold', icon: '💎' }
   ];
 
   readonly currentTradingModeInfo = computed(() => {
     return this.tradingModesList.find(m => m.mode === this.selectedTradingMode()) || this.tradingModesList[1];
   });
 
-  // Estimated Total Amount Computed
-  readonly estimatedTradeTotal = computed(() => {
+  readonly isLeverageEnabled = computed(() => {
+    return this.selectedTradingMode() === 'SCALPING' || this.selectedTradingMode() === 'INTRADAY';
+  });
+
+  readonly effectiveLeverage = computed(() => {
+    return this.isLeverageEnabled() ? this.selectedLeverage() : 1;
+  });
+
+  // Position Value = Quantity * Entry Price
+  readonly positionValue = computed(() => {
     const price = this.currentQuote()?.price ?? 0;
     const qty = this.tradeQuantity() ?? 0;
     return price * qty;
   });
 
+  // Required Margin = Position Value / Leverage
+  readonly requiredMargin = computed(() => {
+    const lev = this.effectiveLeverage();
+    return lev > 0 ? this.positionValue() / lev : this.positionValue();
+  });
+
   // Validation Computed Properties
-  readonly hasInsufficientBalance = computed(() => {
-    if (this.tradeType() !== 'BUY') return false;
+  readonly hasInsufficientMargin = computed(() => {
     const balance = this.userWallet()?.cashBalance ?? 0;
-    return this.estimatedTradeTotal() > balance;
+    return this.requiredMargin() > balance;
   });
 
   readonly hasInsufficientHoldings = computed(() => {
-    if (this.tradeType() !== 'SELL') return false;
+    if (this.tradeSide() !== 'SHORT' || this.isLeverageEnabled()) return false;
     const owned = this.userHolding()?.quantity ?? 0;
     return (this.tradeQuantity() ?? 0) > owned;
+  });
+
+  // SL / TP projected P&L calculations
+  readonly slProjection = computed(() => {
+    const sl = this.stopLossPrice();
+    const curP = this.currentQuote()?.price;
+    const qty = this.tradeQuantity();
+    const margin = this.requiredMargin();
+    if (!sl || !curP || !qty || sl <= 0 || curP <= 0 || margin <= 0) return null;
+
+    let pnl = 0;
+    if (this.tradeSide() === 'LONG') {
+      pnl = (sl - curP) * qty;
+    } else {
+      pnl = (curP - sl) * qty;
+    }
+    const roi = (pnl / margin) * 100;
+    return { pnl, roi, valid: this.tradeSide() === 'LONG' ? sl < curP : sl > curP };
+  });
+
+  readonly tpProjection = computed(() => {
+    const tp = this.takeProfitPrice();
+    const curP = this.currentQuote()?.price;
+    const qty = this.tradeQuantity();
+    const margin = this.requiredMargin();
+    if (!tp || !curP || !qty || tp <= 0 || curP <= 0 || margin <= 0) return null;
+
+    let pnl = 0;
+    if (this.tradeSide() === 'LONG') {
+      pnl = (tp - curP) * qty;
+    } else {
+      pnl = (curP - tp) * qty;
+    }
+    const roi = (pnl / margin) * 100;
+    return { pnl, roi, valid: this.tradeSide() === 'LONG' ? tp > curP : tp < curP };
+  });
+
+  // Active open positions for current symbol with live floating P&L
+  readonly activeSymbolPositions = computed(() => {
+    const curSym = this.symbol();
+    const curP = this.currentQuote()?.price;
+    return this.userPositions()
+      .filter(p => p.symbol === curSym && p.status === 'OPEN')
+      .map(p => {
+        const livePrice = curP && curP > 0 ? curP : p.entryPrice;
+        let floatingPnl = 0;
+        if (p.side === 'LONG') {
+          floatingPnl = (livePrice - p.entryPrice) * p.quantity;
+        } else {
+          floatingPnl = (p.entryPrice - livePrice) * p.quantity;
+        }
+        const margin = p.marginUsed > 0 ? p.marginUsed : (p.entryPrice * p.quantity);
+        const floatingPnlPercent = margin > 0 ? (floatingPnl / margin) * 100 : 0;
+
+        return {
+          ...p,
+          currentPrice: livePrice,
+          unrealizedPnl: floatingPnl,
+          unrealizedPnlPercent: floatingPnlPercent
+        };
+      });
+  });
+
+  // Total floating P&L across symbol positions
+  readonly totalSymbolFloatingPnl = computed(() => {
+    return this.activeSymbolPositions().reduce((acc, p) => acc + (p.unrealizedPnl || 0), 0);
   });
 
   // Quick navigation chips
@@ -190,6 +287,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   private lineSeries: ISeriesApi<'Line'> | null = null;
   private areaSeries: ISeriesApi<'Area'> | null = null;
   private volumeSeries: ISeriesApi<'Histogram'> | null = null;
+  private chartPriceLines: IPriceLine[] = [];
   private resizeObserver: ResizeObserver | null = null;
   private paramSub?: Subscription;
 
@@ -202,6 +300,15 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
       if (container && data && data.length > 0) {
         this.initOrUpdateChart(container, data, chartType);
+      }
+    });
+
+    // Effect to sync price lines on chart when open positions or active quote changes
+    effect(() => {
+      const positions = this.activeSymbolPositions();
+      const quote = this.currentQuote();
+      if (this.candlestickSeries || this.lineSeries) {
+        this.updateChartPriceLines(positions);
       }
     });
   }
@@ -246,6 +353,8 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     this.isRateLimited.set(false);
     this.tradeSuccessReceipt.set(null);
     this.tradeErrorMessage.set(null);
+    this.stopLossPrice.set(null);
+    this.takeProfitPrice.set(null);
 
     // Derive display metadata
     if (cleanSym.includes('NIFTY') || cleanSym.includes('SENSEX')) {
@@ -262,8 +371,17 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       this.exchange.set('NASDAQ');
     }
 
+    // Default interval recommendations based on initial mode
+    if (this.selectedTradingMode() === 'SCALPING') {
+      this.currentInterval.set('1min');
+    } else if (this.selectedTradingMode() === 'INTRADAY') {
+      this.currentInterval.set('5min');
+    }
+
+    // Fetch live quote and historical candle series
     this.fetchQuote(cleanSym);
-    this.fetchCandles(cleanSym, this.currentInterval());
+    const opt = this.intervals.find(i => i.value === this.currentInterval());
+    this.fetchCandlesByInterval(cleanSym, this.currentInterval(), opt ? opt.outputsize : 100);
 
     if (this.authService.isAuthenticated()) {
       this.refreshTradingState();
@@ -272,14 +390,13 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
   fetchQuote(symbol: string): void {
     this.isLoadingQuote.set(true);
-
     this.marketService.getQuote(symbol).subscribe({
       next: (quote) => {
-        this.isLoadingQuote.set(false);
         this.currentQuote.set(quote);
-        if (quote.name) {
+        if (quote.name && quote.name !== symbol) {
           this.companyName.set(quote.name);
         }
+        this.isLoadingQuote.set(false);
       },
       error: (err) => {
         this.isLoadingQuote.set(false);
@@ -288,61 +405,17 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     });
   }
 
-  fetchCandles(symbol: string, timeframeOrInterval?: TimeframeRange | StockDetailInterval): void {
-    let interval: StockDetailInterval = this.currentInterval();
-    let outputsize = 100;
-
-    if (timeframeOrInterval) {
-      if (['1D', '1W', '1M', '3M', '6M', '1Y'].includes(timeframeOrInterval)) {
-        const tf = timeframeOrInterval as TimeframeRange;
-        this.currentTimeframe.set(tf);
-        const params = this.getApiParamsForTimeframe(tf);
-        interval = params.interval as StockDetailInterval;
-        outputsize = params.outputsize;
-        this.currentInterval.set(interval);
-      } else {
-        interval = timeframeOrInterval as StockDetailInterval;
-        this.currentInterval.set(interval);
-        const opt = this.intervals.find(i => i.value === interval);
-        outputsize = opt ? opt.outputsize : 100;
-      }
-    } else {
-      const opt = this.intervals.find(i => i.value === interval);
-      outputsize = opt ? opt.outputsize : 100;
-    }
-
-    this.fetchCandlesByInterval(symbol, interval, outputsize);
-  }
-
-  fetchCandlesByInterval(symbol: string, interval: StockDetailInterval, outputsize: number = 100): void {
+  fetchCandlesByInterval(symbol: string, interval: StockDetailInterval, outputsize: number): void {
     this.isLoadingCandles.set(true);
+    this.errorMessage.set(null);
 
     this.marketService.getCandles(symbol, interval, outputsize).subscribe({
-      next: (series) => {
+      next: (res) => {
+        this.candleData.set(res?.candles || []);
         this.isLoadingCandles.set(false);
-        if (series && series.candles && series.candles.length > 0) {
-          // Sort chronologically and deduplicate timestamps to ensure clean and correct rendering
-          const seenTimes = new Set<number>();
-          const sortedCandles = [...series.candles]
-            .filter(c => c && c.timestamp != null && !isNaN(c.timestamp))
-            .sort((a, b) => a.timestamp - b.timestamp)
-            .filter(c => {
-              if (seenTimes.has(c.timestamp)) return false;
-              seenTimes.add(c.timestamp);
-              return true;
-            });
-
-          this.candleData.set(sortedCandles);
-          if (series.exchange) this.exchange.set(series.exchange);
-          if (series.type) this.instrumentType.set(series.type);
-        } else {
-          this.candleData.set([]);
-          this.errorMessage.set('Data unavailable');
-        }
       },
       error: (err) => {
         this.isLoadingCandles.set(false);
-        this.candleData.set([]);
         this.handleError(err, symbol);
       }
     });
@@ -358,6 +431,11 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     this.tradingService.getHoldingForSymbol(sym).subscribe({
       next: (holding) => this.userHolding.set(holding),
       error: () => this.userHolding.set(null)
+    });
+
+    this.tradingService.getPositions(undefined, 'OPEN').subscribe({
+      next: (positions) => this.userPositions.set(positions || []),
+      error: () => this.userPositions.set([])
     });
   }
 
@@ -393,7 +471,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   }
 
   // =========================================================================
-  // LIGHTWEIGHT CHARTS RENDERING
+  // LIGHTWEIGHT CHARTS RENDERING & POSITION OVERLAYS
   // =========================================================================
 
   formatBarDateTime(timeVal: any): string {
@@ -457,13 +535,13 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
             vertLine: {
               width: 1,
               color: '#38bdf8',
-              style: 3,
+              style: LineStyle.Dashed,
               labelBackgroundColor: '#0284c7'
             },
             horzLine: {
               width: 1,
               color: '#38bdf8',
-              style: 3,
+              style: LineStyle.Dashed,
               labelBackgroundColor: '#0284c7'
             }
           },
@@ -489,7 +567,6 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
           }
         });
 
-        // Track crosshair move for dynamic OHLC display
         this.chart.subscribeCrosshairMove((param) => {
           if (!param.time || !param.point) {
             const latest = candles[candles.length - 1];
@@ -545,7 +622,6 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         }
       }
 
-      // Convert Candle Data
       const candleData: CandlestickData<Time>[] = candles.map(c => ({
         time: (c.timestamp as unknown) as Time,
         open: c.open,
@@ -633,9 +709,224 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       }
 
       this.chart.timeScale().fitContent();
+      this.updateChartPriceLines(this.activeSymbolPositions());
     } catch (e) {
-      // Ignore headless canvas error
+      // Headless or canvas error catch
     }
+  }
+
+  private updateChartPriceLines(positions: any[]): void {
+    const activeSeries = this.candlestickSeries || this.lineSeries || this.areaSeries;
+    if (!activeSeries) return;
+
+    try {
+      // Remove old price lines
+      for (const pl of this.chartPriceLines) {
+        try {
+          activeSeries.removePriceLine(pl);
+        } catch {}
+      }
+      this.chartPriceLines = [];
+
+      // Add price lines for active positions
+      for (const pos of positions) {
+        if (!pos || pos.status !== 'OPEN') continue;
+
+        const isLong = pos.side === 'LONG';
+        const pnlStr = (pos.unrealizedPnl || 0) >= 0 ? `+$${(pos.unrealizedPnl || 0).toFixed(2)}` : `-$${Math.abs(pos.unrealizedPnl || 0).toFixed(2)}`;
+        const label = `${pos.side} ${pos.quantity} @ ${pos.entryPrice.toFixed(2)} | P&L: ${pnlStr} (1:${pos.leverage}x)`;
+
+        // Entry Price Line
+        const entryLine = activeSeries.createPriceLine({
+          price: pos.entryPrice,
+          color: isLong ? '#10b981' : '#f43f5e',
+          lineWidth: 2,
+          lineStyle: LineStyle.Solid,
+          axisLabelVisible: true,
+          title: label
+        });
+        this.chartPriceLines.push(entryLine);
+
+        // Stop Loss Line
+        if (pos.stopLoss && pos.stopLoss > 0) {
+          const slLine = activeSeries.createPriceLine({
+            price: pos.stopLoss,
+            color: '#ef4444',
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: `SL @ ${pos.stopLoss.toFixed(2)}`
+          });
+          this.chartPriceLines.push(slLine);
+        }
+
+        // Take Profit Line
+        if (pos.takeProfit && pos.takeProfit > 0) {
+          const tpLine = activeSeries.createPriceLine({
+            price: pos.takeProfit,
+            color: '#10b981',
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: `TP @ ${pos.takeProfit.toFixed(2)}`
+          });
+          this.chartPriceLines.push(tpLine);
+        }
+      }
+    } catch {}
+  }
+
+  // =========================================================================
+  // SIMULATED TRADING ACTIONS
+  // =========================================================================
+
+  setTradeSide(side: PositionSide): void {
+    this.tradeSide.set(side);
+    this.tradeErrorMessage.set(null);
+    this.tradeSuccessReceipt.set(null);
+  }
+
+  setTradingMode(mode: TradingMode): void {
+    this.selectedTradingMode.set(mode);
+    if (mode === 'SCALPING') {
+      this.currentInterval.set('1min');
+      this.fetchCandlesByInterval(this.symbol(), '1min', 100);
+    } else if (mode === 'INTRADAY') {
+      this.currentInterval.set('5min');
+      this.fetchCandlesByInterval(this.symbol(), '5min', 100);
+    }
+  }
+
+  setLeverage(lev: number): void {
+    this.selectedLeverage.set(lev);
+  }
+
+  setTradeQuantity(qty: number): void {
+    const val = Math.max(0.0001, Number(qty) || 1);
+    this.tradeQuantity.set(val);
+  }
+
+  adjustQuantity(delta: number): void {
+    const cur = this.tradeQuantity() || 1;
+    const nextVal = Math.max(0.0001, Number((cur + delta).toFixed(4)));
+    this.tradeQuantity.set(nextVal);
+  }
+
+  setQuickLot(lot: number): void {
+    this.tradeQuantity.set(lot);
+  }
+
+  setMaxQuantity(): void {
+    const currentPrice = this.currentQuote()?.price;
+    if (!currentPrice || currentPrice <= 0) return;
+
+    const balance = this.userWallet()?.cashBalance ?? 0;
+    const leverage = this.effectiveLeverage();
+    const maxAffordable = (balance * leverage) / currentPrice;
+    this.tradeQuantity.set(Number(Math.max(0.01, maxAffordable).toFixed(2)));
+  }
+
+  setQuickSlPercent(percent: number): void {
+    const curP = this.currentQuote()?.price;
+    if (!curP) return;
+
+    if (this.tradeSide() === 'LONG') {
+      const sl = curP * (1 - percent / 100);
+      this.stopLossPrice.set(Number(sl.toFixed(2)));
+    } else {
+      const sl = curP * (1 + percent / 100);
+      this.stopLossPrice.set(Number(sl.toFixed(2)));
+    }
+  }
+
+  setQuickTpPercent(percent: number): void {
+    const curP = this.currentQuote()?.price;
+    if (!curP) return;
+
+    if (this.tradeSide() === 'LONG') {
+      const tp = curP * (1 + percent / 100);
+      this.takeProfitPrice.set(Number(tp.toFixed(2)));
+    } else {
+      const tp = curP * (1 - percent / 100);
+      this.takeProfitPrice.set(Number(tp.toFixed(2)));
+    }
+  }
+
+  submitTrade(): void {
+    if (!this.authService.isAuthenticated()) {
+      this.tradeErrorMessage.set('Please log in to execute simulated trades.');
+      return;
+    }
+
+    const qty = this.tradeQuantity();
+    if (!qty || qty <= 0) {
+      this.tradeErrorMessage.set('Quantity must be greater than zero.');
+      return;
+    }
+
+    const sym = this.symbol();
+    const mode = this.selectedTradingMode();
+    const side = this.tradeSide();
+    const leverage = this.effectiveLeverage();
+    const sl = this.stopLossPrice() || undefined;
+    const tp = this.takeProfitPrice() || undefined;
+
+    this.isSubmittingTrade.set(true);
+    this.tradeErrorMessage.set(null);
+    this.tradeSuccessReceipt.set(null);
+
+    const action$ = side === 'LONG'
+      ? this.tradingService.buy({
+          symbol: sym,
+          quantity: qty,
+          tradingMode: mode,
+          side: 'LONG',
+          leverage: leverage,
+          stopLoss: sl,
+          takeProfit: tp
+        })
+      : this.tradingService.sell({
+          symbol: sym,
+          quantity: qty,
+          tradingMode: mode,
+          side: 'SHORT',
+          leverage: leverage,
+          stopLoss: sl,
+          takeProfit: tp
+        });
+
+    action$.subscribe({
+      next: (receipt) => {
+        this.isSubmittingTrade.set(false);
+        this.tradeSuccessReceipt.set(receipt);
+        this.refreshTradingState();
+      },
+      error: (err) => {
+        this.isSubmittingTrade.set(false);
+        const errMsg = err.error?.message || err.message || 'Trade execution failed';
+        this.tradeErrorMessage.set(errMsg);
+      }
+    });
+  }
+
+  closePosition(pos: PositionItem): void {
+    if (!pos || !pos.id) return;
+
+    this.isClosingPositionId.set(pos.id);
+    this.tradingService.closePosition(pos.id).subscribe({
+      next: () => {
+        this.isClosingPositionId.set(null);
+        this.refreshTradingState();
+      },
+      error: (err) => {
+        this.isClosingPositionId.set(null);
+        this.tradeErrorMessage.set(err.error?.message || err.message || 'Failed to close position');
+      }
+    });
+  }
+
+  dismissTradeSuccess(): void {
+    this.tradeSuccessReceipt.set(null);
   }
 
   // =========================================================================
@@ -696,80 +987,6 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         this.alertErrorMessage.set(err.error?.message || err.message || 'Failed to create price alert');
       }
     });
-  }
-
-  // =========================================================================
-  // SIMULATED TRADING ACTIONS
-  // =========================================================================
-
-  setTradeType(type: 'BUY' | 'SELL'): void {
-    this.tradeType.set(type);
-    this.tradeErrorMessage.set(null);
-    this.tradeSuccessReceipt.set(null);
-  }
-
-  setTradeQuantity(qty: number): void {
-    const val = Math.max(1, Math.floor(qty || 1));
-    this.tradeQuantity.set(val);
-  }
-
-  adjustQuantity(delta: number): void {
-    const nextVal = Math.max(1, (this.tradeQuantity() || 1) + delta);
-    this.tradeQuantity.set(nextVal);
-  }
-
-  setMaxQuantity(): void {
-    const currentPrice = this.currentQuote()?.price;
-    if (!currentPrice || currentPrice <= 0) return;
-
-    if (this.tradeType() === 'BUY') {
-      const balance = this.userWallet()?.cashBalance ?? 0;
-      const maxAffordable = Math.floor(balance / currentPrice);
-      this.tradeQuantity.set(Math.max(1, maxAffordable));
-    } else {
-      const owned = this.userHolding()?.quantity ?? 0;
-      this.tradeQuantity.set(Math.max(1, Math.floor(owned)));
-    }
-  }
-
-  submitTrade(): void {
-    if (!this.authService.isAuthenticated()) {
-      this.tradeErrorMessage.set('Please log in to execute simulated trades.');
-      return;
-    }
-
-    const qty = this.tradeQuantity();
-    if (!qty || qty <= 0) {
-      this.tradeErrorMessage.set('Quantity must be greater than zero.');
-      return;
-    }
-
-    const sym = this.symbol();
-    const mode = this.selectedTradingMode();
-    this.isSubmittingTrade.set(true);
-    this.tradeErrorMessage.set(null);
-    this.tradeSuccessReceipt.set(null);
-
-    const action$ = this.tradeType() === 'BUY'
-      ? this.tradingService.buy({ symbol: sym, quantity: qty, tradingMode: mode })
-      : this.tradingService.sell({ symbol: sym, quantity: qty, tradingMode: mode });
-
-    action$.subscribe({
-      next: (receipt) => {
-        this.isSubmittingTrade.set(false);
-        this.tradeSuccessReceipt.set(receipt);
-        this.refreshTradingState();
-      },
-      error: (err) => {
-        this.isSubmittingTrade.set(false);
-        const errMsg = err.error?.message || err.message || 'Trade execution failed';
-        this.tradeErrorMessage.set(errMsg);
-      }
-    });
-  }
-
-  dismissTradeSuccess(): void {
-    this.tradeSuccessReceipt.set(null);
   }
 
   // =========================================================================

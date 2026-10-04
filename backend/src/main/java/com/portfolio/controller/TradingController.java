@@ -1,10 +1,8 @@
 package com.portfolio.controller;
 
 import com.portfolio.dto.market.StockQuoteDto;
-import com.portfolio.dto.trading.TradeRequestDto;
-import com.portfolio.dto.trading.TradeResponseDto;
-import com.portfolio.dto.trading.UserHoldingDto;
-import com.portfolio.dto.trading.VirtualWalletDto;
+import com.portfolio.dto.trading.*;
+import com.portfolio.entity.enums.PositionStatus;
 import com.portfolio.security.UserPrincipal;
 import com.portfolio.service.TradingService;
 import jakarta.validation.Valid;
@@ -50,6 +48,46 @@ public class TradingController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/positions")
+    public ResponseEntity<List<PositionDto>> getPositions(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestParam(required = false) String symbol,
+            @RequestParam(required = false) PositionStatus status
+    ) {
+        if (userPrincipal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User must be authenticated to view positions");
+        }
+        List<PositionDto> positions = tradingService.getUserPositions(userPrincipal.getId(), symbol, status);
+        return ResponseEntity.ok(positions);
+    }
+
+    @PostMapping("/positions/{id}/close")
+    public ResponseEntity<PositionDto> closePosition(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long id,
+            @RequestBody(required = false) ClosePositionRequestDto request
+    ) {
+        if (userPrincipal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User must be authenticated to close position");
+        }
+        java.math.BigDecimal qty = request != null ? request.quantity() : null;
+        PositionDto closedPosition = tradingService.closePosition(userPrincipal.getId(), id, qty);
+        return ResponseEntity.ok(closedPosition);
+    }
+
+    @PutMapping("/positions/{id}/sl-tp")
+    public ResponseEntity<PositionDto> updateSlTp(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateSlTpRequestDto request
+    ) {
+        if (userPrincipal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User must be authenticated to update SL/TP");
+        }
+        PositionDto updated = tradingService.updatePositionSlTp(userPrincipal.getId(), id, request);
+        return ResponseEntity.ok(updated);
+    }
+
     @GetMapping("/wallet")
     public ResponseEntity<VirtualWalletDto> getWallet(
             @AuthenticationPrincipal UserPrincipal userPrincipal
@@ -64,7 +102,7 @@ public class TradingController {
     @PostMapping("/wallet/deposit")
     public ResponseEntity<VirtualWalletDto> depositCash(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @Valid @RequestBody com.portfolio.dto.trading.DepositRequestDto request
+            @Valid @RequestBody DepositRequestDto request
     ) {
         if (userPrincipal == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User must be authenticated to deposit funds");
@@ -76,7 +114,7 @@ public class TradingController {
     @PostMapping("/wallet/reset")
     public ResponseEntity<VirtualWalletDto> resetBalance(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @RequestBody(required = false) com.portfolio.dto.trading.ResetBalanceRequestDto request
+            @RequestBody(required = false) ResetBalanceRequestDto request
     ) {
         if (userPrincipal == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User must be authenticated to reset balance");

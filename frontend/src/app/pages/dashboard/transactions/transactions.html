@@ -228,12 +228,13 @@
         <thead>
           <tr>
             <th class="th-date">Execution Time</th>
-            <th class="th-type">Type</th>
+            <th class="th-type">Side / Type</th>
             <th class="th-mode">Trading Mode</th>
             <th class="th-symbol">Instrument</th>
             <th class="th-id">Tx / Order ID</th>
             <th class="th-num">Qty</th>
             <th class="th-num">Executed Price</th>
+            <th class="th-num">Margin</th>
             <th class="th-num">Total Amount</th>
             <th class="th-num">P&L ($ / %)</th>
             <th class="th-status">Status</th>
@@ -250,18 +251,28 @@
               </div>
             </td>
 
-            <!-- BUY / SELL Type -->
+            <!-- BUY / SELL Type + Side -->
             <td class="td-type">
-              <span class="type-badge" [ngClass]="tx.type === 'BUY' ? 'badge-buy' : 'badge-sell'">
-                {{ tx.type }}
-              </span>
+              <div class="type-cluster">
+                <span class="type-badge" [ngClass]="tx.type === 'BUY' ? 'badge-buy' : 'badge-sell'">
+                  {{ tx.type }}
+                </span>
+                <span *ngIf="tx.positionSide" class="side-mini-tag" [ngClass]="tx.positionSide === 'LONG' ? 'side-long' : 'side-short'">
+                  {{ tx.positionSide }}
+                </span>
+              </div>
             </td>
 
-            <!-- Trading Mode -->
+            <!-- Trading Mode & Leverage -->
             <td class="td-mode">
-              <span class="trading-mode-badge" [ngClass]="getTradingModeBadgeClass(tx.tradingMode)">
-                {{ getTradingModeLabel(tx.tradingMode) }}
-              </span>
+              <div class="mode-stack">
+                <span class="trading-mode-badge" [ngClass]="getTradingModeBadgeClass(tx.tradingMode)">
+                  {{ getTradingModeLabel(tx.tradingMode) }}
+                </span>
+                <span *ngIf="tx.leverage && tx.leverage > 1" class="lev-mini-badge font-mono">
+                  1:{{ tx.leverage }}
+                </span>
+              </div>
             </td>
 
             <!-- Instrument Symbol & Name -->
@@ -291,6 +302,16 @@
             <!-- Executed Price -->
             <td class="td-num font-mono">
               {{ getCurrencySymbol(tx.currency) }}{{ tx.executionPrice | number:'1.2-4' }}
+            </td>
+
+            <!-- Margin Used -->
+            <td class="td-num font-mono">
+              <span class="margin-text" *ngIf="tx.marginUsed && tx.marginUsed > 0; else noTxMargin">
+                ${{ tx.marginUsed | number:'1.2-2' }}
+              </span>
+              <ng-template #noTxMargin>
+                <span class="text-dim">—</span>
+              </ng-template>
             </td>
 
             <!-- Total Amount -->

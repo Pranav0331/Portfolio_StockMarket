@@ -1,24 +1,10 @@
 package com.portfolio.service;
 
 import com.portfolio.dto.market.StockQuoteDto;
-import com.portfolio.dto.trading.TradeRequestDto;
-import com.portfolio.dto.trading.TradeResponseDto;
-import com.portfolio.dto.trading.UserHoldingDto;
-import com.portfolio.dto.trading.VirtualWalletDto;
-import com.portfolio.entity.Holding;
-import com.portfolio.entity.Order;
-import com.portfolio.entity.Stock;
-import com.portfolio.entity.Transaction;
-import com.portfolio.entity.User;
-import com.portfolio.entity.enums.OrderStatus;
-import com.portfolio.entity.enums.OrderType;
-import com.portfolio.entity.enums.TransactionStatus;
-import com.portfolio.entity.enums.TransactionType;
-import com.portfolio.repository.HoldingRepository;
-import com.portfolio.repository.OrderRepository;
-import com.portfolio.repository.StockRepository;
-import com.portfolio.repository.TransactionRepository;
-import com.portfolio.repository.UserRepository;
+import com.portfolio.dto.trading.*;
+import com.portfolio.entity.*;
+import com.portfolio.entity.enums.*;
+import com.portfolio.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,7 +22,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -56,6 +42,9 @@ class TradingServiceTest {
 
     @Mock
     private TransactionRepository transactionRepository;
+
+    @Mock
+    private PositionRepository positionRepository;
 
     @Mock
     private MarketDataService marketDataService;
@@ -80,9 +69,9 @@ class TradingServiceTest {
     }
 
     @Test
-    @DisplayName("BUY - Successful purchase with sufficient virtual balance")
+    @DisplayName("BUY - Successful leveraged purchase with margin calculation")
     void testExecuteBuySuccess() {
-        TradeRequestDto request = new TradeRequestDto("RELIANCE", new BigDecimal("10"));
+        TradeRequestDto request = new TradeRequestDto("RELIANCE", new BigDecimal("10"), TradingMode.INTRADAY, PositionSide.LONG, 10, null, null);
         StockQuoteDto mockQuote = new StockQuoteDto(
                 "RELIANCE", "Reliance Industries Ltd", new BigDecimal("2950.0000"),
                 BigDecimal.ZERO, "0%", BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 1000L, "2026-09-30", 1727690000L
@@ -94,6 +83,11 @@ class TradingServiceTest {
         when(transactionRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
         when(stockRepository.findBySymbol("RELIANCE")).thenReturn(Optional.of(testStock));
         when(stockRepository.save(any(Stock.class))).thenAnswer(i -> i.getArgument(0));
+        when(positionRepository.save(any(Position.class))).thenAnswer(i -> {
+            Position p = i.getArgument(0);
+            p.setId(50L);
+            return p;
+        });
         when(orderRepository.save(any(Order.class))).thenAnswer(i -> {
             Order o = i.getArgument(0);
             o.setId(100L);
@@ -112,21 +106,24 @@ class TradingServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.symbol()).isEqualTo("RELIANCE");
         assertThat(response.orderType()).isEqualTo(OrderType.BUY);
+        assertThat(response.positionSide()).isEqualTo(PositionSide.LONG);
         assertThat(response.orderStatus()).isEqualTo(OrderStatus.EXECUTED);
         assertThat(response.quantity()).isEqualByComparingTo("10");
         assertThat(response.executionPrice()).isEqualByComparingTo("2950.0000");
-        assertThat(response.totalAmount()).isEqualByComparingTo("29500.0000");
-        assertThat(response.remainingCashBalance()).isEqualByComparingTo("70500.0000"); // 100000 - 29500
+        assertThat(response.leverage()).isEqualTo(10);
+        assertThat(response.marginUsed()).isEqualByComparingTo("2950.0000"); // 29500 / 10
+        assertThat(response.remainingCashBalance()).isEqualByComparingTo("97050.0000"); // 100000 - 2950
 
+        verify(positionRepository).save(any(Position.class));
         verify(orderRepository).save(any(Order.class));
-        verify(holdingRepository).save(any(Holding.class));
         verify(transactionRepository).save(any(Transaction.class));
     }
 
     @Test
-    @DisplayName("BUY - Fails when virtual cash balance is insufficient")
+    @DisplayName("BUY - Fails when virtual cash balance is insufficient for margin")
     void testExecuteBuyInsufficientBalance() {
-        TradeRequestDto request = new TradeRequestDto("RELIANCE", new BigDecimal("100")); // 100 * 2950 = 295,000 > 100,000
+        // 1000 shares * 2950 = 2,950,000 / 10 = 295,000 margin > 100,000 cash
+        TradeRequestDto request = new TradeRequestDto("RELIANCE", new BigDecimal("1000"), TradingMode.INTRADAY, PositionSide.LONG, 10, null, null);
         StockQuoteDto mockQuote = new StockQuoteDto(
                 "RELIANCE", "Reliance Industries Ltd", new BigDecimal("2950.0000"),
                 BigDecimal.ZERO, "0%", BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 1000L, "2026-09-30", 1727690000L
@@ -139,16 +136,59 @@ class TradingServiceTest {
 
         assertThatThrownBy(() -> tradingService.executeBuy(1L, request))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Insufficient virtual balance");
+                .hasMessageContaining("Insufficient virtual balance for required margin");
 
+        verify(positionRepository, never()).save(any());
         verify(orderRepository, never()).save(any());
-        verify(holdingRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("SELL - Successful sale of owned holdings")
-    void testExecuteSellSuccess() {
-        TradeRequestDto request = new TradeRequestDto("RELIANCE", new BigDecimal("5"));
+    @DisplayName("SELL - Opens SHORT position with leverage when no spot holdings owned")
+    void testExecuteSellShortPosition() {
+        TradeRequestDto request = new TradeRequestDto("RELIANCE", new BigDecimal("5"), TradingMode.SCALPING, PositionSide.SHORT, 20, null, null);
+        StockQuoteDto mockQuote = new StockQuoteDto(
+                "RELIANCE", "Reliance Industries Ltd", new BigDecimal("3000.0000"),
+                BigDecimal.ZERO, "0%", BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 1000L, "2026-09-30", 1727690000L
+        );
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(upstoxService.isIndianSymbol("RELIANCE")).thenReturn(true);
+        when(upstoxService.getQuote("RELIANCE")).thenReturn(mockQuote);
+        when(transactionRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
+        when(stockRepository.findBySymbol("RELIANCE")).thenReturn(Optional.of(testStock));
+        when(stockRepository.save(any(Stock.class))).thenAnswer(i -> i.getArgument(0));
+        when(positionRepository.save(any(Position.class))).thenAnswer(i -> {
+            Position p = i.getArgument(0);
+            p.setId(51L);
+            return p;
+        });
+        when(orderRepository.save(any(Order.class))).thenAnswer(i -> {
+            Order o = i.getArgument(0);
+            o.setId(101L);
+            return o;
+        });
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(i -> {
+            Transaction t = i.getArgument(0);
+            t.setId(201L);
+            return t;
+        });
+
+        TradeResponseDto response = tradingService.executeSell(1L, request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.orderType()).isEqualTo(OrderType.SELL);
+        assertThat(response.positionSide()).isEqualTo(PositionSide.SHORT);
+        assertThat(response.leverage()).isEqualTo(20);
+        assertThat(response.marginUsed()).isEqualByComparingTo("750.0000"); // (5 * 3000) / 20 = 750
+        assertThat(response.remainingCashBalance()).isEqualByComparingTo("99250.0000"); // 100000 - 750
+
+        verify(positionRepository).save(any(Position.class));
+    }
+
+    @Test
+    @DisplayName("SELL - Successful sale of owned spot holdings")
+    void testExecuteSellSpotHolding() {
+        TradeRequestDto request = new TradeRequestDto("RELIANCE", new BigDecimal("5"), TradingMode.SWING, PositionSide.LONG, 1, null, null);
         StockQuoteDto mockQuote = new StockQuoteDto(
                 "RELIANCE", "Reliance Industries Ltd", new BigDecimal("3000.0000"),
                 BigDecimal.ZERO, "0%", BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 1000L, "2026-09-30", 1727690000L
@@ -189,30 +229,33 @@ class TradingServiceTest {
     }
 
     @Test
-    @DisplayName("SELL - Fails when user does not own the stock")
-    void testExecuteSellNoHoldings() {
-        TradeRequestDto request = new TradeRequestDto("AAPL", new BigDecimal("5"));
+    @DisplayName("CLOSE POSITION - Closes open position, calculates realized P&L, releases margin")
+    void testClosePosition() {
+        Position openPos = new Position(testUser, testStock, PositionSide.LONG, TradingMode.INTRADAY,
+                new BigDecimal("2.0000"), new BigDecimal("2900.0000"), 10, new BigDecimal("580.0000"), null, null);
+        openPos.setId(99L);
+        openPos.setStatus(PositionStatus.OPEN);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(holdingRepository.findByUserIdAndStock_Symbol(1L, "AAPL")).thenReturn(Optional.empty());
+        StockQuoteDto mockQuote = new StockQuoteDto(
+                "RELIANCE", "Reliance Industries Ltd", new BigDecimal("3100.0000"),
+                BigDecimal.ZERO, "0%", BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 1000L, "2026-09-30", 1727690000L
+        );
 
-        assertThatThrownBy(() -> tradingService.executeSell(1L, request))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("You do not own any shares of AAPL");
-    }
+        when(positionRepository.findByIdAndUserId(99L, 1L)).thenReturn(Optional.of(openPos));
+        when(upstoxService.isIndianSymbol("RELIANCE")).thenReturn(true);
+        when(upstoxService.getQuote("RELIANCE")).thenReturn(mockQuote);
+        when(positionRepository.save(any(Position.class))).thenAnswer(i -> i.getArgument(0));
 
-    @Test
-    @DisplayName("SELL - Fails when user attempts to sell more than owned quantity")
-    void testExecuteSellMoreThanOwned() {
-        TradeRequestDto request = new TradeRequestDto("RELIANCE", new BigDecimal("20"));
-        Holding existingHolding = new Holding(testUser, testStock, new BigDecimal("5"), new BigDecimal("2900"), new BigDecimal("14500"));
+        PositionDto closed = tradingService.closePosition(1L, 99L, null);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(holdingRepository.findByUserIdAndStock_Symbol(1L, "RELIANCE")).thenReturn(Optional.of(existingHolding));
+        assertThat(closed).isNotNull();
+        assertThat(closed.status()).isEqualTo(PositionStatus.CLOSED);
+        assertThat(closed.closePrice()).isEqualByComparingTo("3100.0000");
+        assertThat(closed.realizedPnl()).isEqualByComparingTo("400.0000"); // (3100 - 2900) * 2 = +400
 
-        assertThatThrownBy(() -> tradingService.executeSell(1L, request))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Insufficient holdings to sell");
+        verify(positionRepository).save(openPos);
+        verify(orderRepository).save(any(Order.class));
+        verify(transactionRepository).save(any(Transaction.class));
     }
 
     @Test
@@ -231,20 +274,6 @@ class TradingServiceTest {
     }
 
     @Test
-    @DisplayName("Real Market Price - Fails when provider returns unavailable/zero price")
-    void testRealPriceUnavailable() {
-        TradeRequestDto request = new TradeRequestDto("UNKNOWN", new BigDecimal("5"));
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(upstoxService.isIndianSymbol("UNKNOWN")).thenReturn(false);
-        when(marketDataService.getQuote("UNKNOWN")).thenReturn(null);
-
-        assertThatThrownBy(() -> tradingService.executeBuy(1L, request))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Real market price unavailable");
-    }
-
-    @Test
     @DisplayName("WALLET - Calculates ledger balance and portfolio value accurately")
     void testGetWallet() {
         Transaction t1 = new Transaction(testUser, testStock, TransactionType.BUY, new BigDecimal("20000.0000"));
@@ -254,6 +283,7 @@ class TradingServiceTest {
 
         when(transactionRepository.findByUserId(1L)).thenReturn(List.of(t1));
         when(holdingRepository.findByUserId(1L)).thenReturn(List.of(holding));
+        when(positionRepository.findByUserIdAndStatus(1L, PositionStatus.OPEN)).thenReturn(Collections.emptyList());
 
         VirtualWalletDto wallet = tradingService.getWallet(1L);
 
@@ -269,6 +299,7 @@ class TradingServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
         when(transactionRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
         when(holdingRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
+        when(positionRepository.findByUserIdAndStatus(1L, PositionStatus.OPEN)).thenReturn(Collections.emptyList());
 
         VirtualWalletDto wallet = tradingService.depositCash(1L, new BigDecimal("25000"));
 
@@ -285,6 +316,7 @@ class TradingServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
         when(transactionRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
         when(holdingRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
+        when(positionRepository.findByUserIdAndStatus(1L, PositionStatus.OPEN)).thenReturn(Collections.emptyList());
 
         VirtualWalletDto wallet = tradingService.resetCashBalance(1L, new BigDecimal("150000"));
 

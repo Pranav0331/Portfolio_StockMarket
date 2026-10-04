@@ -258,15 +258,15 @@
         <thead>
           <tr>
             <th class="th-date">Order Time</th>
-            <th class="th-type">Type</th>
+            <th class="th-type">Side / Type</th>
             <th class="th-mode">Trading Mode</th>
             <th class="th-symbol">Instrument</th>
             <th class="th-id">Order ID</th>
             <th class="th-status">Status</th>
-            <th class="th-num">Quantity</th>
-            <th class="th-num">Order Price</th>
-            <th class="th-num">Executed Price</th>
-            <th class="th-num">Total Value</th>
+            <th class="th-num">Qty / Lot</th>
+            <th class="th-num">Exec Price</th>
+            <th class="th-num">Margin</th>
+            <th class="th-num">P&L / Total</th>
             <th class="th-action">Action</th>
           </tr>
         </thead>
@@ -280,18 +280,28 @@
               </div>
             </td>
 
-            <!-- BUY / SELL Type -->
+            <!-- BUY / SELL / LONG / SHORT Type -->
             <td class="td-type">
-              <span class="type-badge" [ngClass]="ord.orderType === 'BUY' ? 'badge-buy' : 'badge-sell'">
-                {{ ord.orderType }}
-              </span>
+              <div class="type-cluster">
+                <span class="type-badge" [ngClass]="ord.orderType === 'BUY' ? 'badge-buy' : 'badge-sell'">
+                  {{ ord.orderType }}
+                </span>
+                <span *ngIf="ord.positionSide" class="side-mini-tag" [ngClass]="ord.positionSide === 'LONG' ? 'side-long' : 'side-short'">
+                  {{ ord.positionSide }}
+                </span>
+              </div>
             </td>
 
-            <!-- Trading Mode -->
+            <!-- Trading Mode & Leverage -->
             <td class="td-mode">
-              <span class="trading-mode-badge" [ngClass]="getTradingModeBadgeClass(ord.tradingMode)">
-                {{ getTradingModeLabel(ord.tradingMode) }}
-              </span>
+              <div class="mode-stack">
+                <span class="trading-mode-badge" [ngClass]="getTradingModeBadgeClass(ord.tradingMode)">
+                  {{ getTradingModeLabel(ord.tradingMode) }}
+                </span>
+                <span *ngIf="ord.leverage && ord.leverage > 1" class="lev-mini-badge font-mono">
+                  1:{{ ord.leverage }}
+                </span>
+              </div>
             </td>
 
             <!-- Instrument Symbol & Name -->
@@ -319,26 +329,37 @@
 
             <!-- Quantity -->
             <td class="td-num font-mono">
-              {{ ord.quantity | number:'1.0-4' }}
-            </td>
-
-            <!-- Order Price -->
-            <td class="td-num font-mono">
-              {{ getCurrencySymbol(ord.currency) }}{{ ord.price | number:'1.2-4' }}
+              <strong>{{ ord.quantity | number:'1.0-4' }}</strong>
             </td>
 
             <!-- Executed Price -->
             <td class="td-num font-mono">
               <span class="exec-price-highlight">
-                {{ getCurrencySymbol(ord.currency) }}{{ ord.executedPrice | number:'1.2-4' }}
+                {{ getCurrencySymbol(ord.currency) }}{{ (ord.executedPrice || ord.price) | number:'1.2-4' }}
               </span>
             </td>
 
-            <!-- Total Amount -->
+            <!-- Margin Used -->
             <td class="td-num font-mono">
-              <span class="total-amount" [ngClass]="ord.orderType === 'BUY' ? 'cost-outflow' : 'cost-inflow'">
-                {{ ord.orderType === 'BUY' ? '-' : '+' }}{{ getCurrencySymbol(ord.currency) }}{{ ord.totalAmount | number:'1.2-2' }}
+              <span class="margin-text" *ngIf="ord.marginUsed && ord.marginUsed > 0; else noMargin">
+                ${{ ord.marginUsed | number:'1.2-2' }}
               </span>
+              <ng-template #noMargin>
+                <span class="text-dim">—</span>
+              </ng-template>
+            </td>
+
+            <!-- Realized P&L or Total Amount -->
+            <td class="td-num font-mono">
+              <div *ngIf="ord.realizedPnl != null; else totalVal" class="pnl-stack" [ngClass]="ord.realizedPnl >= 0 ? 'text-emerald' : 'text-rose'">
+                <strong>{{ ord.realizedPnl >= 0 ? '+' : '' }}${{ ord.realizedPnl | number:'1.2-2' }}</strong>
+                <span class="sub-total-lbl">P&L</span>
+              </div>
+              <ng-template #totalVal>
+                <span class="total-amount" [ngClass]="ord.orderType === 'BUY' ? 'cost-outflow' : 'cost-inflow'">
+                  {{ ord.orderType === 'BUY' ? '-' : '+' }}{{ getCurrencySymbol(ord.currency) }}{{ ord.totalAmount | number:'1.2-2' }}
+                </span>
+              </ng-template>
             </td>
 
             <!-- Trade / View Action -->

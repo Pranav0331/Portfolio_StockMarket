@@ -1,25 +1,10 @@
 package com.portfolio.service;
 
 import com.portfolio.dto.market.StockQuoteDto;
-import com.portfolio.dto.trading.TradeRequestDto;
-import com.portfolio.dto.trading.TradeResponseDto;
-import com.portfolio.dto.trading.UserHoldingDto;
-import com.portfolio.dto.trading.VirtualWalletDto;
-import com.portfolio.entity.Holding;
-import com.portfolio.entity.Order;
-import com.portfolio.entity.Stock;
-import com.portfolio.entity.Transaction;
-import com.portfolio.entity.User;
-import com.portfolio.entity.enums.OrderStatus;
-import com.portfolio.entity.enums.OrderType;
-import com.portfolio.entity.enums.TradingMode;
-import com.portfolio.entity.enums.TransactionStatus;
-import com.portfolio.entity.enums.TransactionType;
-import com.portfolio.repository.HoldingRepository;
-import com.portfolio.repository.OrderRepository;
-import com.portfolio.repository.StockRepository;
-import com.portfolio.repository.TransactionRepository;
-import com.portfolio.repository.UserRepository;
+import com.portfolio.dto.trading.*;
+import com.portfolio.entity.*;
+import com.portfolio.entity.enums.*;
+import com.portfolio.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -30,10 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -48,6 +30,7 @@ public class TradingService {
     private final HoldingRepository holdingRepository;
     private final OrderRepository orderRepository;
     private final TransactionRepository transactionRepository;
+    private final PositionRepository positionRepository;
     private final MarketDataService marketDataService;
     private final UpstoxService upstoxService;
 
@@ -60,6 +43,7 @@ public class TradingService {
             HoldingRepository holdingRepository,
             OrderRepository orderRepository,
             TransactionRepository transactionRepository,
+            PositionRepository positionRepository,
             MarketDataService marketDataService,
             UpstoxService upstoxService
     ) {
@@ -68,6 +52,7 @@ public class TradingService {
         this.holdingRepository = holdingRepository;
         this.orderRepository = orderRepository;
         this.transactionRepository = transactionRepository;
+        this.positionRepository = positionRepository;
         this.marketDataService = marketDataService;
         this.upstoxService = upstoxService;
     }
@@ -77,7 +62,7 @@ public class TradingService {
     }
 
     // =========================================================================
-    // 1. BUY EXECUTION
+    // 1. BUY / LONG EXECUTION (EXNESS-STYLE PAPER TRADING)
     // =========================================================================
 
     @Transactional
@@ -103,56 +88,74 @@ public class TradingService {
 
             BigDecimal executionPrice = quote.price();
             BigDecimal quantity = request.quantity().setScale(4, RoundingMode.HALF_UP);
-            BigDecimal totalAmount = executionPrice.multiply(quantity).setScale(4, RoundingMode.HALF_UP);
+            BigDecimal positionValue = executionPrice.multiply(quantity).setScale(4, RoundingMode.HALF_UP);
 
-            // Validate virtual cash balance
+            TradingMode tradingMode = request.tradingMode() != null ? request.tradingMode() : TradingMode.INTRADAY;
+            PositionSide side = request.side() != null ? request.side() : PositionSide.LONG;
+
+            // Leverage: Scalping/Intraday support 1:1, 1:2, 1:5, 1:10, 1:20, 1:50, 1:100 (Default 1:10)
+            // Swing / Long Term are spot (leverage = 1)
+            int leverage = 1;
+            if (tradingMode == TradingMode.SCALPING || tradingMode == TradingMode.INTRADAY) {
+                if (request.leverage() != null && request.leverage() > 0) {
+                    leverage = request.leverage();
+                } else {
+                    leverage = 10;
+                }
+            }
+
+            BigDecimal marginUsed = positionValue.divide(BigDecimal.valueOf(leverage), 4, RoundingMode.HALF_UP);
+
+            // Validate available paper balance against required margin
             BigDecimal currentCashBalance = calculateCashBalance(userId);
-            if (currentCashBalance.compareTo(totalAmount) < 0) {
+            if (currentCashBalance.compareTo(marginUsed) < 0) {
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
-                        String.format("Insufficient virtual balance. Required: %s, Available: %s", totalAmount, currentCashBalance)
+                        String.format("Insufficient virtual balance for required margin. Required: $%s, Available: $%s", marginUsed, currentCashBalance)
                 );
             }
+
+            // Validate Stop Loss and Take Profit if provided
+            validateSlTp(side, executionPrice, request.stopLoss(), request.takeProfit());
 
             // Upsert Stock entity
             Stock stock = findOrCreateStock(quote, symbol);
 
-            TradingMode tradingMode = request.tradingMode() != null ? request.tradingMode() : TradingMode.INTRADAY;
+            // 1. Create Position
+            Position position = new Position(
+                    user,
+                    stock,
+                    side,
+                    tradingMode,
+                    quantity,
+                    executionPrice,
+                    leverage,
+                    marginUsed,
+                    request.stopLoss(),
+                    request.takeProfit()
+            );
+            position = positionRepository.save(position);
 
-            // Create and execute Order
+            // 2. Create Order
             Order order = new Order();
             order.setUser(user);
             order.setStock(stock);
             order.setOrderType(OrderType.BUY);
             order.setOrderStatus(OrderStatus.EXECUTED);
             order.setTradingMode(tradingMode);
+            order.setPositionSide(side);
+            order.setLeverage(leverage);
+            order.setMarginUsed(marginUsed);
+            order.setStopLoss(request.stopLoss());
+            order.setTakeProfit(request.takeProfit());
+            order.setPositionId(position.getId());
             order.setQuantity(quantity);
             order.setPrice(executionPrice);
             order.setExecutedPrice(executionPrice);
             order.setExecutedAt(Instant.now());
             order = orderRepository.save(order);
 
-            // Update or create Holding
-            Optional<Holding> holdingOpt = holdingRepository.findByUserIdAndStock_Symbol(userId, symbol);
-            Holding holding;
-            BigDecimal newHoldingQuantity;
-
-            if (holdingOpt.isPresent()) {
-                holding = holdingOpt.get();
-                newHoldingQuantity = holding.getQuantity().add(quantity).setScale(4, RoundingMode.HALF_UP);
-                BigDecimal newTotalInvested = holding.getTotalInvested().add(totalAmount).setScale(4, RoundingMode.HALF_UP);
-                BigDecimal newAvgPrice = newTotalInvested.divide(newHoldingQuantity, 4, RoundingMode.HALF_UP);
-
-                holding.setQuantity(newHoldingQuantity);
-                holding.setTotalInvested(newTotalInvested);
-                holding.setAverageBuyPrice(newAvgPrice);
-            } else {
-                newHoldingQuantity = quantity;
-                holding = new Holding(user, stock, quantity, executionPrice, totalAmount);
-            }
-            holdingRepository.save(holding);
-
-            // Create Transaction record
+            // 3. Create Transaction
             Transaction transaction = new Transaction();
             transaction.setUser(user);
             transaction.setStock(stock);
@@ -160,41 +163,71 @@ public class TradingService {
             transaction.setTransactionType(TransactionType.BUY);
             transaction.setStatus(TransactionStatus.SUCCESS);
             transaction.setTradingMode(tradingMode);
+            transaction.setPositionSide(side);
+            transaction.setLeverage(leverage);
+            transaction.setMarginUsed(marginUsed);
+            transaction.setPositionId(position.getId());
             transaction.setQuantity(quantity);
             transaction.setPricePerUnit(executionPrice);
-            transaction.setTotalAmount(totalAmount);
+            transaction.setTotalAmount(marginUsed);
             transaction.setFees(BigDecimal.ZERO);
             transaction.setAvgBuyPrice(executionPrice);
             transaction.setPnl(BigDecimal.ZERO);
             transaction.setPnlPercent(BigDecimal.ZERO);
             transaction = transactionRepository.save(transaction);
 
-            BigDecimal remainingBalance = currentCashBalance.subtract(totalAmount).setScale(4, RoundingMode.HALF_UP);
+            // 4. Update spot Holding for spot trades / portfolio tracking
+            BigDecimal newHoldingQuantity = BigDecimal.ZERO;
+            Optional<Holding> holdingOpt = holdingRepository.findByUserIdAndStock_Symbol(userId, symbol);
+            if (holdingOpt.isPresent()) {
+                Holding holding = holdingOpt.get();
+                newHoldingQuantity = holding.getQuantity().add(quantity).setScale(4, RoundingMode.HALF_UP);
+                BigDecimal newTotalInvested = holding.getTotalInvested().add(positionValue).setScale(4, RoundingMode.HALF_UP);
+                BigDecimal newAvgPrice = newTotalInvested.divide(newHoldingQuantity, 4, RoundingMode.HALF_UP);
 
-            log.info("Simulated BUY executed for user {} on {} with mode {}: qty={}, price={}, total={}",
-                    userId, symbol, tradingMode, quantity, executionPrice, totalAmount);
+                holding.setQuantity(newHoldingQuantity);
+                holding.setTotalInvested(newTotalInvested);
+                holding.setAverageBuyPrice(newAvgPrice);
+                holdingRepository.save(holding);
+            } else {
+                newHoldingQuantity = quantity;
+                Holding holding = new Holding(user, stock, quantity, executionPrice, positionValue);
+                holdingRepository.save(holding);
+            }
+
+            BigDecimal remainingBalance = currentCashBalance.subtract(marginUsed).setScale(4, RoundingMode.HALF_UP);
+
+            log.info("Paper BUY executed for user {} on {} with mode {}, leverage 1:{}, side {}: qty={}, price={}, margin={}",
+                    userId, symbol, tradingMode, leverage, side, quantity, executionPrice, marginUsed);
 
             return new TradeResponseDto(
                     order.getId(),
                     transaction.getId(),
+                    position.getId(),
                     symbol,
                     stock.getCompanyName(),
                     OrderType.BUY,
+                    side,
                     OrderStatus.EXECUTED,
                     tradingMode,
                     quantity,
                     executionPrice,
-                    totalAmount,
+                    positionValue,
+                    leverage,
+                    marginUsed,
+                    request.stopLoss(),
+                    request.takeProfit(),
                     remainingBalance,
                     newHoldingQuantity,
                     order.getExecutedAt(),
-                    String.format("Successfully bought %s shares of %s at %s (%s)", quantity, symbol, executionPrice, tradingMode)
+                    String.format("Successfully opened %s %s position on %s at %s (1:%dx Leverage, Margin: $%s)",
+                            tradingMode, side, symbol, executionPrice, leverage, marginUsed)
             );
         }
     }
 
     // =========================================================================
-    // 2. SELL EXECUTION
+    // 2. SELL / SHORT EXECUTION (EXNESS-STYLE PAPER TRADING)
     // =========================================================================
 
     @Transactional
@@ -212,144 +245,555 @@ public class TradingService {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + userId));
 
-            // Verify sufficient holdings
-            Holding holding = holdingRepository.findByUserIdAndStock_Symbol(userId, symbol)
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST,
-                            "You do not own any shares of " + symbol
-                    ));
-
             BigDecimal sellQuantity = request.quantity().setScale(4, RoundingMode.HALF_UP);
-            if (holding.getQuantity().compareTo(sellQuantity) < 0) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        String.format("Insufficient holdings to sell. Owned: %s, Requested: %s", holding.getQuantity(), sellQuantity)
-                );
+            TradingMode tradingMode = request.tradingMode() != null ? request.tradingMode() : TradingMode.INTRADAY;
+
+            // Determine whether this is a SHORT paper position or closing a spot holding
+            boolean isShortPosition = request.side() == PositionSide.SHORT;
+            Holding holding = null;
+
+            if (!isShortPosition) {
+                holding = holdingRepository.findByUserIdAndStock_Symbol(userId, symbol)
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.BAD_REQUEST,
+                                "You do not own any shares of " + symbol
+                        ));
+
+                if (holding.getQuantity().compareTo(sellQuantity) < 0) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            String.format("Insufficient holdings to sell. Owned: %s, Requested: %s", holding.getQuantity(), sellQuantity)
+                    );
+                }
             }
 
-            // Fetch REAL execution price
             StockQuoteDto quote = fetchRealMarketQuote(symbol);
             if (quote == null || quote.price() == null || quote.price().compareTo(BigDecimal.ZERO) <= 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Real market price unavailable for symbol: " + symbol);
             }
 
             BigDecimal executionPrice = quote.price();
-            BigDecimal totalAmount = executionPrice.multiply(sellQuantity).setScale(4, RoundingMode.HALF_UP);
-
-            // Calculate Realized P&L using average buy price before updating holding
-            BigDecimal avgBuyPrice = holding.getAverageBuyPrice() != null ? holding.getAverageBuyPrice() : executionPrice;
-            BigDecimal costBasis = avgBuyPrice.multiply(sellQuantity).setScale(4, RoundingMode.HALF_UP);
-            BigDecimal realizedPnL = totalAmount.subtract(costBasis).setScale(4, RoundingMode.HALF_UP);
-            BigDecimal realizedPnLPercent = BigDecimal.ZERO;
-            if (costBasis.compareTo(BigDecimal.ZERO) > 0) {
-                realizedPnLPercent = realizedPnL.divide(costBasis, 4, RoundingMode.HALF_UP)
-                        .multiply(new BigDecimal("100"))
-                        .setScale(2, RoundingMode.HALF_UP);
-            }
-
+            BigDecimal positionValue = executionPrice.multiply(sellQuantity).setScale(4, RoundingMode.HALF_UP);
             Stock stock = findOrCreateStock(quote, symbol);
 
-            TradingMode tradingMode = request.tradingMode() != null ? request.tradingMode() : TradingMode.INTRADAY;
+            if (isShortPosition) {
+                // =============================================================
+                // OPEN SHORT MARGIN POSITION
+                // =============================================================
+                int leverage = 1;
+                if (tradingMode == TradingMode.SCALPING || tradingMode == TradingMode.INTRADAY) {
+                    leverage = request.leverage() != null && request.leverage() > 0 ? request.leverage() : 10;
+                }
 
-            // Create and execute Order
-            Order order = new Order();
-            order.setUser(user);
-            order.setStock(stock);
-            order.setOrderType(OrderType.SELL);
-            order.setOrderStatus(OrderStatus.EXECUTED);
-            order.setTradingMode(tradingMode);
-            order.setQuantity(sellQuantity);
-            order.setPrice(executionPrice);
-            order.setExecutedPrice(executionPrice);
-            order.setExecutedAt(Instant.now());
-            order = orderRepository.save(order);
+                BigDecimal marginUsed = positionValue.divide(BigDecimal.valueOf(leverage), 4, RoundingMode.HALF_UP);
+                BigDecimal currentCashBalance = calculateCashBalance(userId);
 
-            // Update Holding
-            BigDecimal remainingHoldingQuantity;
-            if (holding.getQuantity().compareTo(sellQuantity) == 0) {
-                remainingHoldingQuantity = BigDecimal.ZERO;
-                holdingRepository.delete(holding);
+                if (currentCashBalance.compareTo(marginUsed) < 0) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            String.format("Insufficient virtual balance for required margin. Required: $%s, Available: $%s", marginUsed, currentCashBalance)
+                    );
+                }
+
+                validateSlTp(PositionSide.SHORT, executionPrice, request.stopLoss(), request.takeProfit());
+
+                // Create Position (SHORT)
+                Position position = new Position(
+                        user,
+                        stock,
+                        PositionSide.SHORT,
+                        tradingMode,
+                        sellQuantity,
+                        executionPrice,
+                        leverage,
+                        marginUsed,
+                        request.stopLoss(),
+                        request.takeProfit()
+                );
+                position = positionRepository.save(position);
+
+                // Create Order (SELL / SHORT)
+                Order order = new Order();
+                order.setUser(user);
+                order.setStock(stock);
+                order.setOrderType(OrderType.SELL);
+                order.setOrderStatus(OrderStatus.EXECUTED);
+                order.setTradingMode(tradingMode);
+                order.setPositionSide(PositionSide.SHORT);
+                order.setLeverage(leverage);
+                order.setMarginUsed(marginUsed);
+                order.setStopLoss(request.stopLoss());
+                order.setTakeProfit(request.takeProfit());
+                order.setPositionId(position.getId());
+                order.setQuantity(sellQuantity);
+                order.setPrice(executionPrice);
+                order.setExecutedPrice(executionPrice);
+                order.setExecutedAt(Instant.now());
+                order = orderRepository.save(order);
+
+                // Create Transaction
+                Transaction transaction = new Transaction();
+                transaction.setUser(user);
+                transaction.setStock(stock);
+                transaction.setOrder(order);
+                transaction.setTransactionType(TransactionType.SELL);
+                transaction.setStatus(TransactionStatus.SUCCESS);
+                transaction.setTradingMode(tradingMode);
+                transaction.setPositionSide(PositionSide.SHORT);
+                transaction.setLeverage(leverage);
+                transaction.setMarginUsed(marginUsed);
+                transaction.setPositionId(position.getId());
+                transaction.setQuantity(sellQuantity);
+                transaction.setPricePerUnit(executionPrice);
+                transaction.setTotalAmount(marginUsed);
+                transaction.setFees(BigDecimal.ZERO);
+                transaction.setAvgBuyPrice(executionPrice);
+                transaction.setPnl(BigDecimal.ZERO);
+                transaction.setPnlPercent(BigDecimal.ZERO);
+                transaction = transactionRepository.save(transaction);
+
+                BigDecimal remainingBalance = currentCashBalance.subtract(marginUsed).setScale(4, RoundingMode.HALF_UP);
+
+                log.info("Paper SHORT position opened for user {} on {} with mode {}, leverage 1:{}: qty={}, price={}, margin={}",
+                        userId, symbol, tradingMode, leverage, sellQuantity, executionPrice, marginUsed);
+
+                return new TradeResponseDto(
+                        order.getId(),
+                        transaction.getId(),
+                        position.getId(),
+                        symbol,
+                        stock.getCompanyName(),
+                        OrderType.SELL,
+                        PositionSide.SHORT,
+                        OrderStatus.EXECUTED,
+                        tradingMode,
+                        sellQuantity,
+                        executionPrice,
+                        positionValue,
+                        leverage,
+                        marginUsed,
+                        request.stopLoss(),
+                        request.takeProfit(),
+                        remainingBalance,
+                        BigDecimal.ZERO,
+                        order.getExecutedAt(),
+                        String.format("Successfully opened %s SHORT position on %s at %s (1:%dx Leverage, Margin: $%s)",
+                                tradingMode, symbol, executionPrice, leverage, marginUsed)
+                );
             } else {
-                remainingHoldingQuantity = holding.getQuantity().subtract(sellQuantity).setScale(4, RoundingMode.HALF_UP);
-                BigDecimal newTotalInvested = holding.getAverageBuyPrice().multiply(remainingHoldingQuantity).setScale(4, RoundingMode.HALF_UP);
-                holding.setQuantity(remainingHoldingQuantity);
-                holding.setTotalInvested(newTotalInvested);
-                holdingRepository.save(holding);
+                // =============================================================
+                // CLOSE / REDUCE EXISTING SPOT HOLDING
+                // =============================================================
+                BigDecimal totalAmount = executionPrice.multiply(sellQuantity).setScale(4, RoundingMode.HALF_UP);
+                BigDecimal avgBuyPrice = holding.getAverageBuyPrice() != null ? holding.getAverageBuyPrice() : executionPrice;
+                BigDecimal costBasis = avgBuyPrice.multiply(sellQuantity).setScale(4, RoundingMode.HALF_UP);
+                BigDecimal realizedPnL = totalAmount.subtract(costBasis).setScale(4, RoundingMode.HALF_UP);
+                BigDecimal realizedPnLPercent = BigDecimal.ZERO;
+                if (costBasis.compareTo(BigDecimal.ZERO) > 0) {
+                    realizedPnLPercent = realizedPnL.divide(costBasis, 4, RoundingMode.HALF_UP)
+                            .multiply(new BigDecimal("100"))
+                            .setScale(2, RoundingMode.HALF_UP);
+                }
+
+                // Create Order
+                Order order = new Order();
+                order.setUser(user);
+                order.setStock(stock);
+                order.setOrderType(OrderType.SELL);
+                order.setOrderStatus(OrderStatus.EXECUTED);
+                order.setTradingMode(tradingMode);
+                order.setPositionSide(PositionSide.LONG);
+                order.setLeverage(1);
+                order.setMarginUsed(BigDecimal.ZERO);
+                order.setRealizedPnl(realizedPnL);
+                order.setQuantity(sellQuantity);
+                order.setPrice(executionPrice);
+                order.setExecutedPrice(executionPrice);
+                order.setExecutedAt(Instant.now());
+                order = orderRepository.save(order);
+
+                // Update Holding
+                BigDecimal remainingHoldingQuantity;
+                if (holding.getQuantity().compareTo(sellQuantity) == 0) {
+                    remainingHoldingQuantity = BigDecimal.ZERO;
+                    holdingRepository.delete(holding);
+                } else {
+                    remainingHoldingQuantity = holding.getQuantity().subtract(sellQuantity).setScale(4, RoundingMode.HALF_UP);
+                    BigDecimal newTotalInvested = holding.getAverageBuyPrice().multiply(remainingHoldingQuantity).setScale(4, RoundingMode.HALF_UP);
+                    holding.setQuantity(remainingHoldingQuantity);
+                    holding.setTotalInvested(newTotalInvested);
+                    holdingRepository.save(holding);
+                }
+
+                // Create Transaction record with Realized P&L
+                Transaction transaction = new Transaction();
+                transaction.setUser(user);
+                transaction.setStock(stock);
+                transaction.setOrder(order);
+                transaction.setTransactionType(TransactionType.SELL);
+                transaction.setStatus(TransactionStatus.SUCCESS);
+                transaction.setTradingMode(tradingMode);
+                transaction.setPositionSide(PositionSide.LONG);
+                transaction.setLeverage(1);
+                transaction.setMarginUsed(BigDecimal.ZERO);
+                transaction.setQuantity(sellQuantity);
+                transaction.setPricePerUnit(executionPrice);
+                transaction.setTotalAmount(totalAmount);
+                transaction.setFees(BigDecimal.ZERO);
+                transaction.setAvgBuyPrice(avgBuyPrice);
+                transaction.setPnl(realizedPnL);
+                transaction.setPnlPercent(realizedPnLPercent);
+                transaction = transactionRepository.save(transaction);
+
+                BigDecimal currentCashBalance = calculateCashBalance(userId);
+
+                log.info("Simulated SPOT SELL executed for user {} on {} with mode {}: qty={}, price={}, total={}, realizedPnL={}",
+                        userId, symbol, tradingMode, sellQuantity, executionPrice, totalAmount, realizedPnL);
+
+                return new TradeResponseDto(
+                        order.getId(),
+                        transaction.getId(),
+                        null,
+                        symbol,
+                        stock.getCompanyName(),
+                        OrderType.SELL,
+                        PositionSide.LONG,
+                        OrderStatus.EXECUTED,
+                        tradingMode,
+                        sellQuantity,
+                        executionPrice,
+                        totalAmount,
+                        1,
+                        BigDecimal.ZERO,
+                        null,
+                        null,
+                        currentCashBalance,
+                        remainingHoldingQuantity,
+                        order.getExecutedAt(),
+                        String.format("Successfully sold %s shares of %s at %s (%s)", sellQuantity, symbol, executionPrice, tradingMode)
+                );
             }
-
-            // Create Transaction record with Realized P&L
-            Transaction transaction = new Transaction();
-            transaction.setUser(user);
-            transaction.setStock(stock);
-            transaction.setOrder(order);
-            transaction.setTransactionType(TransactionType.SELL);
-            transaction.setStatus(TransactionStatus.SUCCESS);
-            transaction.setTradingMode(tradingMode);
-            transaction.setQuantity(sellQuantity);
-            transaction.setPricePerUnit(executionPrice);
-            transaction.setTotalAmount(totalAmount);
-            transaction.setFees(BigDecimal.ZERO);
-            transaction.setAvgBuyPrice(avgBuyPrice);
-            transaction.setPnl(realizedPnL);
-            transaction.setPnlPercent(realizedPnLPercent);
-            transaction = transactionRepository.save(transaction);
-
-            BigDecimal currentCashBalance = calculateCashBalance(userId);
-
-            log.info("Simulated SELL executed for user {} on {} with mode {}: qty={}, price={}, total={}, realizedPnL={}",
-                    userId, symbol, tradingMode, sellQuantity, executionPrice, totalAmount, realizedPnL);
-
-            return new TradeResponseDto(
-                    order.getId(),
-                    transaction.getId(),
-                    symbol,
-                    stock.getCompanyName(),
-                    OrderType.SELL,
-                    OrderStatus.EXECUTED,
-                    tradingMode,
-                    sellQuantity,
-                    executionPrice,
-                    totalAmount,
-                    currentCashBalance,
-                    remainingHoldingQuantity,
-                    order.getExecutedAt(),
-                    String.format("Successfully sold %s shares of %s at %s (%s)", sellQuantity, symbol, executionPrice, tradingMode)
-            );
         }
     }
 
     // =========================================================================
-    // 3. VIRTUAL WALLET & BALANCE
+    // 3. CLOSE POSITION (MANUAL & SL/TP TRIGGER)
+    // =========================================================================
+
+    @Transactional
+    public PositionDto closePosition(Long userId, Long positionId, BigDecimal requestedCloseQty) {
+        synchronized (getUserLock(userId)) {
+            Position position = positionRepository.findByIdAndUserId(positionId, userId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Position not found with id: " + positionId));
+
+            if (position.getStatus() != PositionStatus.OPEN) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Position is already closed");
+            }
+
+            String symbol = position.getStock() != null ? position.getStock().getSymbol() : "UNKNOWN";
+            StockQuoteDto quote = fetchRealMarketQuote(symbol);
+            if (quote == null || quote.price() == null || quote.price().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Real market price unavailable to close position: " + symbol);
+            }
+
+            BigDecimal closePrice = quote.price();
+            return executeClosePositionInternal(position, closePrice, "Manual Close");
+        }
+    }
+
+    private PositionDto executeClosePositionInternal(Position position, BigDecimal closePrice, String reason) {
+        User user = position.getUser();
+        Stock stock = position.getStock();
+        String symbol = stock != null ? stock.getSymbol() : "UNKNOWN";
+        BigDecimal qty = position.getQuantity();
+        BigDecimal entryPrice = position.getEntryPrice();
+        BigDecimal marginUsed = position.getMarginUsed() != null ? position.getMarginUsed() : BigDecimal.ZERO;
+
+        // Calculate Realized P&L
+        BigDecimal realizedPnl;
+        if (position.getSide() == PositionSide.LONG) {
+            realizedPnl = closePrice.subtract(entryPrice).multiply(qty).setScale(4, RoundingMode.HALF_UP);
+        } else {
+            realizedPnl = entryPrice.subtract(closePrice).multiply(qty).setScale(4, RoundingMode.HALF_UP);
+        }
+
+        BigDecimal realizedPnlPercent = BigDecimal.ZERO;
+        if (marginUsed.compareTo(BigDecimal.ZERO) > 0) {
+            realizedPnlPercent = realizedPnl.divide(marginUsed, 4, RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal("100"))
+                    .setScale(2, RoundingMode.HALF_UP);
+        }
+
+        // Amount returned to wallet balance = marginUsed + realizedPnl (cannot drop balance negative beyond loss)
+        BigDecimal settlementAmount = marginUsed.add(realizedPnl).setScale(4, RoundingMode.HALF_UP);
+        if (settlementAmount.compareTo(BigDecimal.ZERO) < 0) {
+            settlementAmount = BigDecimal.ZERO;
+        }
+
+        // Update Position entity
+        position.setStatus(PositionStatus.CLOSED);
+        position.setClosePrice(closePrice);
+        position.setCloseTime(Instant.now());
+        position.setRealizedPnl(realizedPnl);
+        position = positionRepository.save(position);
+
+        // Closing Order type: if LONG -> SELL to close; if SHORT -> BUY to close
+        OrderType closingOrderType = position.getSide() == PositionSide.LONG ? OrderType.SELL : OrderType.BUY;
+        TransactionType closingTxType = position.getSide() == PositionSide.LONG ? TransactionType.SELL : TransactionType.BUY;
+
+        Order order = new Order();
+        order.setUser(user);
+        order.setStock(stock);
+        order.setOrderType(closingOrderType);
+        order.setOrderStatus(OrderStatus.EXECUTED);
+        order.setTradingMode(position.getTradingMode());
+        order.setPositionSide(position.getSide());
+        order.setLeverage(position.getLeverage());
+        order.setMarginUsed(marginUsed);
+        order.setPositionId(position.getId());
+        order.setRealizedPnl(realizedPnl);
+        order.setQuantity(qty);
+        order.setPrice(closePrice);
+        order.setExecutedPrice(closePrice);
+        order.setExecutedAt(Instant.now());
+        orderRepository.save(order);
+
+        // Transaction for position closing (returns settlementAmount)
+        Transaction transaction = new Transaction();
+        transaction.setUser(user);
+        transaction.setStock(stock);
+        transaction.setOrder(order);
+        transaction.setTransactionType(closingTxType);
+        transaction.setStatus(TransactionStatus.SUCCESS);
+        transaction.setTradingMode(position.getTradingMode());
+        transaction.setPositionSide(position.getSide());
+        transaction.setLeverage(position.getLeverage());
+        transaction.setMarginUsed(marginUsed);
+        transaction.setPositionId(position.getId());
+        transaction.setQuantity(qty);
+        transaction.setPricePerUnit(closePrice);
+        transaction.setTotalAmount(settlementAmount);
+        transaction.setFees(BigDecimal.ZERO);
+        transaction.setAvgBuyPrice(entryPrice);
+        transaction.setPnl(realizedPnl);
+        transaction.setPnlPercent(realizedPnlPercent);
+        transactionRepository.save(transaction);
+
+        log.info("Closed paper position #{} on {} ({}): entry={}, close={}, realizedPnL={} (ROI: {}%), Reason: {}",
+                position.getId(), symbol, position.getSide(), entryPrice, closePrice, realizedPnl, realizedPnlPercent, reason);
+
+        return mapPositionToDto(position, closePrice);
+    }
+
+    // =========================================================================
+    // 4. UPDATE SL / TP FOR AN OPEN POSITION
+    // =========================================================================
+
+    @Transactional
+    public PositionDto updatePositionSlTp(Long userId, Long positionId, UpdateSlTpRequestDto request) {
+        synchronized (getUserLock(userId)) {
+            Position position = positionRepository.findByIdAndUserId(positionId, userId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Position not found with id: " + positionId));
+
+            if (position.getStatus() != PositionStatus.OPEN) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot edit SL/TP on a closed position");
+            }
+
+            validateSlTp(position.getSide(), position.getEntryPrice(), request.stopLoss(), request.takeProfit());
+
+            position.setStopLoss(request.stopLoss());
+            position.setTakeProfit(request.takeProfit());
+            position = positionRepository.save(position);
+
+            StockQuoteDto quote = fetchRealMarketQuote(position.getStock().getSymbol());
+            BigDecimal currentPrice = quote != null && quote.price() != null ? quote.price() : position.getEntryPrice();
+
+            return mapPositionToDto(position, currentPrice);
+        }
+    }
+
+    // =========================================================================
+    // 5. GET USER POSITIONS WITH LIVE FLOATING P&L & SL/TP EVALUATION
+    // =========================================================================
+
+    @Transactional
+    public List<PositionDto> getUserPositions(Long userId, String symbol, PositionStatus status) {
+        List<Position> positions = positionRepository.findFiltered(userId, symbol, status);
+        List<PositionDto> dtos = new ArrayList<>();
+        Map<String, BigDecimal> livePrices = new HashMap<>();
+
+        for (Position p : positions) {
+            String sym = p.getStock() != null ? p.getStock().getSymbol() : "UNKNOWN";
+            BigDecimal currentPrice = p.getClosePrice();
+
+            if (p.getStatus() == PositionStatus.OPEN) {
+                BigDecimal liveP = livePrices.computeIfAbsent(sym, s -> {
+                    try {
+                        StockQuoteDto quote = fetchRealMarketQuote(s);
+                        return quote != null && quote.price() != null ? quote.price() : null;
+                    } catch (Exception e) {
+                        return null;
+                    }
+                });
+
+                if (liveP == null) {
+                    liveP = p.getEntryPrice();
+                }
+
+                // Check automated SL / TP triggers
+                if (shouldTriggerSlOrTp(p, liveP)) {
+                    dtos.add(executeClosePositionInternal(p, liveP, "Automated SL/TP Trigger"));
+                    continue;
+                }
+
+                currentPrice = liveP;
+            }
+
+            dtos.add(mapPositionToDto(p, currentPrice));
+        }
+
+        return dtos;
+    }
+
+    private boolean shouldTriggerSlOrTp(Position p, BigDecimal currentPrice) {
+        if (p.getStatus() != PositionStatus.OPEN || currentPrice == null) return false;
+
+        if (p.getSide() == PositionSide.LONG) {
+            if (p.getStopLoss() != null && currentPrice.compareTo(p.getStopLoss()) <= 0) return true;
+            if (p.getTakeProfit() != null && currentPrice.compareTo(p.getTakeProfit()) >= 0) return true;
+        } else if (p.getSide() == PositionSide.SHORT) {
+            if (p.getStopLoss() != null && currentPrice.compareTo(p.getStopLoss()) >= 0) return true;
+            if (p.getTakeProfit() != null && currentPrice.compareTo(p.getTakeProfit()) <= 0) return true;
+        }
+
+        return false;
+    }
+
+    private void validateSlTp(PositionSide side, BigDecimal entryPrice, BigDecimal stopLoss, BigDecimal takeProfit) {
+        if (side == PositionSide.LONG) {
+            if (stopLoss != null && stopLoss.compareTo(BigDecimal.ZERO) > 0 && stopLoss.compareTo(entryPrice) >= 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "For BUY/LONG, Stop Loss must be less than entry price (" + entryPrice + ")");
+            }
+            if (takeProfit != null && takeProfit.compareTo(BigDecimal.ZERO) > 0 && takeProfit.compareTo(entryPrice) <= 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "For BUY/LONG, Take Profit must be greater than entry price (" + entryPrice + ")");
+            }
+        } else if (side == PositionSide.SHORT) {
+            if (stopLoss != null && stopLoss.compareTo(BigDecimal.ZERO) > 0 && stopLoss.compareTo(entryPrice) <= 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "For SELL/SHORT, Stop Loss must be greater than entry price (" + entryPrice + ")");
+            }
+            if (takeProfit != null && takeProfit.compareTo(BigDecimal.ZERO) > 0 && takeProfit.compareTo(entryPrice) >= 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "For SELL/SHORT, Take Profit must be less than entry price (" + entryPrice + ")");
+            }
+        }
+    }
+
+    public PositionDto mapPositionToDto(Position p, BigDecimal currentPrice) {
+        Stock stock = p.getStock();
+        String symbol = stock != null ? stock.getSymbol() : "UNKNOWN";
+        String companyName = stock != null && stock.getCompanyName() != null ? stock.getCompanyName() : symbol;
+        String exchange = stock != null && stock.getExchange() != null ? stock.getExchange() : "NSE";
+        String currency = stock != null && stock.getCurrency() != null ? stock.getCurrency() : "USD";
+
+        BigDecimal price = currentPrice != null ? currentPrice : p.getEntryPrice();
+        BigDecimal qty = p.getQuantity() != null ? p.getQuantity() : BigDecimal.ZERO;
+        BigDecimal margin = p.getMarginUsed() != null ? p.getMarginUsed() : BigDecimal.ZERO;
+        BigDecimal positionValue = price.multiply(qty).setScale(4, RoundingMode.HALF_UP);
+
+        BigDecimal unrealizedPnl = BigDecimal.ZERO;
+        BigDecimal unrealizedPnlPercent = BigDecimal.ZERO;
+
+        if (p.getStatus() == PositionStatus.OPEN) {
+            if (p.getSide() == PositionSide.LONG) {
+                unrealizedPnl = price.subtract(p.getEntryPrice()).multiply(qty).setScale(4, RoundingMode.HALF_UP);
+            } else {
+                unrealizedPnl = p.getEntryPrice().subtract(price).multiply(qty).setScale(4, RoundingMode.HALF_UP);
+            }
+
+            if (margin.compareTo(BigDecimal.ZERO) > 0) {
+                unrealizedPnlPercent = unrealizedPnl.divide(margin, 4, RoundingMode.HALF_UP)
+                        .multiply(new BigDecimal("100"))
+                        .setScale(2, RoundingMode.HALF_UP);
+            }
+        }
+
+        return new PositionDto(
+                p.getId(),
+                symbol,
+                companyName,
+                exchange,
+                currency,
+                p.getSide(),
+                p.getTradingMode(),
+                qty,
+                p.getEntryPrice(),
+                price,
+                p.getLeverage(),
+                margin,
+                positionValue,
+                p.getStatus() == PositionStatus.OPEN ? unrealizedPnl : null,
+                p.getStatus() == PositionStatus.OPEN ? unrealizedPnlPercent : null,
+                p.getStopLoss(),
+                p.getTakeProfit(),
+                p.getStatus(),
+                p.getClosePrice(),
+                p.getCloseTime(),
+                p.getRealizedPnl(),
+                p.getCreatedAt()
+        );
+    }
+
+    // =========================================================================
+    // 6. VIRTUAL WALLET & EXNESS-STYLE BALANCE CALCULATION
     // =========================================================================
 
     @Transactional(readOnly = true)
     public VirtualWalletDto getWallet(Long userId) {
         BigDecimal cashBalance = calculateCashBalance(userId);
         List<Holding> holdings = holdingRepository.findByUserId(userId);
+        List<Position> openPositions = positionRepository.findByUserIdAndStatus(userId, PositionStatus.OPEN);
 
         BigDecimal totalInvested = BigDecimal.ZERO;
         BigDecimal totalHoldingMarketValue = BigDecimal.ZERO;
 
         for (Holding h : holdings) {
             totalInvested = totalInvested.add(h.getTotalInvested() != null ? h.getTotalInvested() : BigDecimal.ZERO);
-
-            // Get current price if available, otherwise use average buy price
             BigDecimal currentPrice = h.getStock() != null && h.getStock().getCurrentPrice() != null
                     ? h.getStock().getCurrentPrice()
                     : h.getAverageBuyPrice();
-
             if (currentPrice != null && h.getQuantity() != null) {
                 totalHoldingMarketValue = totalHoldingMarketValue.add(currentPrice.multiply(h.getQuantity()));
             }
         }
 
-        BigDecimal totalPortfolioValue = cashBalance.add(totalHoldingMarketValue).setScale(4, RoundingMode.HALF_UP);
+        BigDecimal marginUsed = BigDecimal.ZERO;
+        BigDecimal floatingPnl = BigDecimal.ZERO;
+
+        for (Position pos : openPositions) {
+            marginUsed = marginUsed.add(pos.getMarginUsed() != null ? pos.getMarginUsed() : BigDecimal.ZERO);
+            BigDecimal curP = pos.getStock() != null && pos.getStock().getCurrentPrice() != null ? pos.getStock().getCurrentPrice() : pos.getEntryPrice();
+            BigDecimal posPnl;
+            if (pos.getSide() == PositionSide.LONG) {
+                posPnl = curP.subtract(pos.getEntryPrice()).multiply(pos.getQuantity());
+            } else {
+                posPnl = pos.getEntryPrice().subtract(curP).multiply(pos.getQuantity());
+            }
+            floatingPnl = floatingPnl.add(posPnl);
+        }
+
+        BigDecimal equity = cashBalance.add(marginUsed).add(floatingPnl).add(totalHoldingMarketValue).setScale(4, RoundingMode.HALF_UP);
+        BigDecimal marginLevelPercent = marginUsed.compareTo(BigDecimal.ZERO) > 0
+                ? equity.divide(marginUsed, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
 
         return new VirtualWalletDto(
                 cashBalance.setScale(2, RoundingMode.HALF_UP),
-                totalInvested.setScale(2, RoundingMode.HALF_UP),
-                totalPortfolioValue.setScale(2, RoundingMode.HALF_UP),
-                "USD"
+                totalInvested.add(marginUsed).setScale(2, RoundingMode.HALF_UP),
+                equity.setScale(2, RoundingMode.HALF_UP),
+                "USD",
+                marginUsed.setScale(2, RoundingMode.HALF_UP),
+                floatingPnl.setScale(2, RoundingMode.HALF_UP),
+                cashBalance.setScale(2, RoundingMode.HALF_UP),
+                marginLevelPercent
         );
     }
 
@@ -363,14 +807,26 @@ public class TradingService {
             BigDecimal amount = t.getTotalAmount() != null ? t.getTotalAmount() : BigDecimal.ZERO;
             BigDecimal fees = t.getFees() != null ? t.getFees() : BigDecimal.ZERO;
 
-            if (t.getTransactionType() == TransactionType.BUY) {
-                balance = balance.subtract(amount).subtract(fees);
-            } else if (t.getTransactionType() == TransactionType.SELL) {
-                balance = balance.add(amount).subtract(fees);
-            } else if (t.getTransactionType() == TransactionType.DEPOSIT || t.getTransactionType() == TransactionType.DIVIDEND) {
-                balance = balance.add(amount).subtract(fees);
-            } else if (t.getTransactionType() == TransactionType.WITHDRAWAL) {
-                balance = balance.subtract(amount).subtract(fees);
+            if (t.getPositionId() != null) {
+                // Margined position transaction
+                if (t.getPnl() != null && t.getPnl().compareTo(BigDecimal.ZERO) != 0) {
+                    // Position closed settlement
+                    balance = balance.add(amount).subtract(fees);
+                } else {
+                    // Position opened: margin locked
+                    balance = balance.subtract(amount).subtract(fees);
+                }
+            } else {
+                // Spot holding transaction
+                if (t.getTransactionType() == TransactionType.BUY) {
+                    balance = balance.subtract(amount).subtract(fees);
+                } else if (t.getTransactionType() == TransactionType.SELL) {
+                    balance = balance.add(amount).subtract(fees);
+                } else if (t.getTransactionType() == TransactionType.DEPOSIT || t.getTransactionType() == TransactionType.DIVIDEND) {
+                    balance = balance.add(amount).subtract(fees);
+                } else if (t.getTransactionType() == TransactionType.WITHDRAWAL) {
+                    balance = balance.subtract(amount).subtract(fees);
+                }
             }
         }
 
@@ -447,7 +903,7 @@ public class TradingService {
     }
 
     // =========================================================================
-    // 4. USER HOLDINGS
+    // 7. USER HOLDINGS
     // =========================================================================
 
     @Transactional
@@ -585,7 +1041,7 @@ public class TradingService {
     }
 
     // =========================================================================
-    // 5. HELPER METHODS
+    // 8. HELPER METHODS
     // =========================================================================
 
     public StockQuoteDto fetchRealMarketQuote(String symbol) {
