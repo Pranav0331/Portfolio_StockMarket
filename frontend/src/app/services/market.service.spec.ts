@@ -155,4 +155,88 @@ describe('MarketService', () => {
     expect(req.request.method).toBe('GET');
     req.flush(mockSearch);
   });
+
+  it('should deduplicate concurrent in-flight candle requests for the same symbol and interval', () => {
+    service.clearCaches();
+
+    const mockCandles: CandleSeries = {
+      symbol: 'BTC/USD',
+      interval: '5min',
+      currency: 'USD',
+      exchange: 'Binance',
+      type: 'Digital Currency',
+      candles: [
+        {
+          timestamp: 1727500000,
+          datetime: '2026-09-28 15:55:00',
+          open: 65000,
+          high: 65100,
+          low: 64900,
+          close: 65050,
+          volume: 10
+        }
+      ]
+    };
+
+    let count1 = 0;
+    let count2 = 0;
+
+    service.getCandles('BTC/USD', '5min', 60).subscribe((s) => {
+      count1++;
+      expect(s.symbol).toBe('BTC/USD');
+    });
+
+    service.getCandles('BTC/USD', '5min', 60).subscribe((s) => {
+      count2++;
+      expect(s.symbol).toBe('BTC/USD');
+    });
+
+    // Exactly ONE HTTP request should be made
+    const req = httpTesting.expectOne((r) =>
+      r.url === `${environment.apiUrl}/market/candles` &&
+      r.params.get('symbol') === 'BTC/USD' &&
+      r.params.get('interval') === '5min'
+    );
+    req.flush(mockCandles);
+
+    expect(count1).toBe(1);
+    expect(count2).toBe(1);
+  });
+
+  it('should return cached candles on subsequent request without making network call', () => {
+    service.clearCaches();
+
+    const mockCandles: CandleSeries = {
+      symbol: 'EUR/USD',
+      interval: '5min',
+      currency: 'USD',
+      exchange: 'Forex',
+      type: 'FX',
+      candles: [
+        {
+          timestamp: 1727500000,
+          datetime: '2026-09-28 15:55:00',
+          open: 1.08,
+          high: 1.09,
+          low: 1.07,
+          close: 1.085,
+          volume: 0
+        }
+      ]
+    };
+
+    // First request
+    service.getCandles('EUR/USD', '5min', 60).subscribe();
+    const req = httpTesting.expectOne((r) => r.url === `${environment.apiUrl}/market/candles`);
+    req.flush(mockCandles);
+
+    // Second request (should be served from cache immediately)
+    let cachedResult: CandleSeries | null = null;
+    service.getCandles('EUR/USD', '5min', 60).subscribe((s) => {
+      cachedResult = s;
+    });
+
+    httpTesting.expectNone((r) => r.url === `${environment.apiUrl}/market/candles`);
+    expect(cachedResult).toEqual(mockCandles);
+  });
 });

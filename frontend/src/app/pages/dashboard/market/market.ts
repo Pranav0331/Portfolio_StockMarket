@@ -439,9 +439,6 @@ export class MarketComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Background watchlist live price refresh
-    this.refreshWatchlistQuotes();
-
     // Start live candle updates loop
     this.startLiveCandleStream();
 
@@ -488,7 +485,7 @@ export class MarketComponent implements OnInit, OnDestroy {
   // INSTRUMENT SELECTION & DATA FETCHING
   // =========================================================================
 
-  loadInstrument(symbol: string, name?: string, exchange?: string, type?: string): void {
+  loadInstrument(symbol: string, name?: string, exchange?: string, type?: string, forceRefresh = false): void {
     const cleanSym = symbol.trim().toUpperCase();
     if (!cleanSym) return;
 
@@ -508,17 +505,17 @@ export class MarketComponent implements OnInit, OnDestroy {
     this.loadDrawingsForSymbol(cleanSym);
 
     // Fetch both Quote and Candles
-    this.fetchQuote(cleanSym, name);
-    this.fetchCandles(cleanSym, this.currentInterval());
+    this.fetchQuote(cleanSym, name, forceRefresh);
+    this.fetchCandles(cleanSym, this.currentInterval(), forceRefresh);
 
     // Restart live candle polling stream for newly selected symbol
     this.startLiveCandleStream();
   }
 
-  fetchQuote(symbol: string, companyName?: string): void {
+  fetchQuote(symbol: string, companyName?: string, forceRefresh = false): void {
     this.isLoadingQuote.set(true);
 
-    this.marketService.getQuote(symbol).subscribe({
+    this.marketService.getQuote(symbol, forceRefresh).subscribe({
       next: (quote) => {
         this.isLoadingQuote.set(false);
         this.currentQuote.set(quote);
@@ -534,12 +531,12 @@ export class MarketComponent implements OnInit, OnDestroy {
     });
   }
 
-  fetchCandles(symbol: string, interval: ChartInterval): void {
+  fetchCandles(symbol: string, interval: ChartInterval, forceRefresh = false): void {
     this.isLoadingCandles.set(true);
 
     const size = this.getOutputSizeForTimeframe(this.currentTimeframe());
 
-    this.marketService.getCandles(symbol, interval, size).subscribe({
+    this.marketService.getCandles(symbol, interval, size, forceRefresh).subscribe({
       next: (series) => {
         this.isLoadingCandles.set(false);
         if (series && series.candles && series.candles.length > 0) {
@@ -560,15 +557,16 @@ export class MarketComponent implements OnInit, OnDestroy {
   }
 
   private handleError(err: any, symbol: string): void {
-    if (err.status === 429) {
+    const errorMsg = err.error?.message || err.message || '';
+    if (err.status === 429 || errorMsg.toLowerCase().includes('rate limit') || errorMsg.toLowerCase().includes('api limit') || errorMsg.toLowerCase().includes('limit reached')) {
       this.isRateLimited.set(true);
-      this.errorMessage.set('Twelve Data API rate limit reached. Please try again shortly or configure an upgraded plan.');
-    } else if (err.status === 404) {
-      this.errorMessage.set(`No market data found for symbol "${symbol}". Please verify the symbol.`);
+      this.errorMessage.set('Twelve Data rate limit reached. Please wait for the next minute.');
     } else if (err.status === 504) {
       this.errorMessage.set('Market data request timed out. Please check your connection and try again.');
+    } else if (err.status === 404) {
+      this.errorMessage.set(`No market data found for symbol "${symbol}". Please verify the symbol.`);
     } else {
-      this.errorMessage.set(err.error?.message || err.message || 'Market data temporarily unavailable. Please try again.');
+      this.errorMessage.set(errorMsg || 'Market data temporarily unavailable. Please try again.');
     }
   }
 
@@ -2278,8 +2276,8 @@ export class MarketComponent implements OnInit, OnDestroy {
 
   refreshCurrentInstrument(): void {
     const sym = this.selectedSymbol();
-    this.fetchQuote(sym);
-    this.fetchCandles(sym, this.currentInterval());
+    this.fetchQuote(sym, undefined, true);
+    this.fetchCandles(sym, this.currentInterval(), true);
   }
 
   retryFetch(): void {

@@ -43,6 +43,12 @@ public class MarketDataService {
     private final ObjectMapper objectMapper;
     private final UpstoxService upstoxService;
 
+    private static final long CACHE_TTL_MS = 60000; // 60 seconds TTL
+    private final java.util.Map<String, CachedEntry<CandleSeriesDto>> candleCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Map<String, CachedEntry<StockQuoteDto>> quoteCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private record CachedEntry<T>(T data, long timestamp) {}
+
     @Value("${twelvedata.api.key:demo}")
     private String apiKey;
 
@@ -181,6 +187,13 @@ public class MarketDataService {
         }
 
         String cleanSymbol = symbol.trim().toUpperCase();
+
+        CachedEntry<StockQuoteDto> cachedQuote = quoteCache.get(cleanSymbol);
+        if (cachedQuote != null && (System.currentTimeMillis() - cachedQuote.timestamp < CACHE_TTL_MS)) {
+            log.debug("Returning cached Twelve Data quote for symbol: {}", cleanSymbol);
+            return cachedQuote.data;
+        }
+
         String url = String.format("%s/quote?symbol=%s&apikey=%s", baseUrl, cleanSymbol, apiKey);
 
         try {
@@ -214,7 +227,7 @@ public class MarketDataService {
             String latestTradingDay = root.path("datetime").asText(null);
             Long timestamp = parseLong(root.path("timestamp").asText(null));
 
-            return new StockQuoteDto(
+            StockQuoteDto quoteResult = new StockQuoteDto(
                     symbolOut,
                     name,
                     price,
@@ -228,6 +241,9 @@ public class MarketDataService {
                     latestTradingDay,
                     timestamp
             );
+
+            quoteCache.put(cleanSymbol, new CachedEntry<>(quoteResult, System.currentTimeMillis()));
+            return quoteResult;
 
         } catch (ResponseStatusException e) {
             throw e;
@@ -256,6 +272,13 @@ public class MarketDataService {
         String cleanSymbol = symbol.trim().toUpperCase();
         String normalizedInterval = normalizeInterval(interval);
         int size = (outputsize != null && outputsize > 0 && outputsize <= 500) ? outputsize : 60;
+        String cacheKey = cleanSymbol + "_" + normalizedInterval + "_" + size;
+
+        CachedEntry<CandleSeriesDto> cachedCandles = candleCache.get(cacheKey);
+        if (cachedCandles != null && (System.currentTimeMillis() - cachedCandles.timestamp < CACHE_TTL_MS)) {
+            log.debug("Returning cached Twelve Data candles for key: {}", cacheKey);
+            return cachedCandles.data;
+        }
 
         String url = String.format("%s/time_series?symbol=%s&interval=%s&outputsize=%d&apikey=%s",
                 baseUrl, cleanSymbol, normalizedInterval, size, apiKey);
@@ -304,7 +327,9 @@ public class MarketDataService {
             // Twelve Data returns descending; reverse to chronological ascending order for charting
             Collections.reverse(candles);
 
-            return new CandleSeriesDto(symbolOut, intervalOut, currency, exchange, type, candles);
+            CandleSeriesDto result = new CandleSeriesDto(symbolOut, intervalOut, currency, exchange, type, candles);
+            candleCache.put(cacheKey, new CachedEntry<>(result, System.currentTimeMillis()));
+            return result;
 
         } catch (ResponseStatusException e) {
             throw e;
@@ -421,7 +446,7 @@ public class MarketDataService {
             log.warn("Twelve Data API returned error (code {}): {}", code, message);
 
             if (code == 429 || message.toLowerCase().contains("api limit") || message.toLowerCase().contains("rate limit")) {
-                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Twelve Data API rate limit reached. Please try again shortly.");
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Twelve Data rate limit reached. Please wait for the next minute.");
             }
             if (code == 404 || message.toLowerCase().contains("not found") || message.toLowerCase().contains("cannot be found")) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No market data found for: " + query);
@@ -430,9 +455,9 @@ public class MarketDataService {
         }
 
         if (root.has("code") && root.path("code").asInt() == 429) {
-            String message = root.path("message").asText("Twelve Data rate limit reached");
+            String message = root.path("message").asText("Twelve Data rate limit reached. Please wait for the next minute.");
             log.warn("Twelve Data API rate limit: {}", message);
-            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Twelve Data API rate limit reached. Please try again shortly.");
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Twelve Data rate limit reached. Please wait for the next minute.");
         }
     }
 
