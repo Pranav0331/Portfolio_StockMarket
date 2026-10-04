@@ -11,6 +11,7 @@ describe('adminGuard', () => {
   let router: Router;
 
   beforeEach(() => {
+    TestBed.resetTestingModule();
     localStorage.clear();
     TestBed.configureTestingModule({
       providers: [

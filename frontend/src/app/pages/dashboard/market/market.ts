@@ -35,8 +35,10 @@ import { MarketService } from '../../../services/market.service';
 import { MarketWebSocketService, MarketTick } from '../../../services/market-websocket.service';
 import { AuthService } from '../../../services/auth.service';
 import { AlertService } from '../../../services/alert.service';
+import { TradingService } from '../../../services/trading.service';
 import { StockQuote, StockSearchItem, Candle, CandleSeries } from '../../../models/market.model';
 import { AlertConditionType } from '../../../models/alert.model';
+import { UserHolding } from '../../../models/trading.model';
 import {
   IndicatorCategory,
   IndicatorDefinition,
@@ -86,6 +88,7 @@ export class MarketComponent implements OnInit, OnDestroy {
   readonly marketWebSocketService = inject(MarketWebSocketService);
   readonly authService = inject(AuthService);
   readonly alertService = inject(AlertService);
+  readonly tradingService = inject(TradingService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -121,6 +124,18 @@ export class MarketComponent implements OnInit, OnDestroy {
   readonly currentProvider = computed(() => {
     return this.marketService.isIndianSymbol(this.selectedSymbol()) ? 'Upstox' : 'Twelve Data';
   });
+
+  // Current active symbol user holding position (if owned)
+  readonly currentSymbolHolding = computed(() => {
+    const sym = this.selectedSymbol();
+    if (!sym) return null;
+    return this.tradingService.holdingsMap().get(sym.trim().toUpperCase()) || null;
+  });
+
+  getHolding(symbol: string): UserHolding | undefined {
+    if (!symbol) return undefined;
+    return this.tradingService.holdingsMap().get(symbol.trim().toUpperCase());
+  }
 
   // Loading and Error states
   readonly isLoadingQuote = signal<boolean>(false);
@@ -428,6 +443,11 @@ export class MarketComponent implements OnInit, OnDestroy {
     // Load saved watchlist state & drawings
     this.loadSavedWatchlistState();
     this.loadDrawingsForSymbol(this.selectedSymbol());
+
+    // Fetch user portfolio holdings to display live P&L on watchlist if authenticated
+    if (this.authService.isAuthenticated()) {
+      this.tradingService.getHoldings().subscribe({ error: () => {} });
+    }
 
     // Handle query params e.g. /dashboard/market?symbol=BTC/USD
     this.queryParamSub = this.route.queryParams.subscribe((params) => {

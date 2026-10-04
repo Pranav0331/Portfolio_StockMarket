@@ -298,6 +298,15 @@
                         }
                       </div>
 
+                      <!-- Live Holding & P&L Info (If Owned) -->
+                      @if (getHolding(item.symbol); as holding) {
+                        <div class="item-holding-info font-mono" [class.pnl-pos]="(holding.unrealizedPnL || 0) >= 0" [class.pnl-neg]="(holding.unrealizedPnL || 0) < 0" (click)="$event.stopPropagation()">
+                          <span class="h-owned-tag">OWNED: {{ holding.quantity }}</span>
+                          <span class="h-avg-tag">Avg: {{ getCurrencySymbol(item.currency) }}{{ holding.averageBuyPrice | number:'1.2-2' }}</span>
+                          <span class="h-pnl-tag">P&L: {{ (holding.unrealizedPnL || 0) >= 0 ? '+' : '' }}{{ getCurrencySymbol(item.currency) }}{{ holding.unrealizedPnL | number:'1.2-2' }} ({{ (holding.unrealizedPnLPercent || 0) >= 0 ? '+' : '' }}{{ holding.unrealizedPnLPercent | number:'1.2-2' }}%)</span>
+                        </div>
+                      }
+
                       <!-- Actions -->
                       <div class="item-actions" (click)="$event.stopPropagation()">
                         <button 

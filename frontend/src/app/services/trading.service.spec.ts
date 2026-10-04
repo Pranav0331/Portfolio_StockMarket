@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TradingService } from './trading.service';
-import { TradeRequest, TradeResponse, VirtualWallet, UserHolding } from '../models/trading.model';
+import { TradeRequest, TradeResponse, VirtualWallet, UserHolding, PortfolioSummary } from '../models/trading.model';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('TradingService', () => {
@@ -10,6 +10,7 @@ describe('TradingService', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(() => {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
         TradingService,
@@ -65,6 +66,16 @@ describe('TradingService', () => {
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual(request);
     req.flush(mockResponse);
+
+    // Flush automatic post-trade sync requests
+    const holdingsReq = httpMock.expectOne('http://localhost:8080/api/trading/holdings');
+    holdingsReq.flush([]);
+
+    const portfolioReq = httpMock.expectOne('http://localhost:8080/api/portfolio');
+    portfolioReq.flush({ cashBalance: 70500, totalInvested: 29500, totalHoldingsMarketValue: 29500, totalPortfolioValue: 100000, totalUnrealizedPnL: 0, totalUnrealizedPnLPercent: 0, totalHoldingsCount: 1, cashAllocationPercent: 70.5, holdings: [] });
+
+    const symHoldingReq = httpMock.expectOne('http://localhost:8080/api/trading/holdings/RELIANCE');
+    symHoldingReq.flush({ holdingId: 1, symbol: 'RELIANCE', companyName: 'Reliance', exchange: 'NSE', currency: 'INR', quantity: 10, averageBuyPrice: 2950, totalInvested: 29500, currentPrice: 2950, currentValue: 29500, unrealizedPnL: 0, unrealizedPnLPercent: 0 });
   });
 
   it('should execute SELL trade and update wallet signal', () => {
@@ -101,6 +112,16 @@ describe('TradingService', () => {
     const req = httpMock.expectOne('http://localhost:8080/api/trading/sell');
     expect(req.request.method).toBe('POST');
     req.flush(mockResponse);
+
+    // Flush automatic post-trade sync requests
+    const holdingsReq = httpMock.expectOne('http://localhost:8080/api/trading/holdings');
+    holdingsReq.flush([]);
+
+    const portfolioReq = httpMock.expectOne('http://localhost:8080/api/portfolio');
+    portfolioReq.flush({ cashBalance: 85500, totalInvested: 14500, totalHoldingsMarketValue: 15000, totalPortfolioValue: 100500, totalUnrealizedPnL: 500, totalUnrealizedPnLPercent: 3.45, totalHoldingsCount: 1, cashAllocationPercent: 85.0, holdings: [] });
+
+    const symHoldingReq = httpMock.expectOne('http://localhost:8080/api/trading/holdings/RELIANCE');
+    symHoldingReq.flush({ holdingId: 1, symbol: 'RELIANCE', companyName: 'Reliance', exchange: 'NSE', currency: 'INR', quantity: 5, averageBuyPrice: 2950, totalInvested: 14750, currentPrice: 3000, currentValue: 15000, unrealizedPnL: 250, unrealizedPnLPercent: 1.69 });
   });
 
   it('should fetch virtual wallet', () => {
@@ -148,3 +169,4 @@ describe('TradingService', () => {
     req.flush(mockHolding);
   });
 });
+

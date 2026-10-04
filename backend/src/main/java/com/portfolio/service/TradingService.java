@@ -353,7 +353,7 @@ public class TradingService {
     // 4. USER HOLDINGS
     // =========================================================================
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<UserHoldingDto> getUserHoldings(Long userId) {
         List<Holding> holdings = holdingRepository.findByUserId(userId);
         List<UserHoldingDto> dtos = new ArrayList<>();
@@ -365,9 +365,31 @@ public class TradingService {
             String exchange = stock != null ? stock.getExchange() : "NSE";
             String currency = stock != null ? stock.getCurrency() : "USD";
 
-            BigDecimal currentPrice = stock != null && stock.getCurrentPrice() != null
-                    ? stock.getCurrentPrice()
-                    : h.getAverageBuyPrice();
+            BigDecimal currentPrice = null;
+            boolean priceAvailable = false;
+
+            try {
+                StockQuoteDto quote = fetchRealMarketQuote(symbol);
+                if (quote != null && quote.price() != null && quote.price().compareTo(BigDecimal.ZERO) > 0) {
+                    currentPrice = quote.price();
+                    priceAvailable = true;
+                    if (stock != null) {
+                        stock.setCurrentPrice(currentPrice);
+                        if (quote.previousClose() != null) {
+                            stock.setPreviousClose(quote.previousClose());
+                        }
+                        stockRepository.save(stock);
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("Could not refresh live quote for holding {}: {}", symbol, e.getMessage());
+            }
+
+            if (currentPrice == null) {
+                currentPrice = stock != null && stock.getCurrentPrice() != null
+                        ? stock.getCurrentPrice()
+                        : h.getAverageBuyPrice();
+            }
 
             BigDecimal currentValue = currentPrice.multiply(h.getQuantity()).setScale(4, RoundingMode.HALF_UP);
             BigDecimal unrealizedPnL = currentValue.subtract(h.getTotalInvested()).setScale(4, RoundingMode.HALF_UP);
@@ -393,14 +415,14 @@ public class TradingService {
                     unrealizedPnL,
                     unrealizedPnLPercent,
                     BigDecimal.ZERO,
-                    Boolean.TRUE
+                    priceAvailable || (stock != null && stock.getCurrentPrice() != null)
             ));
         }
 
         return dtos;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Optional<UserHoldingDto> getUserHoldingForSymbol(Long userId, String symbol) {
         return holdingRepository.findByUserIdAndStock_Symbol(userId, symbol.trim().toUpperCase())
                 .map(h -> {
@@ -410,9 +432,31 @@ public class TradingService {
                     String exchange = stock != null ? stock.getExchange() : "NSE";
                     String currency = stock != null ? stock.getCurrency() : "USD";
 
-                    BigDecimal currentPrice = stock != null && stock.getCurrentPrice() != null
-                            ? stock.getCurrentPrice()
-                            : h.getAverageBuyPrice();
+                    BigDecimal currentPrice = null;
+                    boolean priceAvailable = false;
+
+                    try {
+                        StockQuoteDto quote = fetchRealMarketQuote(sym);
+                        if (quote != null && quote.price() != null && quote.price().compareTo(BigDecimal.ZERO) > 0) {
+                            currentPrice = quote.price();
+                            priceAvailable = true;
+                            if (stock != null) {
+                                stock.setCurrentPrice(currentPrice);
+                                if (quote.previousClose() != null) {
+                                    stock.setPreviousClose(quote.previousClose());
+                                }
+                                stockRepository.save(stock);
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.debug("Could not refresh live quote for holding {}: {}", sym, e.getMessage());
+                    }
+
+                    if (currentPrice == null) {
+                        currentPrice = stock != null && stock.getCurrentPrice() != null
+                                ? stock.getCurrentPrice()
+                                : h.getAverageBuyPrice();
+                    }
 
                     BigDecimal currentValue = currentPrice.multiply(h.getQuantity()).setScale(4, RoundingMode.HALF_UP);
                     BigDecimal unrealizedPnL = currentValue.subtract(h.getTotalInvested()).setScale(4, RoundingMode.HALF_UP);
@@ -438,7 +482,7 @@ public class TradingService {
                             unrealizedPnL,
                             unrealizedPnLPercent,
                             BigDecimal.ZERO,
-                            Boolean.TRUE
+                            priceAvailable || (stock != null && stock.getCurrentPrice() != null)
                     );
                 });
     }

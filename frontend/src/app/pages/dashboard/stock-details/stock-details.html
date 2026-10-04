@@ -482,6 +482,43 @@
           </a>
         </div>
       } @else {
+        <!-- POSITION OVERVIEW CARD -->
+        @if (userHolding(); as holding) {
+          <div class="user-position-card font-mono" [class.pos-profit]="(holding.unrealizedPnL || 0) >= 0" [class.pos-loss]="(holding.unrealizedPnL || 0) < 0">
+            <div class="position-card-header">
+              <span class="pos-badge">
+                <span class="pos-dot"></span>
+                ACTIVE POSITION
+              </span>
+              <span class="pos-pnl-pill" [class.pnl-positive]="(holding.unrealizedPnL || 0) >= 0" [class.pnl-negative]="(holding.unrealizedPnL || 0) < 0">
+                P&L: {{ (holding.unrealizedPnL || 0) >= 0 ? '+' : '' }}{{ formatCurrencySymbol(symbol()) }}{{ holding.unrealizedPnL | number:'1.2-2' }} ({{ (holding.unrealizedPnLPercent || 0) >= 0 ? '+' : '' }}{{ holding.unrealizedPnLPercent | number:'1.2-2' }}%)
+              </span>
+            </div>
+            <div class="position-metrics-grid">
+              <div class="pos-m-item">
+                <span class="pos-m-lbl">Qty Owned</span>
+                <strong class="pos-m-val">{{ holding.quantity }}</strong>
+              </div>
+              <div class="pos-m-item">
+                <span class="pos-m-lbl">Avg Buy Price</span>
+                <strong class="pos-m-val">{{ formatCurrencySymbol(symbol()) }}{{ holding.averageBuyPrice | number:'1.2-2' }}</strong>
+              </div>
+              <div class="pos-m-item">
+                <span class="pos-m-lbl">Current Price</span>
+                <strong class="pos-m-val">{{ formatCurrencySymbol(symbol()) }}{{ (holding.currentPrice || currentQuote()?.price || 0) | number:'1.2-2' }}</strong>
+              </div>
+              <div class="pos-m-item">
+                <span class="pos-m-lbl">Current Value</span>
+                <strong class="pos-m-val">{{ formatCurrencySymbol(symbol()) }}{{ (holding.currentValue || (holding.quantity * (holding.currentPrice || currentQuote()?.price || 0))) | number:'1.2-2' }}</strong>
+              </div>
+            </div>
+          </div>
+        } @else {
+          <div class="no-position-card">
+            <span class="no-pos-txt">No active holding in <strong>{{ symbol() }}</strong></span>
+          </div>
+        }
+
         <!-- BUY / SELL SEGMENTED TABS -->
         <div class="trade-mode-segmented">
           <button

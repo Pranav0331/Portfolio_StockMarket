@@ -1702,6 +1702,78 @@
   z-index: 10;
 }
 
+/* Holding Position in Watchlist Row */
+.watchlist-row-card.wl-row.has-holding {
+  height: auto;
+  min-height: 60px;
+  max-height: none;
+  padding-top: 4px;
+  padding-bottom: 5px;
+}
+
+.wl-holding-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 0.63rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 3px;
+}
+
+[data-theme='light'] .wl-holding-row {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.wl-holding-row.pnl-pos {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.25);
+  color: #10b981;
+}
+
+.wl-holding-row.pnl-neg {
+  background: rgba(244, 63, 94, 0.08);
+  border-color: rgba(244, 63, 94, 0.25);
+  color: #f43f5e;
+}
+
+.wl-h-badge {
+  font-weight: 800;
+  font-size: 0.60rem;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+}
+
+[data-theme='light'] .wl-h-badge {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.wl-h-avg {
+  color: var(--text-secondary);
+}
+
+.wl-h-pnl {
+  font-weight: 700;
+}
+
+.holding-stat.pnl-pos .stat-val {
+  color: #10b981;
+  font-weight: 700;
+}
+
+.holding-stat.pnl-neg .stat-val {
+  color: #f43f5e;
+  font-weight: 700;
+}
+
 /* 6. Empty State */
 .wl-empty-state {
   display: flex;

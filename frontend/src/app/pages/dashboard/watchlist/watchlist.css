@@ -730,6 +730,49 @@
   font-style: italic;
 }
 
+/* LIVE HOLDING POSITION IN WATCHLIST CARD */
+.item-holding-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.70rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='light'] .item-holding-info {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.item-holding-info.pnl-pos {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.25);
+  color: #10b981;
+}
+
+.item-holding-info.pnl-neg {
+  background: rgba(244, 63, 94, 0.1);
+  border-color: rgba(244, 63, 94, 0.25);
+  color: #f43f5e;
+}
+
+.h-owned-tag {
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.h-avg-tag {
+  color: var(--text-secondary);
+}
+
+.h-pnl-tag {
+  font-weight: 700;
+}
+
 .item-actions {
   display: flex;
   align-items: center;

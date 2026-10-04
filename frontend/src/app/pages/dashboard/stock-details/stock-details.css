@@ -941,6 +941,122 @@
   transform: translateY(-1px);
 }
 
+/* USER POSITION & P&L OVERVIEW CARD */
+.user-position-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg, 12px);
+  padding: 0.75rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+[data-theme='light'] .user-position-card {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.user-position-card.pos-profit {
+  background: rgba(16, 185, 129, 0.07);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.user-position-card.pos-loss {
+  background: rgba(244, 63, 94, 0.07);
+  border-color: rgba(244, 63, 94, 0.3);
+}
+
+.position-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.pos-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.pos-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 6px #38bdf8;
+}
+
+.pos-pnl-pill {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.pos-pnl-pill.pnl-positive {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.pos-pnl-pill.pnl-negative {
+  background: rgba(244, 63, 94, 0.15);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.position-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem 0.6rem;
+  padding-top: 0.35rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='light'] .position-metrics-grid {
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+.pos-m-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pos-m-lbl {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pos-m-val {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.no-position-card {
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--radius-md, 8px);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px dashed var(--border-subtle);
+  text-align: center;
+}
+
+.no-pos-txt {
+  font-size: 0.70rem;
+  color: var(--text-muted);
+}
+
 /* BUY / SELL SEGMENTED TABS */
 .trade-mode-segmented {
   display: grid;

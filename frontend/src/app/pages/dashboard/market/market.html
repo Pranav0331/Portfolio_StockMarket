@@ -931,6 +931,16 @@
           <span class="stat-key">PROVIDER</span>
           <span class="stat-val brand">{{ currentProvider() }} REST API</span>
         </div>
+        @if (currentSymbolHolding(); as holding) {
+          <div class="stat-sep">|</div>
+          <div class="stats-item holding-stat" [class.pnl-pos]="(holding.unrealizedPnL || 0) >= 0" [class.pnl-neg]="(holding.unrealizedPnL || 0) < 0">
+            <span class="stat-key">HOLDING</span>
+            <span class="stat-val font-mono">
+              {{ holding.quantity }} sh @ {{ formatCurrencySymbol(selectedSymbol()) }}{{ holding.averageBuyPrice | number:'1.2-2' }} |
+              P&L: {{ (holding.unrealizedPnL || 0) >= 0 ? '+' : '' }}{{ formatCurrencySymbol(selectedSymbol()) }}{{ holding.unrealizedPnL | number:'1.2-2' }} ({{ (holding.unrealizedPnLPercent || 0) >= 0 ? '+' : '' }}{{ holding.unrealizedPnLPercent | number:'1.2-2' }}%)
+            </span>
+          </div>
+        }
       </footer>
     </main>
 
@@ -1009,6 +1019,7 @@
                   <div
                     class="watchlist-row-card wl-row"
                     [class.active-selected]="selectedSymbol() === item.symbol"
+                    [class.has-holding]="!!getHolding(item.symbol)"
                     [class.drag-over-top]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
                     [class.drag-over-bottom]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
                     (click)="selectWatchlistItem(item)"
@@ -1031,6 +1042,14 @@
                     <span class="row-change-pill col-pct" [class.up]="(item.change ?? 0) >= 0" [class.down]="(item.change ?? 0) < 0">
                       {{ item.changePercent || (item.change != null ? (((item.change >= 0) ? '+' : '') + (item.change | number:'1.2-2') + '%') : '—') }}
                     </span>
+
+                    @if (getHolding(item.symbol); as holding) {
+                      <div class="wl-holding-row font-mono" [class.pnl-pos]="(holding.unrealizedPnL || 0) >= 0" [class.pnl-neg]="(holding.unrealizedPnL || 0) < 0">
+                        <span class="wl-h-badge">OWNED: {{ holding.quantity }}</span>
+                        <span class="wl-h-avg">Avg: {{ formatCurrencySymbol(item.symbol) }}{{ holding.averageBuyPrice | number:'1.2-2' }}</span>
+                        <span class="wl-h-pnl">P&L: {{ (holding.unrealizedPnL || 0) >= 0 ? '+' : '' }}{{ formatCurrencySymbol(item.symbol) }}{{ holding.unrealizedPnL | number:'1.2-2' }} ({{ (holding.unrealizedPnLPercent || 0) >= 0 ? '+' : '' }}{{ holding.unrealizedPnLPercent | number:'1.2-2' }}%)</span>
+                      </div>
+                    }
                   </div>
                 }
               </div>
@@ -1054,6 +1073,7 @@
                   <div
                     class="watchlist-row-card wl-row"
                     [class.active-selected]="selectedSymbol() === item.symbol"
+                    [class.has-holding]="!!getHolding(item.symbol)"
                     [class.drag-over-top]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
                     [class.drag-over-bottom]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
                     (click)="selectWatchlistItem(item)"
@@ -1076,6 +1096,14 @@
                     <span class="row-change-pill col-pct" [class.up]="(item.change ?? 0) >= 0" [class.down]="(item.change ?? 0) < 0">
                       {{ item.changePercent || (item.change != null ? (((item.change >= 0) ? '+' : '') + (item.change | number:'1.2-2') + '%') : '—') }}
                     </span>
+
+                    @if (getHolding(item.symbol); as holding) {
+                      <div class="wl-holding-row font-mono" [class.pnl-pos]="(holding.unrealizedPnL || 0) >= 0" [class.pnl-neg]="(holding.unrealizedPnL || 0) < 0">
+                        <span class="wl-h-badge">OWNED: {{ holding.quantity }}</span>
+                        <span class="wl-h-avg">Avg: {{ formatCurrencySymbol(item.symbol) }}{{ holding.averageBuyPrice | number:'1.2-2' }}</span>
+                        <span class="wl-h-pnl">P&L: {{ (holding.unrealizedPnL || 0) >= 0 ? '+' : '' }}{{ formatCurrencySymbol(item.symbol) }}{{ holding.unrealizedPnL | number:'1.2-2' }} ({{ (holding.unrealizedPnLPercent || 0) >= 0 ? '+' : '' }}{{ holding.unrealizedPnLPercent | number:'1.2-2' }}%)</span>
+                      </div>
+                    }
                   </div>
                 }
               </div>
@@ -1099,6 +1127,7 @@
                   <div
                     class="watchlist-row-card wl-row"
                     [class.active-selected]="selectedSymbol() === item.symbol"
+                    [class.has-holding]="!!getHolding(item.symbol)"
                     [class.drag-over-top]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
                     [class.drag-over-bottom]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
                     (click)="selectWatchlistItem(item)"
@@ -1121,6 +1150,14 @@
                     <span class="row-change-pill col-pct" [class.up]="(item.change ?? 0) >= 0" [class.down]="(item.change ?? 0) < 0">
                       {{ item.changePercent || (item.change != null ? (((item.change >= 0) ? '+' : '') + (item.change | number:'1.2-2') + '%') : '—') }}
                     </span>
+
+                    @if (getHolding(item.symbol); as holding) {
+                      <div class="wl-holding-row font-mono" [class.pnl-pos]="(holding.unrealizedPnL || 0) >= 0" [class.pnl-neg]="(holding.unrealizedPnL || 0) < 0">
+                        <span class="wl-h-badge">OWNED: {{ holding.quantity }}</span>
+                        <span class="wl-h-avg">Avg: {{ formatCurrencySymbol(item.symbol) }}{{ holding.averageBuyPrice | number:'1.2-2' }}</span>
+                        <span class="wl-h-pnl">P&L: {{ (holding.unrealizedPnL || 0) >= 0 ? '+' : '' }}{{ formatCurrencySymbol(item.symbol) }}{{ holding.unrealizedPnL | number:'1.2-2' }} ({{ (holding.unrealizedPnLPercent || 0) >= 0 ? '+' : '' }}{{ holding.unrealizedPnLPercent | number:'1.2-2' }}%)</span>
+                      </div>
+                    }
                   </div>
                 }
               </div>
@@ -1144,6 +1181,7 @@
                   <div
                     class="watchlist-row-card wl-row"
                     [class.active-selected]="selectedSymbol() === item.symbol"
+                    [class.has-holding]="!!getHolding(item.symbol)"
                     [class.drag-over-top]="dragOverTarget() === item.symbol && dragOverPosition() === 'above'"
                     [class.drag-over-bottom]="dragOverTarget() === item.symbol && dragOverPosition() === 'below'"
                     (click)="selectWatchlistItem(item)"
@@ -1166,6 +1204,14 @@
                     <span class="row-change-pill col-pct" [class.up]="(item.change ?? 0) >= 0" [class.down]="(item.change ?? 0) < 0">
                       {{ item.changePercent || (item.change != null ? (((item.change >= 0) ? '+' : '') + (item.change | number:'1.2-2') + '%') : '—') }}
                     </span>
+
+                    @if (getHolding(item.symbol); as holding) {
+                      <div class="wl-holding-row font-mono" [class.pnl-pos]="(holding.unrealizedPnL || 0) >= 0" [class.pnl-neg]="(holding.unrealizedPnL || 0) < 0">
+                        <span class="wl-h-badge">OWNED: {{ holding.quantity }}</span>
+                        <span class="wl-h-avg">Avg: {{ formatCurrencySymbol(item.symbol) }}{{ holding.averageBuyPrice | number:'1.2-2' }}</span>
+                        <span class="wl-h-pnl">P&L: {{ (holding.unrealizedPnL || 0) >= 0 ? '+' : '' }}{{ formatCurrencySymbol(item.symbol) }}{{ holding.unrealizedPnL | number:'1.2-2' }} ({{ (holding.unrealizedPnLPercent || 0) >= 0 ? '+' : '' }}{{ holding.unrealizedPnLPercent | number:'1.2-2' }}%)</span>
+                      </div>
+                    }
                   </div>
                 }
               </div>

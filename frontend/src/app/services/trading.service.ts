@@ -13,6 +13,9 @@ export class TradingService {
 
   readonly wallet = signal<VirtualWallet | null>(null);
   readonly currentHolding = signal<UserHolding | null>(null);
+  readonly holdings = signal<UserHolding[]>([]);
+  readonly holdingsMap = signal<Map<string, UserHolding>>(new Map());
+  readonly portfolio = signal<PortfolioSummary | null>(null);
 
   buy(request: TradeRequest): Observable<TradeResponse> {
     return this.http.post<TradeResponse>(`${this.baseUrl}/trading/buy`, request).pipe(
@@ -20,6 +23,12 @@ export class TradingService {
         // Refresh wallet balance signal with remaining balance
         if (this.wallet()) {
           this.wallet.update(w => w ? { ...w, cashBalance: res.remainingCashBalance } : null);
+        }
+        // Immediately sync holdings, active holding, and portfolio everywhere
+        this.getHoldings().subscribe({ error: () => {} });
+        this.getPortfolio().subscribe({ error: () => {} });
+        if (request.symbol) {
+          this.getHoldingForSymbol(request.symbol).subscribe({ error: () => {} });
         }
       })
     );
@@ -30,6 +39,12 @@ export class TradingService {
       tap((res) => {
         if (this.wallet()) {
           this.wallet.update(w => w ? { ...w, cashBalance: res.remainingCashBalance } : null);
+        }
+        // Immediately sync holdings, active holding, and portfolio everywhere
+        this.getHoldings().subscribe({ error: () => {} });
+        this.getPortfolio().subscribe({ error: () => {} });
+        if (request.symbol) {
+          this.getHoldingForSymbol(request.symbol).subscribe({ error: () => {} });
         }
       })
     );
@@ -42,16 +57,58 @@ export class TradingService {
   }
 
   getHoldings(): Observable<UserHolding[]> {
-    return this.http.get<UserHolding[]>(`${this.baseUrl}/trading/holdings`);
+    return this.http.get<UserHolding[]>(`${this.baseUrl}/trading/holdings`).pipe(
+      tap(holdings => {
+        this.holdings.set(holdings || []);
+        const map = new Map<string, UserHolding>();
+        for (const h of (holdings || [])) {
+          if (h.symbol) {
+            map.set(h.symbol.trim().toUpperCase(), h);
+          }
+        }
+        this.holdingsMap.set(map);
+      })
+    );
   }
 
   getHoldingForSymbol(symbol: string): Observable<UserHolding> {
-    return this.http.get<UserHolding>(`${this.baseUrl}/trading/holdings/${encodeURIComponent(symbol)}`).pipe(
-      tap(holding => this.currentHolding.set(holding))
+    const sym = symbol.trim().toUpperCase();
+    return this.http.get<UserHolding>(`${this.baseUrl}/trading/holdings/${encodeURIComponent(sym)}`).pipe(
+      tap(holding => {
+        this.currentHolding.set(holding);
+        if (holding) {
+          this.holdingsMap.update(map => {
+            const next = new Map(map);
+            next.set(sym, holding);
+            return next;
+          });
+        } else {
+          this.holdingsMap.update(map => {
+            const next = new Map(map);
+            next.delete(sym);
+            return next;
+          });
+        }
+      })
     );
   }
 
   getPortfolio(): Observable<PortfolioSummary> {
-    return this.http.get<PortfolioSummary>(`${this.baseUrl}/portfolio`);
+    return this.http.get<PortfolioSummary>(`${this.baseUrl}/portfolio`).pipe(
+      tap(summary => {
+        this.portfolio.set(summary);
+        if (summary && summary.holdings) {
+          this.holdings.set(summary.holdings);
+          const map = new Map<string, UserHolding>();
+          for (const h of summary.holdings) {
+            if (h.symbol) {
+              map.set(h.symbol.trim().toUpperCase(), h);
+            }
+          }
+          this.holdingsMap.set(map);
+        }
+      })
+    );
   }
 }
+

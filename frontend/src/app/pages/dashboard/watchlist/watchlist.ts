@@ -10,8 +10,11 @@ import { Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { WatchlistService } from '../../../services/watchlist.service';
 import { MarketService } from '../../../services/market.service';
+import { TradingService } from '../../../services/trading.service';
+import { AuthService } from '../../../services/auth.service';
 import { WatchlistItem, AddWatchlistRequest } from '../../../models/watchlist.model';
 import { StockSearchItem } from '../../../models/market.model';
+import { UserHolding } from '../../../models/trading.model';
 
 @Component({
   selector: 'app-watchlist',
@@ -23,7 +26,14 @@ import { StockSearchItem } from '../../../models/market.model';
 export class WatchlistComponent implements OnInit {
   private readonly watchlistService = inject(WatchlistService);
   private readonly marketService = inject(MarketService);
+  readonly tradingService = inject(TradingService);
+  readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+
+  getHolding(symbol: string): UserHolding | undefined {
+    if (!symbol) return undefined;
+    return this.tradingService.holdingsMap().get(symbol.trim().toUpperCase());
+  }
 
   readonly watchlistData = this.watchlistService.watchlistData;
   readonly isLoading = this.watchlistService.isLoading;
@@ -102,6 +112,9 @@ export class WatchlistComponent implements OnInit {
 
   loadWatchlist(): void {
     this.watchlistService.getWatchlist().subscribe();
+    if (this.authService.isAuthenticated()) {
+      this.tradingService.getHoldings().subscribe({ error: () => {} });
+    }
   }
 
   refreshPrices(): void {
