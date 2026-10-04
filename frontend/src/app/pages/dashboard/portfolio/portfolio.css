@@ -985,3 +985,157 @@
   }
 }
 
+/* ==========================================================================
+   LIGHT / BRIGHT THEME OVERRIDES FOR MANAGE PAPER BALANCE MODAL
+   ========================================================================== */
+[data-theme="light"] .modal-backdrop {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+[data-theme="light"] .modal-card,
+[data-theme="light"] .glass-modal {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-theme="light"] .modal-header {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+[data-theme="light"] .modal-icon-box {
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+}
+
+[data-theme="light"] .modal-title {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .modal-sub {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .btn-close-modal {
+  color: #94a3b8;
+}
+
+[data-theme="light"] .btn-close-modal:hover {
+  color: #0f172a;
+}
+
+[data-theme="light"] .current-balance-banner {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .banner-lbl {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .banner-val {
+  color: #059669 !important;
+}
+
+[data-theme="light"] .modal-tabs {
+  background: #f1f5f9 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .modal-tab-btn {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .modal-tab-btn:hover {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .modal-tab-btn.active {
+  background: #ffffff !important;
+  color: #4f46e5 !important;
+  border-bottom-color: #4f46e5 !important;
+  font-weight: 700;
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="light"] .input-label {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .input-prefix {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .modal-input {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .modal-input:focus {
+  border-color: #4f46e5 !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
+}
+
+[data-theme="light"] .preset-chip {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+[data-theme="light"] .preset-chip:hover {
+  background: rgba(99, 102, 241, 0.1) !important;
+  border-color: #4f46e5 !important;
+  color: #4f46e5 !important;
+}
+
+[data-theme="light"] .preset-chip.highlight {
+  background: rgba(79, 70, 229, 0.1) !important;
+  border-color: #4f46e5 !important;
+  color: #4338ca !important;
+  font-weight: 700;
+}
+
+[data-theme="light"] .modal-note {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .modal-note.warning-text {
+  color: #b45309 !important;
+}
+
+[data-theme="light"] .btn-secondary {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+[data-theme="light"] .btn-secondary:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .btn-primary {
+  background: #4f46e5 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .btn-primary:hover:not(:disabled) {
+  background: #4338ca !important;
+}
+
+[data-theme="light"] .alert-success {
+  background: #ecfdf5 !important;
+  border: 1px solid #a7f3d0 !important;
+  color: #065f46 !important;
+}
+
+[data-theme="light"] .alert-error {
+  background: #fef2f2 !important;
+  border: 1px solid #fecaca !important;
+  color: #991b1b !important;
+}
+
+
