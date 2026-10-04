@@ -52,8 +52,17 @@ public class Transaction {
     @Column(name = "total_amount", nullable = false, precision = 19, scale = 4)
     private BigDecimal totalAmount;
 
-    @Column(nullable = false, precision = 19, scale = 4)
+    @Column(precision = 19, scale = 4)
     private BigDecimal fees = BigDecimal.ZERO;
+
+    @Column(precision = 19, scale = 4)
+    private BigDecimal pnl;
+
+    @Column(name = "pnl_percent", precision = 19, scale = 4)
+    private BigDecimal pnlPercent;
+
+    @Column(name = "avg_buy_price", precision = 19, scale = 4)
+    private BigDecimal avgBuyPrice;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -146,6 +155,30 @@ public class Transaction {
 
     public void setFees(BigDecimal fees) {
         this.fees = fees;
+    }
+
+    public BigDecimal getPnl() {
+        return pnl;
+    }
+
+    public void setPnl(BigDecimal pnl) {
+        this.pnl = pnl;
+    }
+
+    public BigDecimal getPnlPercent() {
+        return pnlPercent;
+    }
+
+    public void setPnlPercent(BigDecimal pnlPercent) {
+        this.pnlPercent = pnlPercent;
+    }
+
+    public BigDecimal getAvgBuyPrice() {
+        return avgBuyPrice;
+    }
+
+    public void setAvgBuyPrice(BigDecimal avgBuyPrice) {
+        this.avgBuyPrice = avgBuyPrice;
     }
 
     public Instant getCreatedAt() {

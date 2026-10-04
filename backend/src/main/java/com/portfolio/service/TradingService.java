@@ -159,6 +159,9 @@ public class TradingService {
             transaction.setPricePerUnit(executionPrice);
             transaction.setTotalAmount(totalAmount);
             transaction.setFees(BigDecimal.ZERO);
+            transaction.setAvgBuyPrice(executionPrice);
+            transaction.setPnl(BigDecimal.ZERO);
+            transaction.setPnlPercent(BigDecimal.ZERO);
             transaction = transactionRepository.save(transaction);
 
             BigDecimal remainingBalance = currentCashBalance.subtract(totalAmount).setScale(4, RoundingMode.HALF_UP);
@@ -227,6 +230,17 @@ public class TradingService {
             BigDecimal executionPrice = quote.price();
             BigDecimal totalAmount = executionPrice.multiply(sellQuantity).setScale(4, RoundingMode.HALF_UP);
 
+            // Calculate Realized P&L using average buy price before updating holding
+            BigDecimal avgBuyPrice = holding.getAverageBuyPrice() != null ? holding.getAverageBuyPrice() : executionPrice;
+            BigDecimal costBasis = avgBuyPrice.multiply(sellQuantity).setScale(4, RoundingMode.HALF_UP);
+            BigDecimal realizedPnL = totalAmount.subtract(costBasis).setScale(4, RoundingMode.HALF_UP);
+            BigDecimal realizedPnLPercent = BigDecimal.ZERO;
+            if (costBasis.compareTo(BigDecimal.ZERO) > 0) {
+                realizedPnLPercent = realizedPnL.divide(costBasis, 4, RoundingMode.HALF_UP)
+                        .multiply(new BigDecimal("100"))
+                        .setScale(2, RoundingMode.HALF_UP);
+            }
+
             Stock stock = findOrCreateStock(quote, symbol);
 
             // Create and execute Order
@@ -254,7 +268,7 @@ public class TradingService {
                 holdingRepository.save(holding);
             }
 
-            // Create Transaction record
+            // Create Transaction record with Realized P&L
             Transaction transaction = new Transaction();
             transaction.setUser(user);
             transaction.setStock(stock);
@@ -265,12 +279,15 @@ public class TradingService {
             transaction.setPricePerUnit(executionPrice);
             transaction.setTotalAmount(totalAmount);
             transaction.setFees(BigDecimal.ZERO);
+            transaction.setAvgBuyPrice(avgBuyPrice);
+            transaction.setPnl(realizedPnL);
+            transaction.setPnlPercent(realizedPnLPercent);
             transaction = transactionRepository.save(transaction);
 
             BigDecimal currentCashBalance = calculateCashBalance(userId);
 
-            log.info("Simulated SELL executed for user {} on {}: qty={}, price={}, total={}",
-                    userId, symbol, sellQuantity, executionPrice, totalAmount);
+            log.info("Simulated SELL executed for user {} on {}: qty={}, price={}, total={}, realizedPnL={}",
+                    userId, symbol, sellQuantity, executionPrice, totalAmount, realizedPnL);
 
             return new TradeResponseDto(
                     order.getId(),

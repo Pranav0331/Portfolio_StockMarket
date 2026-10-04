@@ -73,6 +73,10 @@ export interface TransactionItem {
   totalAmount: number;
   fees?: number;
   executedAt: string;
+  pnl?: number;
+  pnlPercent?: number;
+  avgBuyPrice?: number;
+  currentPrice?: number;
 }
 
 export interface TransactionPageResponse {
@@ -94,3 +98,41 @@ export interface TransactionFilterParams {
   size?: number;
   sort?: 'desc' | 'asc';
 }
+
+export interface OrderItem {
+  id: number;
+  symbol: string;
+  companyName: string;
+  exchange: string;
+  currency: string;
+  orderType: OrderType;
+  orderStatus: OrderStatus;
+  quantity: number;
+  price: number;
+  executedPrice: number;
+  totalAmount: number;
+  executedAt?: string;
+  createdAt: string;
+}
+
+export interface OrderPageResponse {
+  content: OrderItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface OrderFilterParams {
+  type?: 'BUY' | 'SELL' | 'ALL';
+  status?: 'EXECUTED' | 'PENDING' | 'CANCELLED' | 'REJECTED' | 'ALL';
+  symbol?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  size?: number;
+  sort?: 'desc' | 'asc';
+}
+
