@@ -811,7 +811,7 @@ public class UpstoxService {
                 || INSTRUMENT_MAP.containsKey(upper);
     }
 
-    private String getValidAccessToken() {
+    public String getValidAccessToken() {
         UpstoxTokenHolder holder = tokenHolder.get();
         if (holder != null && holder.accessToken != null && !holder.accessToken.trim().isEmpty()) {
             return holder.accessToken;

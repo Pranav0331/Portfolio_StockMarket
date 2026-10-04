@@ -13,9 +13,20 @@
         <div class="tags-line">
           <span class="micro-tag">{{ selectedExchange() }}</span>
           <span class="micro-tag type">{{ selectedType() }}</span>
-          <span class="micro-tag live" [class.live-active]="isLiveConnected()" [class.live-inactive]="!isLiveConnected()">
-            <span class="pulse-beacon sm" [class.pulse-green]="isLiveConnected()" [class.pulse-gray]="!isLiveConnected()"></span>
-            {{ isLiveConnected() ? 'LIVE' : 'OFFLINE' }}
+          <span
+            class="micro-tag live"
+            [class.live-active]="isLiveConnected()"
+            [class.live-unavailable]="isStreamingUnavailable()"
+            [class.live-inactive]="!isLiveConnected() && !isStreamingUnavailable()"
+            [title]="isStreamingUnavailable() ? (streamStatusMessage() || 'Data Unavailable') : (isLiveConnected() ? 'Real-time Feed Active' : 'Connecting to Feed...')"
+          >
+            <span
+              class="pulse-beacon sm"
+              [class.pulse-green]="isLiveConnected()"
+              [class.pulse-amber]="isStreamingUnavailable()"
+              [class.pulse-gray]="!isLiveConnected() && !isStreamingUnavailable()"
+            ></span>
+            {{ isLiveConnected() ? 'LIVE' : (isStreamingUnavailable() ? 'DATA UNAVAILABLE' : (isWebSocketConnected() ? 'STREAMING' : 'OFFLINE')) }}
           </span>
         </div>
       </div>

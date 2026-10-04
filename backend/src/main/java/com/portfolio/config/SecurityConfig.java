@@ -101,6 +101,7 @@ public class SecurityConfig {
                         // Public endpoints
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/logout", "/api/upstox/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/health", "/api/market/**", "/api/upstox/**").permitAll()
+                        .requestMatchers("/ws/**", "/ws/market-feed/**").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Admin endpoints require ADMIN role

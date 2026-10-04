@@ -576,6 +576,116 @@ describe('MarketComponent', () => {
     expect(firstRow?.querySelector('.col-chg')).toBeTruthy();
     expect(firstRow?.querySelector('.col-pct')).toBeTruthy();
   });
+
+  describe('Real Live Moving Candle Updates and Multi-Market Streaming', () => {
+    it('should update current candle OHLC and volume on receiving real live ticks', () => {
+      const fixture = TestBed.createComponent(MarketComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      component.loadInstrument('RELIANCE');
+      component.isWebSocketConnected.set(true);
+      component.candleData.set([
+        {
+          timestamp: 1728000000,
+          datetime: '2026-10-04T00:00:00Z',
+          open: 2900,
+          high: 2910,
+          low: 2890,
+          close: 2905,
+          volume: 50000
+        }
+      ]);
+
+      // Emit real live tick within same 5m timeframe
+      (component as any).handleLiveTick({
+        type: 'TICK',
+        symbol: 'RELIANCE',
+        instrumentKey: 'NSE_EQ|INE002A01018',
+        price: 2925,
+        volume: 65000,
+        timestamp: 1728000100 * 1000
+      });
+
+      expect(component.isLiveConnected()).toBe(true);
+      const candles = component.candleData();
+      expect(candles.length).toBe(1);
+      expect(candles[0].close).toBe(2925);
+      expect(candles[0].high).toBe(2925);
+      expect(candles[0].volume).toBe(65000);
+    });
+
+    it('should finalize candle and create a new candle when timeframe interval completes', () => {
+      const fixture = TestBed.createComponent(MarketComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      component.loadInstrument('NIFTY 50');
+      component.currentInterval.set('5min');
+      component.candleData.set([
+        {
+          timestamp: 1728000000,
+          datetime: '2026-10-04T00:00:00Z',
+          open: 25000,
+          high: 25050,
+          low: 24980,
+          close: 25020,
+          volume: 100000
+        }
+      ]);
+
+      // Emit tick in NEXT 5m interval bucket (+300s)
+      (component as any).handleLiveTick({
+        type: 'TICK',
+        symbol: 'NIFTY 50',
+        price: 25060,
+        volume: 12000,
+        timestamp: (1728000000 + 310) * 1000
+      });
+
+      const candles = component.candleData();
+      expect(candles.length).toBe(2);
+      expect(candles[0].close).toBe(25020);
+      expect(candles[1].open).toBe(25060);
+      expect(candles[1].close).toBe(25060);
+      expect(candles[1].timestamp).toBe(1728000300);
+    });
+
+    it('should show DATA UNAVAILABLE when provider reports streaming unsupported', () => {
+      const fixture = TestBed.createComponent(MarketComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      component.loadInstrument('AAPL');
+      (component as any).handleLiveTick({
+        type: 'STATUS',
+        symbol: 'AAPL',
+        status: 'DATA_UNAVAILABLE',
+        streamingSupported: false,
+        message: 'Twelve Data WebSocket streaming unsupported for current plan'
+      });
+
+      expect(component.isStreamingUnavailable()).toBe(true);
+      expect(component.isLiveConnected()).toBe(false);
+      expect(component.streamStatusMessage()).toContain('Twelve Data');
+    });
+
+    it('should dynamically switch subscription across NIFTY 50, RELIANCE, AAPL, EUR/USD, BTC/USD', () => {
+      const fixture = TestBed.createComponent(MarketComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const subSpy = vi.spyOn(component.marketWebSocketService, 'subscribe');
+
+      const testSymbols = ['NIFTY 50', 'RELIANCE', 'AAPL', 'EUR/USD', 'BTC/USD'];
+      for (const sym of testSymbols) {
+        component.loadInstrument(sym);
+        expect(subSpy).toHaveBeenCalledWith(sym, '5min');
+        expect(component.selectedSymbol()).toBe(sym);
+      }
+    });
+  });
 });
+
 
 

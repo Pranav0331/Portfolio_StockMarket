@@ -32,6 +32,7 @@ import {
   HistogramData
 } from 'lightweight-charts';
 import { MarketService } from '../../../services/market.service';
+import { MarketWebSocketService, MarketTick } from '../../../services/market-websocket.service';
 import { AuthService } from '../../../services/auth.service';
 import { AlertService } from '../../../services/alert.service';
 import { StockQuote, StockSearchItem, Candle, CandleSeries } from '../../../models/market.model';
@@ -82,6 +83,7 @@ export interface HoveredBarData {
 })
 export class MarketComponent implements OnInit, OnDestroy {
   private readonly marketService = inject(MarketService);
+  readonly marketWebSocketService = inject(MarketWebSocketService);
   readonly authService = inject(AuthService);
   readonly alertService = inject(AlertService);
   private readonly route = inject(ActivatedRoute);
@@ -136,9 +138,16 @@ export class MarketComponent implements OnInit, OnDestroy {
   readonly hoveredBar = signal<HoveredBarData | null>(null);
 
   // Live Streaming / Polling Status
-  readonly isLiveConnected = signal<boolean>(true);
+  readonly isWebSocketConnected = signal<boolean>(false);
+  readonly isReceivingRealTicks = signal<boolean>(false);
+  readonly isStreamingUnavailable = signal<boolean>(false);
+  readonly streamStatusMessage = signal<string | null>(null);
   readonly lastLiveTimestamp = signal<number>(Date.now());
-  private livePollingSub?: Subscription;
+
+  // Show LIVE strictly ONLY when real ticks are actually being received
+  readonly isLiveConnected = computed(() => {
+    return this.isWebSocketConnected() && this.isReceivingRealTicks() && !this.isStreamingUnavailable();
+  });
 
   // Watchlist Local Search / Filter & Section Collapsing
   readonly watchlistSearch = signal<string>('');
@@ -338,6 +347,8 @@ export class MarketComponent implements OnInit, OnDestroy {
   private readonly searchSubject = new Subject<string>();
   private searchSubscription?: Subscription;
   private queryParamSub?: Subscription;
+  private wsTickSub?: Subscription;
+  private wsConnectedSub?: Subscription;
 
   constructor() {
     // Effect to render or re-render chart whenever chartContainerRef and candleData become available
@@ -402,6 +413,18 @@ export class MarketComponent implements OnInit, OnDestroy {
       }
     });
 
+    // Subscribe to real-time WebSocket ticks from Spring Boot / Upstox
+    this.wsTickSub = this.marketWebSocketService.ticks$.subscribe((tick) => {
+      this.handleLiveTick(tick);
+    });
+
+    this.wsConnectedSub = this.marketWebSocketService.isConnected$.subscribe((connected) => {
+      this.isWebSocketConnected.set(connected);
+      if (!connected) {
+        this.isReceivingRealTicks.set(false);
+      }
+    });
+
     // Load saved watchlist state & drawings
     this.loadSavedWatchlistState();
     this.loadDrawingsForSymbol(this.selectedSymbol());
@@ -439,6 +462,8 @@ export class MarketComponent implements OnInit, OnDestroy {
     this.stopLiveCandleStream();
     this.searchSubscription?.unsubscribe();
     this.queryParamSub?.unsubscribe();
+    this.wsTickSub?.unsubscribe();
+    this.wsConnectedSub?.unsubscribe();
     if (this.boundOnMouseMove) {
       document.removeEventListener('mousemove', this.boundOnMouseMove);
     }
@@ -448,6 +473,7 @@ export class MarketComponent implements OnInit, OnDestroy {
     if (this.boundOnVisibilityChange) {
       document.removeEventListener('visibilitychange', this.boundOnVisibilityChange);
     }
+
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
@@ -474,6 +500,9 @@ export class MarketComponent implements OnInit, OnDestroy {
     this.showDropdown.set(false);
     this.errorMessage.set(null);
     this.isRateLimited.set(false);
+    this.isReceivingRealTicks.set(false);
+    this.isStreamingUnavailable.set(false);
+    this.streamStatusMessage.set(null);
 
     // Load saved drawings for this symbol
     this.loadDrawingsForSymbol(cleanSym);
@@ -564,106 +593,223 @@ export class MarketComponent implements OnInit, OnDestroy {
   }
 
   // =========================================================================
-  // REAL-TIME LIVE CANDLE UPDATES (REQUIREMENT 8)
+  // REAL-TIME LIVE CANDLE UPDATES (UPSTOX WEBSOCKET V3 -> SPRING BOOT -> ANGULAR)
   // =========================================================================
 
   private startLiveCandleStream(): void {
-    this.stopLiveCandleStream();
-
-    // Poll live price from Spring Boot backend every 3.5 seconds
-    this.livePollingSub = timer(3500, 3500).pipe(
-      switchMap(() => {
-        const symbol = this.selectedSymbol();
-        if (!symbol) return of(null);
-        return this.marketService.getQuote(symbol).pipe(
-          catchError(() => {
-            this.isLiveConnected.set(false);
-            return of(null);
-          })
-        );
-      })
-    ).subscribe({
-      next: (quote) => {
-        if (!quote || quote.price == null) return;
-
-        this.isLiveConnected.set(true);
-        this.lastLiveTimestamp.set(Date.now());
-        this.currentQuote.set(quote);
-        this.updateWatchlistItem(this.selectedSymbol(), quote.price, quote.change, quote.changePercent);
-
-        // Update the current/latest candlestick in real-time
-        this.updateCurrentCandleWithLivePrice(quote.price, quote.volume);
-      }
-    });
+    const symbol = this.selectedSymbol();
+    const interval = this.currentInterval();
+    if (symbol) {
+      this.marketWebSocketService.subscribe(symbol, interval);
+    }
   }
 
   private stopLiveCandleStream(): void {
-    if (this.livePollingSub) {
-      this.livePollingSub.unsubscribe();
-      this.livePollingSub = undefined;
+    const symbol = this.selectedSymbol();
+    if (symbol) {
+      this.marketWebSocketService.unsubscribe(symbol);
     }
   }
 
-  private updateCurrentCandleWithLivePrice(livePrice: number, liveVolume?: number | null): void {
+  private handleLiveTick(tick: MarketTick): void {
+    if (!tick) {
+      return;
+    }
+
+    const currentSym = this.selectedSymbol();
+
+    if (tick.type === 'STATUS') {
+      if (!tick.symbol || this.isMatchingSymbol(currentSym, tick.symbol, tick.instrumentKey)) {
+        if (tick.status === 'DATA_UNAVAILABLE' || tick.streamingSupported === false) {
+          this.isStreamingUnavailable.set(true);
+          this.isReceivingRealTicks.set(false);
+          this.streamStatusMessage.set(tick.message || 'Streaming unavailable for current market/plan');
+        } else if (tick.status === 'CONNECTED') {
+          this.isWebSocketConnected.set(true);
+        }
+      }
+      return;
+    }
+
+    if (tick.type === 'PONG') {
+      return;
+    }
+
+    if (tick.price == null) {
+      return;
+    }
+
+    if (tick.symbol && !this.isMatchingSymbol(currentSym, tick.symbol, tick.instrumentKey)) {
+      return;
+    }
+
+    // Real tick received for currently selected instrument
+    this.isReceivingRealTicks.set(true);
+    this.isStreamingUnavailable.set(false);
+    this.streamStatusMessage.set(null);
+    this.lastLiveTimestamp.set(Date.now());
+
+    const prev = this.currentQuote();
+    const price = tick.price;
+    const prevClose = prev?.previousClose || prev?.price || price;
+    const change = tick.change != null ? tick.change : (price - prevClose);
+    const changePercent = tick.changePercent || (prevClose > 0 ? `${change >= 0 ? '+' : ''}${((change / prevClose) * 100).toFixed(2)}%` : '+0.00%');
+
+    const updatedQuote: StockQuote = {
+      symbol: currentSym,
+      name: prev?.name || this.selectedCompanyName(),
+      price: price,
+      change: change,
+      changePercent: changePercent,
+      previousClose: prevClose,
+      open: tick.open || prev?.open || price,
+      high: tick.high ? Math.max(tick.high, prev?.high || price) : (prev ? Math.max(price, prev.high || price) : price),
+      low: tick.low ? Math.min(tick.low, prev?.low || price) : (prev ? Math.min(price, prev.low || price) : price),
+      volume: tick.volume != null ? tick.volume : prev?.volume || 0,
+      latestTradingDay: new Date().toISOString().split('T')[0],
+      timestamp: tick.timestamp ? Math.floor(tick.timestamp / 1000) : Math.floor(Date.now() / 1000)
+    };
+
+    this.currentQuote.set(updatedQuote);
+    this.updateWatchlistItem(currentSym, price, change, changePercent);
+
+    // Update the live moving candlestick in real time
+    this.processLiveCandleTick(price, tick.volume, tick.timestamp);
+  }
+
+  private getIntervalSeconds(interval: ChartInterval): number {
+    switch (interval) {
+      case '1min': return 60;
+      case '5min': return 300;
+      case '15min': return 900;
+      case '30min': return 1800;
+      case '1h': return 3600;
+      case '4h': return 14400;
+      case '1day': return 86400;
+      default: return 300;
+    }
+  }
+
+  private isMatchingSymbol(currentSymbol: string, tickSymbol: string, instrumentKey?: string): boolean {
+    if (!currentSymbol || !tickSymbol) return false;
+    const c = currentSymbol.trim().toUpperCase();
+    const t = tickSymbol.trim().toUpperCase();
+    if (c === t || c.replace(/\s+/g, '') === t.replace(/\s+/g, '')) return true;
+    if (instrumentKey) {
+      const ik = instrumentKey.toUpperCase();
+      if (ik.includes(c) || ik.includes(c.replace(/\s+/g, ''))) return true;
+    }
+    return false;
+  }
+
+  private processLiveCandleTick(livePrice: number, liveVolume?: number | null, tickTsMs?: number | null): void {
     const candles = this.candleData();
     if (!candles || candles.length === 0) return;
 
+    const intervalSec = this.getIntervalSeconds(this.currentInterval());
+    const tickTsSec = tickTsMs ? Math.floor(tickTsMs / 1000) : Math.floor(Date.now() / 1000);
+    const currentBucket = Math.floor(tickTsSec / intervalSec) * intervalSec;
+
     const lastIdx = candles.length - 1;
     const last = { ...candles[lastIdx] };
+    const lastBucket = Math.floor(last.timestamp / intervalSec) * intervalSec;
 
-    // Dynamic movement: update high, low, close
-    last.close = livePrice;
-    if (livePrice > last.high) last.high = livePrice;
-    if (livePrice < last.low) last.low = livePrice;
-    if (liveVolume != null && liveVolume > 0) last.volume = liveVolume;
+    if (currentBucket > lastBucket) {
+      // Interval completed! Finalize current candle and create the next live candle
+      const newCandle: Candle = {
+        timestamp: currentBucket,
+        datetime: new Date(currentBucket * 1000).toISOString(),
+        open: livePrice,
+        high: livePrice,
+        low: livePrice,
+        close: livePrice,
+        volume: 0
+      };
 
-    // Mutate candle cache
-    const updatedCandles = [...candles];
-    updatedCandles[lastIdx] = last;
-    this.candleData.set(updatedCandles);
+      const updatedCandles = [...candles, newCandle];
+      this.candleData.set(updatedCandles);
 
-    // Apply immediate update to Lightweight Charts series
-    if (this.candlestickSeries) {
-      try {
-        this.candlestickSeries.update({
-          time: (last.timestamp as unknown) as Time,
-          open: last.open,
-          high: last.high,
-          low: last.low,
-          close: last.close
-        });
-      } catch (e) {
-        // ignore
+      if (this.candlestickSeries) {
+        try {
+          this.candlestickSeries.update({
+            time: (newCandle.timestamp as unknown) as Time,
+            open: newCandle.open,
+            high: newCandle.high,
+            low: newCandle.low,
+            close: newCandle.close
+          });
+        } catch (e) {}
+      } else if (this.lineSeries) {
+        try {
+          this.lineSeries.update({
+            time: (newCandle.timestamp as unknown) as Time,
+            value: newCandle.close
+          });
+        } catch (e) {}
+      } else if (this.areaSeries) {
+        try {
+          this.areaSeries.update({
+            time: (newCandle.timestamp as unknown) as Time,
+            value: newCandle.close
+          });
+        } catch (e) {}
       }
-    } else if (this.lineSeries) {
-      try {
-        this.lineSeries.update({
-          time: (last.timestamp as unknown) as Time,
-          value: last.close
-        });
-      } catch (e) {
-        // ignore
-      }
-    } else if (this.areaSeries) {
-      try {
-        this.areaSeries.update({
-          time: (last.timestamp as unknown) as Time,
-          value: last.close
-        });
-      } catch (e) {
-        // ignore
-      }
-    }
 
-    if (this.volumeSeries && last.volume != null) {
-      try {
-        this.volumeSeries.update({
-          time: (last.timestamp as unknown) as Time,
-          value: last.volume,
-          color: last.close >= last.open ? 'rgba(16, 185, 129, 0.45)' : 'rgba(244, 63, 94, 0.45)'
-        });
-      } catch (e) {
-        // ignore
+      if (this.volumeSeries) {
+        try {
+          this.volumeSeries.update({
+            time: (newCandle.timestamp as unknown) as Time,
+            value: 0,
+            color: 'rgba(16, 185, 129, 0.45)'
+          });
+        } catch (e) {}
+      }
+    } else {
+      // Dynamic movement: update high, low, close of current candle
+      last.close = livePrice;
+      if (livePrice > last.high) last.high = livePrice;
+      if (livePrice < last.low) last.low = livePrice;
+      if (liveVolume != null && liveVolume > 0) last.volume = liveVolume;
+
+      const updatedCandles = [...candles];
+      updatedCandles[lastIdx] = last;
+      this.candleData.set(updatedCandles);
+
+      // Apply immediate update to Lightweight Charts series
+      if (this.candlestickSeries) {
+        try {
+          this.candlestickSeries.update({
+            time: (last.timestamp as unknown) as Time,
+            open: last.open,
+            high: last.high,
+            low: last.low,
+            close: last.close
+          });
+        } catch (e) {}
+      } else if (this.lineSeries) {
+        try {
+          this.lineSeries.update({
+            time: (last.timestamp as unknown) as Time,
+            value: last.close
+          });
+        } catch (e) {}
+      } else if (this.areaSeries) {
+        try {
+          this.areaSeries.update({
+            time: (last.timestamp as unknown) as Time,
+            value: last.close
+          });
+        } catch (e) {}
+      }
+
+      if (this.volumeSeries && last.volume != null) {
+        try {
+          this.volumeSeries.update({
+            time: (last.timestamp as unknown) as Time,
+            value: last.volume,
+            color: last.close >= last.open ? 'rgba(16, 185, 129, 0.45)' : 'rgba(244, 63, 94, 0.45)'
+          });
+        } catch (e) {}
       }
     }
 
