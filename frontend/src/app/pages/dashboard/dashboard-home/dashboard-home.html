@@ -12,11 +12,12 @@
 
     <div class="header-actions-group">
       <button 
+        id="dashboard-manage-balance-header-btn"
         type="button" 
-        class="btn btn-glass-action" 
+        class="btn btn-manage-balance-main" 
         (click)="openManageBalanceModal('deposit')"
         title="Deposit or reset virtual paper trading cash">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
           <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
           <line x1="1" y1="10" x2="23" y2="10"></line>
         </svg>
@@ -115,25 +116,35 @@
     </div>
 
     <!-- Card 4: Available Balance -->
-    <div class="metric-card">
+    <div class="metric-card metric-card-balance">
       <div class="metric-card-header">
         <span class="metric-label">Available Balance</span>
-        <div class="metric-icon-box icon-rose">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-            <line x1="1" y1="10" x2="23" y2="10"></line>
+        <button 
+          id="dashboard-manage-balance-card-btn"
+          type="button" 
+          class="btn-manage-balance-tag" 
+          (click)="openManageBalanceModal('deposit')"
+          title="Add funds or reset paper balance">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
-        </div>
+          Manage Balance
+        </button>
       </div>
       <div class="metric-value-row">
-        <span class="metric-value font-mono">
+        <span class="metric-value font-mono text-balance-glow">
           ${{ (portfolio()?.cashBalance || tradingService.wallet()?.cashBalance || 0) | number:'1.2-2' }}
         </span>
       </div>
       <div class="metric-footer-row balance-footer-actions">
         <span class="metric-subtext">Virtual cash reserves</span>
-        <button type="button" class="btn-balance-quick" (click)="openManageBalanceModal('deposit')">
-          + Funds / Reset
+        <button 
+          id="dashboard-quick-add-btn"
+          type="button" 
+          class="btn-balance-quick" 
+          (click)="openManageBalanceModal('deposit')">
+          + Add Funds / Reset
         </button>
       </div>
     </div>

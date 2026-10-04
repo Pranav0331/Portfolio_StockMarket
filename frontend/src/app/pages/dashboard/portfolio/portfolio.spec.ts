@@ -5,6 +5,7 @@ import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { PortfolioComponent } from './portfolio';
 import { PortfolioService } from '../../../services/portfolio.service';
+import { TradingService } from '../../../services/trading.service';
 import { PortfolioSummary } from '../../../models/trading.model';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -200,5 +201,47 @@ describe('PortfolioComponent', () => {
 
     component.loadPortfolio();
     expect(getPortfolioSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('should open and close paper balance modal', () => {
+    const fixture = TestBed.createComponent(PortfolioComponent);
+    const component = fixture.componentInstance;
+
+    expect(component.showManageBalanceModal()).toBe(false);
+    component.openManageBalanceModal('deposit');
+    expect(component.showManageBalanceModal()).toBe(true);
+    expect(component.balanceActionTab()).toBe('deposit');
+
+    component.closeManageBalanceModal();
+    expect(component.showManageBalanceModal()).toBe(false);
+  });
+
+  it('should deposit cash and reset balance', () => {
+    const tradingService = TestBed.inject(TradingService);
+    const depositSpy = vi.spyOn(tradingService, 'depositCash').mockReturnValue(of({
+      cashBalance: 65000,
+      totalInvested: 45000,
+      totalPortfolioValue: 110000,
+      currency: 'USD'
+    }));
+    const resetSpy = vi.spyOn(tradingService, 'resetCashBalance').mockReturnValue(of({
+      cashBalance: 100000,
+      totalInvested: 45000,
+      totalPortfolioValue: 145000,
+      currency: 'USD'
+    }));
+
+    const fixture = TestBed.createComponent(PortfolioComponent);
+    const component = fixture.componentInstance;
+
+    component.openManageBalanceModal('deposit');
+    component.depositAmount.set(10000);
+    component.submitDeposit();
+    expect(depositSpy).toHaveBeenCalledWith(10000);
+
+    component.openManageBalanceModal('reset');
+    component.resetTargetAmount.set(100000);
+    component.submitReset();
+    expect(resetSpy).toHaveBeenCalledWith(100000);
   });
 });

@@ -12,6 +12,19 @@
     </div>
     <div class="header-actions">
       <button 
+        id="portfolio-manage-balance-header-btn"
+        type="button" 
+        class="btn-manage-balance-head" 
+        (click)="openManageBalanceModal('deposit')"
+        title="Deposit or reset virtual paper trading cash">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+          <line x1="1" y1="10" x2="23" y2="10"></line>
+        </svg>
+        <span>Manage Paper Balance</span>
+      </button>
+
+      <button 
         type="button"
         class="btn-refresh" 
         (click)="loadPortfolio()" 
@@ -69,20 +82,29 @@
       </div>
 
       <!-- 2. Available Virtual Cash -->
-      <div class="metric-card glass-card">
+      <div class="metric-card glass-card metric-balance-card">
         <div class="metric-header">
           <span class="metric-label">Available Virtual Cash</span>
-          <div class="metric-icon-box success">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-              <line x1="12" y1="8" x2="12" y2="16"></line>
-              <line x1="8" y1="12" x2="16" y2="12"></line>
-            </svg>
-          </div>
+          <button 
+            id="portfolio-manage-balance-card-btn"
+            type="button" 
+            class="btn-manage-badge" 
+            (click)="openManageBalanceModal('deposit')"
+            title="Manage paper trading balance">
+            Manage Balance
+          </button>
         </div>
-        <div class="metric-value">${{ (p.cashBalance !== undefined ? p.cashBalance : (p.availableCash || 0)) | number:'1.2-2' }}</div>
-        <div class="metric-footer">
+        <div class="metric-value-row">
+          <div class="metric-value">${{ (p.cashBalance !== undefined ? p.cashBalance : (p.availableCash || 0)) | number:'1.2-2' }}</div>
+        </div>
+        <div class="metric-footer balance-footer-flex">
           <span class="allocation-badge">{{ p.cashAllocationPercent | number:'1.1-1' }}% of portfolio</span>
+          <button 
+            type="button" 
+            class="btn-balance-pill" 
+            (click)="openManageBalanceModal('deposit')">
+            + Funds / Reset
+          </button>
         </div>
       </div>
 
@@ -304,4 +326,162 @@
       </div>
     </div>
   </ng-container>
+
+  <!-- MANAGE PAPER BALANCE MODAL -->
+  @if (showManageBalanceModal()) {
+    <div class="modal-backdrop" (click)="closeManageBalanceModal()">
+      <div class="modal-card glass-modal" (click)="$event.stopPropagation()">
+        <!-- Modal Header -->
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <div class="modal-icon-box">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                <line x1="1" y1="10" x2="23" y2="10"></line>
+              </svg>
+            </div>
+            <div>
+              <h3 class="modal-title">Manage Paper Trading Balance</h3>
+              <p class="modal-sub">Add virtual cash or reset your paper account balance</p>
+            </div>
+          </div>
+          <button type="button" class="btn-close-modal" (click)="closeManageBalanceModal()">&times;</button>
+        </div>
+
+        <!-- Current Balance Summary -->
+        <div class="current-balance-banner">
+          <span class="banner-lbl">Current Available Cash</span>
+          <span class="banner-val font-mono">
+            ${{ (portfolio()?.cashBalance !== undefined ? portfolio()?.cashBalance : (portfolio()?.availableCash || 0)) | number:'1.2-2' }}
+          </span>
+        </div>
+
+        <!-- Tabs: Deposit / Reset -->
+        <div class="modal-tabs">
+          <button 
+            type="button" 
+            class="modal-tab-btn" 
+            [class.active]="balanceActionTab() === 'deposit'"
+            (click)="balanceActionTab.set('deposit')">
+            Add Virtual Funds
+          </button>
+          <button 
+            type="button" 
+            class="modal-tab-btn" 
+            [class.active]="balanceActionTab() === 'reset'"
+            (click)="balanceActionTab.set('reset')">
+            Reset Balance
+          </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="modal-body">
+          @if (manageBalanceSuccess()) {
+            <div class="alert-banner alert-success">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <span>{{ manageBalanceSuccess() }}</span>
+            </div>
+          }
+
+          @if (manageBalanceError()) {
+            <div class="alert-banner alert-error">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span>{{ manageBalanceError() }}</span>
+            </div>
+          }
+
+          <!-- TAB 1: ADD FUNDS -->
+          @if (balanceActionTab() === 'deposit') {
+            <div class="tab-content">
+              <label class="input-label" for="port-deposit-input">Deposit Amount ($)</label>
+              <div class="input-prefix-wrap">
+                <span class="input-prefix">$</span>
+                <input 
+                  id="port-deposit-input"
+                  type="number" 
+                  class="modal-input" 
+                  min="1" 
+                  step="1000"
+                  [ngModel]="depositAmount()" 
+                  (ngModelChange)="depositAmount.set($event)">
+              </div>
+
+              <!-- Quick Presets -->
+              <div class="preset-chips">
+                <button type="button" class="preset-chip" (click)="setDepositPreset(5000)">+$5,000</button>
+                <button type="button" class="preset-chip" (click)="setDepositPreset(10000)">+$10,000</button>
+                <button type="button" class="preset-chip" (click)="setDepositPreset(25000)">+$25,000</button>
+                <button type="button" class="preset-chip" (click)="setDepositPreset(50000)">+$50,000</button>
+                <button type="button" class="preset-chip" (click)="setDepositPreset(100000)">+$100,000</button>
+              </div>
+
+              <p class="modal-note">
+                Deposit creates an immediate audit transaction in your account ledger.
+              </p>
+
+              <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" (click)="closeManageBalanceModal()">Cancel</button>
+                <button 
+                  type="button" 
+                  class="btn btn-primary" 
+                  [disabled]="isManagingBalance()" 
+                  (click)="submitDeposit()">
+                  {{ isManagingBalance() ? 'Processing...' : 'Deposit Virtual Cash' }}
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- TAB 2: RESET BALANCE -->
+          @if (balanceActionTab() === 'reset') {
+            <div class="tab-content">
+              <label class="input-label" for="port-reset-target-input">Target Cash Balance ($)</label>
+              <div class="input-prefix-wrap">
+                <span class="input-prefix">$</span>
+                <input 
+                  id="port-reset-target-input"
+                  type="number" 
+                  class="modal-input" 
+                  min="1" 
+                  step="10000"
+                  [ngModel]="resetTargetAmount()" 
+                  (ngModelChange)="resetTargetAmount.set($event)">
+              </div>
+
+              <!-- Reset Presets -->
+              <div class="preset-chips">
+                <button type="button" class="preset-chip" (click)="setResetPreset(10000)">$10,000</button>
+                <button type="button" class="preset-chip" (click)="setResetPreset(50000)">$50,000</button>
+                <button type="button" class="preset-chip highlight" (click)="setResetPreset(100000)">$100,000 (Default)</button>
+                <button type="button" class="preset-chip" (click)="setResetPreset(250000)">$250,000</button>
+                <button type="button" class="preset-chip" (click)="setResetPreset(500000)">$500,000</button>
+              </div>
+
+              <p class="modal-note warning-text">
+                Note: Resetting your cash balance will adjust your available liquidity. Your existing stock holdings will remain untouched.
+              </p>
+
+              <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" (click)="closeManageBalanceModal()">Cancel</button>
+                <button 
+                  type="button" 
+                  class="btn btn-primary" 
+                  [disabled]="isManagingBalance()" 
+                  (click)="submitReset()">
+                  {{ isManagingBalance() ? 'Resetting...' : 'Reset Cash Balance' }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
 </div>
