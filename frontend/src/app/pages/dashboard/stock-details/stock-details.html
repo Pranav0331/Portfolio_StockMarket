@@ -315,7 +315,7 @@
         @if (hoveredBar(); as bar) {
           <div class="telemetry-items">
             <span class="telemetry-item time-item">
-              <span class="telemetry-lbl">Time:</span>
+              <span class="telemetry-lbl">TIME:</span>
               <strong class="font-mono">{{ bar.timeStr }}</strong>
             </span>
             <span class="telemetry-item">
@@ -342,13 +342,13 @@
             </span>
             @if (bar.volume != null) {
               <span class="telemetry-item">
-                <span class="telemetry-lbl">Vol:</span>
+                <span class="telemetry-lbl">VOL:</span>
                 <strong class="font-mono">{{ bar.volume | number:'1.0-0' }}</strong>
               </span>
             }
           </div>
         } @else {
-          <span class="telemetry-hint">Hover over candles to view precise OHLCV values</span>
+          <span class="telemetry-hint">Hover over candles to view precise OHLCV telemetry</span>
         }
       </div>
 
@@ -396,8 +396,8 @@
             </svg>
           </div>
           <div>
-            <h3 class="panel-heading">Exness Paper Terminal</h3>
-            <span class="panel-sub">Real Market Feed • Margin Trading</span>
+            <h3 class="panel-heading">Exness Terminal</h3>
+            <span class="panel-sub font-mono">{{ currentSessionTime() || 'Live Market Feed' }}</span>
           </div>
         </div>
         <span class="paper-mode-tag">Simulated</span>
@@ -425,6 +425,48 @@
           </a>
         </div>
       } @else {
+        <!-- ACTIVE POSITION SUMMARY CARD ON THIS SYMBOL (IF OPEN) -->
+        @if (activeSymbolPrimaryPosition(); as activePos) {
+          <div class="active-pos-quick-card font-mono">
+            <div class="active-pos-hdr">
+              <div class="active-pos-tag-group">
+                <span class="side-badge" [class.side-long]="activePos.side === 'LONG'" [class.side-short]="activePos.side === 'SHORT'">
+                  {{ activePos.side }} {{ activePos.quantity }} LOT
+                </span>
+                <span class="lev-badge">1:{{ activePos.leverage }}x</span>
+              </div>
+              <div class="active-pos-pnl" [class.text-emerald]="(activePos.unrealizedPnl || 0) >= 0" [class.text-rose]="(activePos.unrealizedPnl || 0) < 0">
+                {{ (activePos.unrealizedPnl || 0) >= 0 ? '+' : '' }}${{ activePos.unrealizedPnl | number:'1.2-2' }}
+                <span class="active-pnl-roi">({{ (activePos.unrealizedPnlPercent || 0) >= 0 ? '+' : '' }}{{ activePos.unrealizedPnlPercent | number:'1.2-2' }}%)</span>
+              </div>
+            </div>
+            <div class="active-pos-meta">
+              <div class="meta-item">
+                <span class="meta-k">Entry:</span>
+                <strong class="meta-v">{{ formatCurrencySymbol(activePos.symbol) }}{{ activePos.entryPrice | number:'1.2-4' }}</strong>
+              </div>
+              <div class="meta-item">
+                <span class="meta-k">Live:</span>
+                <strong class="meta-v">{{ formatCurrencySymbol(activePos.symbol) }}{{ activePos.currentPrice | number:'1.2-4' }}</strong>
+              </div>
+              <div class="meta-item">
+                <span class="meta-k">SL / TP:</span>
+                <strong class="meta-v">
+                  {{ activePos.stopLoss ? activePos.stopLoss : '—' }} / {{ activePos.takeProfit ? activePos.takeProfit : '—' }}
+                </strong>
+              </div>
+            </div>
+            <div class="active-pos-actions">
+              <button type="button" class="btn-pos-action btn-pos-modify" (click)="openModifyModal(activePos)">
+                ✏️ Modify
+              </button>
+              <button type="button" class="btn-pos-action btn-pos-close" (click)="openCloseConfirmModal(activePos)">
+                ✕ Close
+              </button>
+            </div>
+          </div>
+        }
+
         <!-- TRADING MODE SELECTOR (SCALPING, INTRADAY, SWING, LONG_TERM) -->
         <div class="trading-mode-section">
           <div class="mode-section-header">
@@ -688,10 +730,16 @@
             </div>
           </div>
 
-          <!-- EXNESS MARGIN CALCULATOR BREAKDOWN -->
+          <!-- EXNESS MARGIN CALCULATOR & EQUITY ANALYTICS -->
           <div class="order-summary-box font-mono">
             <div class="summary-line">
               <span>Entry Price</span>
+              <strong class="summary-val">
+                {{ formatCurrencySymbol(symbol()) }}{{ (currentQuote()?.price || 0) | number:'1.2-4' }}
+              </strong>
+            </div>
+            <div class="summary-line">
+              <span>Current Price</span>
               <strong class="summary-val">
                 {{ formatCurrencySymbol(symbol()) }}{{ (currentQuote()?.price || 0) | number:'1.2-4' }}
               </strong>
@@ -713,15 +761,25 @@
               </strong>
             </div>
             <div class="summary-line">
-              <span>Available Cash</span>
-              <span class="summary-free">${{ userWallet()?.cashBalance | number:'1.2-2' }}</span>
+              <span>Free Margin</span>
+              <span class="summary-free">${{ freeMargin() | number:'1.2-2' }}</span>
+            </div>
+            <div class="summary-line">
+              <span>Used Margin</span>
+              <span class="summary-val">${{ usedMargin() | number:'1.2-2' }}</span>
+            </div>
+            <div class="summary-line">
+              <span>Total Equity</span>
+              <strong class="summary-val" [class.text-emerald]="totalEquity() >= (freeMargin() + usedMargin())" [class.text-rose]="totalEquity() < (freeMargin() + usedMargin())">
+                ${{ totalEquity() | number:'1.2-2' }}
+              </strong>
             </div>
           </div>
 
           <!-- Validation Warning Messages -->
           @if (hasInsufficientMargin()) {
             <div class="trade-validation-warning">
-              ⚠️ Insufficient virtual balance. Required Margin: ${{ requiredMargin() | number:'1.2-2' }} vs Available: ${{ userWallet()?.cashBalance | number:'1.2-2' }}.
+              ⚠️ Insufficient virtual balance. Required Margin: ${{ requiredMargin() | number:'1.2-2' }} vs Free Margin: ${{ freeMargin() | number:'1.2-2' }}.
             </div>
           }
 
@@ -784,21 +842,26 @@
           <table class="positions-table font-mono">
             <thead>
               <tr>
+                <th>Position ID</th>
+                <th>Symbol</th>
                 <th>Side / Mode</th>
                 <th>Lots / Qty</th>
                 <th>Entry Price</th>
-                <th>Live Price</th>
+                <th>Current Price</th>
                 <th>Leverage</th>
                 <th>Margin</th>
                 <th>Stop Loss</th>
                 <th>Take Profit</th>
                 <th>Floating P&L</th>
-                <th>Action</th>
+                <th>Open Time</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               @for (pos of activeSymbolPositions(); track pos.id) {
                 <tr>
+                  <td><span class="pos-id-tag font-mono">#{{ pos.id }}</span></td>
+                  <td><strong class="font-mono">{{ pos.symbol }}</strong></td>
                   <td>
                     <div class="pos-side-cell">
                       <span class="side-badge" [class.side-long]="pos.side === 'LONG'" [class.side-short]="pos.side === 'SHORT'">
@@ -832,21 +895,32 @@
                       <span class="pnl-roi">({{ (pos.unrealizedPnlPercent || 0) >= 0 ? '+' : '' }}{{ pos.unrealizedPnlPercent | number:'1.2-2' }}%)</span>
                     </div>
                   </td>
+                  <td class="time-cell-text">{{ pos.createdAt ? (pos.createdAt | date:'short') : '—' }}</td>
                   <td>
-                    <button
-                      type="button"
-                      class="btn-close-pos"
-                      [disabled]="isClosingPositionId() === pos.id"
-                      (click)="closePosition(pos)"
-                      title="Close position at live market price"
-                    >
-                      @if (isClosingPositionId() === pos.id) {
-                        <span class="mini-spinner"></span>
-                        <span>Closing...</span>
-                      } @else {
-                        <span>Close</span>
-                      }
-                    </button>
+                    <div class="table-actions-cluster">
+                      <button
+                        type="button"
+                        class="btn-tbl-modify"
+                        (click)="openModifyModal(pos)"
+                        title="Modify Stop Loss and Take Profit"
+                      >
+                        Modify
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-close-pos"
+                        [disabled]="isClosingPositionId() === pos.id"
+                        (click)="openCloseConfirmModal(pos)"
+                        title="Close position at live market price"
+                      >
+                        @if (isClosingPositionId() === pos.id) {
+                          <span class="mini-spinner"></span>
+                          <span>Closing...</span>
+                        } @else {
+                          <span>Close</span>
+                        }
+                      </button>
+                    </div>
                   </td>
                 </tr>
               }
@@ -985,4 +1059,204 @@
       </div>
     </div>
   </div>
+}
+
+<!-- =========================================================================
+     MODIFY POSITION MODAL (STOP LOSS & TAKE PROFIT)
+     ========================================================================= -->
+@if (isModifyModalOpen()) {
+  @if (modifyingPosition(); as pos) {
+    <div class="modal-backdrop" (click)="closeModifyModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="modal-icon-box">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="modal-heading">Modify Position #{{ pos.id }}</h3>
+              <span class="modal-sub font-mono">{{ pos.side }} {{ pos.quantity }} {{ pos.symbol }} (1:{{ pos.leverage }}x)</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close-modal" (click)="closeModifyModal()">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="modal-instrument-preview font-mono">
+            <div class="preview-sym">{{ pos.symbol }} ({{ pos.tradingMode }})</div>
+            <div class="preview-price">
+              <span>Entry: <strong>{{ formatCurrencySymbol(pos.symbol) }}{{ pos.entryPrice | number:'1.2-4' }}</strong></span>
+              <span style="margin-left: 1rem;">Current: <strong>{{ formatCurrencySymbol(pos.symbol) }}{{ (currentQuote()?.price || pos.entryPrice) | number:'1.2-4' }}</strong></span>
+            </div>
+          </div>
+
+          <!-- Stop Loss Field -->
+          <div class="alert-form-group">
+            <div class="field-label-row">
+              <label class="alert-lbl text-rose">Stop Loss Price ({{ formatCurrencySymbol(pos.symbol) }})</label>
+              <div class="quick-pct-cluster">
+                <button type="button" class="pct-btn" (click)="setModifySlPercent(1)">-1%</button>
+                <button type="button" class="pct-btn" (click)="setModifySlPercent(2)">-2%</button>
+                <button type="button" class="pct-btn" (click)="setModifySlPercent(5)">-5%</button>
+              </div>
+            </div>
+            <div class="sl-tp-field-wrap">
+              <span class="curr-prefix">{{ formatCurrencySymbol(pos.symbol) }}</span>
+              <input
+                type="number"
+                class="sl-tp-input font-mono"
+                [ngModel]="modifyStopLoss()"
+                (ngModelChange)="modifyStopLoss.set($event)"
+                placeholder="No Stop Loss"
+                step="0.01"
+              />
+              @if (modifyStopLoss()) {
+                <button type="button" class="btn-clear-sltp" (click)="modifyStopLoss.set(null)">✕</button>
+              }
+            </div>
+          </div>
+
+          <!-- Take Profit Field -->
+          <div class="alert-form-group">
+            <div class="field-label-row">
+              <label class="alert-lbl text-emerald">Take Profit Price ({{ formatCurrencySymbol(pos.symbol) }})</label>
+              <div class="quick-pct-cluster">
+                <button type="button" class="pct-btn" (click)="setModifyTpPercent(2)">+2%</button>
+                <button type="button" class="pct-btn" (click)="setModifyTpPercent(5)">+5%</button>
+                <button type="button" class="pct-btn" (click)="setModifyTpPercent(10)">+10%</button>
+              </div>
+            </div>
+            <div class="sl-tp-field-wrap">
+              <span class="curr-prefix">{{ formatCurrencySymbol(pos.symbol) }}</span>
+              <input
+                type="number"
+                class="sl-tp-input font-mono"
+                [ngModel]="modifyTakeProfit()"
+                (ngModelChange)="modifyTakeProfit.set($event)"
+                placeholder="No Take Profit"
+                step="0.01"
+              />
+              @if (modifyTakeProfit()) {
+                <button type="button" class="btn-clear-sltp" (click)="modifyTakeProfit.set(null)">✕</button>
+              }
+            </div>
+          </div>
+
+          @if (modifyErrorMessage()) {
+            <div class="alert-modal-msg error font-mono">
+              ⚠️ {{ modifyErrorMessage() }}
+            </div>
+          }
+
+          @if (modifySuccessMessage()) {
+            <div class="alert-modal-msg success font-mono">
+              ✓ {{ modifySuccessMessage() }}
+            </div>
+          }
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-modal-cancel" (click)="closeModifyModal()">Cancel</button>
+          <button
+            type="button"
+            class="btn-modal-save"
+            [disabled]="isSavingModify()"
+            (click)="submitModifyPosition()"
+          >
+            @if (isSavingModify()) {
+              <span class="btn-spinner"></span>
+              <span>Updating...</span>
+            } @else {
+              <span>Save Changes</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+}
+
+<!-- =========================================================================
+     CLOSE POSITION CONFIRMATION MODAL
+     ========================================================================= -->
+@if (isCloseConfirmModalOpen()) {
+  @if (closingPositionTarget(); as pos) {
+    <div class="modal-backdrop" (click)="closeCloseConfirmModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="modal-icon-box text-rose">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+            </div>
+            <div>
+              <h3 class="modal-heading">Confirm Position Close</h3>
+              <span class="modal-sub font-mono">Position #{{ pos.id }} • {{ pos.symbol }}</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close-modal" (click)="closeCloseConfirmModal()">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <p class="close-confirm-lead">
+            Are you sure you want to close this leveraged position at the real live market price?
+          </p>
+
+          <div class="order-summary-box font-mono" style="margin-top: 1rem;">
+            <div class="summary-line">
+              <span>Side / Mode</span>
+              <strong>{{ pos.side }} ({{ pos.tradingMode }})</strong>
+            </div>
+            <div class="summary-line">
+              <span>Quantity / Lots</span>
+              <strong>{{ pos.quantity }}</strong>
+            </div>
+            <div class="summary-line">
+              <span>Entry Price</span>
+              <strong>{{ formatCurrencySymbol(pos.symbol) }}{{ pos.entryPrice | number:'1.2-4' }}</strong>
+            </div>
+            <div class="summary-line">
+              <span>Execution Market Price</span>
+              <strong class="text-accent">{{ formatCurrencySymbol(pos.symbol) }}{{ (currentQuote()?.price || pos.entryPrice) | number:'1.2-4' }}</strong>
+            </div>
+            <div class="summary-line highlight-line">
+              <span>Estimated Realized P&L</span>
+              <strong [class.text-emerald]="(pos.unrealizedPnl || 0) >= 0" [class.text-rose]="(pos.unrealizedPnl || 0) < 0">
+                {{ (pos.unrealizedPnl || 0) >= 0 ? '+' : '' }}${{ pos.unrealizedPnl | number:'1.2-2' }}
+                ({{ (pos.unrealizedPnlPercent || 0) >= 0 ? '+' : '' }}{{ pos.unrealizedPnlPercent | number:'1.2-2' }}%)
+              </strong>
+            </div>
+            <div class="summary-line">
+              <span>Margin Returned to Cash</span>
+              <strong class="text-emerald">${{ pos.marginUsed | number:'1.2-2' }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-modal-cancel" (click)="closeCloseConfirmModal()">Cancel</button>
+          <button
+            type="button"
+            class="btn-modal-save"
+            style="background: #f43f5e; color: #ffffff;"
+            [disabled]="isClosingPositionId() === pos.id"
+            (click)="confirmClosePosition()"
+          >
+            @if (isClosingPositionId() === pos.id) {
+              <span class="btn-spinner"></span>
+              <span>Closing...</span>
+            } @else {
+              <span>Confirm Close Position</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 }

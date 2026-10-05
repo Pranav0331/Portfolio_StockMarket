@@ -2444,6 +2444,184 @@
   color: #ffffff;
 }
 
+/* Active Position Quick Card in Trading Panel */
+.active-pos-quick-card {
+  background: rgba(56, 189, 248, 0.06);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: var(--radius-lg, 12px);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  box-sizing: border-box;
+}
+
+.active-pos-hdr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.active-pos-tag-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.active-pos-pnl {
+  font-size: 0.85rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.active-pnl-roi {
+  font-size: 0.72rem;
+  opacity: 0.9;
+}
+
+.active-pos-meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  font-size: 0.72rem;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.meta-k {
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.65rem;
+}
+
+.meta-v {
+  color: var(--text-primary, #ffffff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.active-pos-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.btn-pos-action {
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.btn-pos-modify {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary, #ffffff);
+  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.1));
+}
+
+.btn-pos-modify:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-pos-close {
+  background: rgba(244, 63, 94, 0.15);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.btn-pos-close:hover {
+  background: #f43f5e;
+  color: #ffffff;
+}
+
+/* Positions Table Actions */
+.table-actions-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-tbl-modify {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-primary, #ffffff);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-tbl-modify:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.pos-id-tag {
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.time-cell-text {
+  font-size: 0.72rem;
+  color: var(--text-secondary, #94a3b8);
+  white-space: nowrap;
+}
+
+.close-confirm-lead {
+  font-size: 0.88rem;
+  color: var(--text-secondary, #cbd5e1);
+  line-height: 1.4;
+  margin: 0;
+}
+
+[data-theme="light"] .active-pos-quick-card {
+  background: rgba(2, 132, 199, 0.06);
+  border-color: rgba(2, 132, 199, 0.2);
+}
+
+[data-theme="light"] .active-pos-meta {
+  background: #f1f5f9;
+}
+
+[data-theme="light"] .meta-v {
+  color: #0f172a;
+}
+
+[data-theme="light"] .btn-pos-modify {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+[data-theme="light"] .btn-tbl-modify {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+[data-theme="light"] .close-confirm-lead {
+  color: #334155;
+}
+
 /* =========================================================================
    10. RESPONSIVE BREAKPOINTS
    ========================================================================= */

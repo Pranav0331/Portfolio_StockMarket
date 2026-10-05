@@ -269,6 +269,54 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     return this.activeSymbolPositions().reduce((acc, p) => acc + (p.unrealizedPnl || 0), 0);
   });
 
+  // Live Terminal Session Time Clock
+  readonly currentSessionTime = signal<string>('');
+  private sessionClockTimer: any = null;
+
+  // Margin & Account Analytics
+  readonly usedMargin = computed(() => {
+    const fromWallet = this.userWallet()?.marginUsed;
+    if (fromWallet != null && fromWallet > 0) return fromWallet;
+    return this.userPositions()
+      .filter(p => p.status === 'OPEN')
+      .reduce((acc, p) => acc + (p.marginUsed || 0), 0);
+  });
+
+  readonly freeMargin = computed(() => {
+    const fromWallet = this.userWallet()?.freeMargin;
+    if (fromWallet != null && fromWallet > 0) return fromWallet;
+    return this.userWallet()?.cashBalance ?? 0;
+  });
+
+  readonly totalEquity = computed(() => {
+    const cash = this.userWallet()?.cashBalance ?? 0;
+    const used = this.usedMargin();
+    return cash + used + this.totalSymbolFloatingPnl();
+  });
+
+  // Active Symbol's primary position (if open)
+  readonly activeSymbolPrimaryPosition = computed(() => {
+    const active = this.activeSymbolPositions();
+    return active.length > 0 ? active[0] : null;
+  });
+
+  // =========================================================================
+  // MODIFY POSITION MODAL STATE
+  // =========================================================================
+  readonly isModifyModalOpen = signal<boolean>(false);
+  readonly modifyingPosition = signal<PositionItem | null>(null);
+  readonly modifyStopLoss = signal<number | null>(null);
+  readonly modifyTakeProfit = signal<number | null>(null);
+  readonly isSavingModify = signal<boolean>(false);
+  readonly modifyErrorMessage = signal<string | null>(null);
+  readonly modifySuccessMessage = signal<string | null>(null);
+
+  // =========================================================================
+  // CLOSE POSITION CONFIRMATION MODAL STATE
+  // =========================================================================
+  readonly isCloseConfirmModalOpen = signal<boolean>(false);
+  readonly closingPositionTarget = signal<PositionItem | null>(null);
+
   // Quick navigation chips
   readonly quickShortcuts = [
     { symbol: 'RELIANCE', name: 'Reliance Industries', category: 'stocks' },
@@ -278,7 +326,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     { symbol: 'AAPL', name: 'Apple Inc.', category: 'stocks' },
     { symbol: 'NVDA', name: 'NVIDIA Corp.', category: 'stocks' },
     { symbol: 'EUR/USD', name: 'Euro / USD', category: 'forex' },
-    { symbol: 'BTC/USD', name: 'Bitcoin / USD', category: 'crypto' }
+    { symbol: 'BTC/USD', name: 'BTC/USD', category: 'crypto' }
   ];
 
   // Lightweight Charts Instances
@@ -314,6 +362,11 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.updateSessionClock();
+    if (typeof window !== 'undefined') {
+      this.sessionClockTimer = setInterval(() => this.updateSessionClock(), 1000);
+    }
+
     this.paramSub = this.route.paramMap.subscribe(params => {
       const sym = params.get('symbol');
       if (sym && sym.trim().length > 0) {
@@ -330,6 +383,10 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.paramSub?.unsubscribe();
+    if (this.sessionClockTimer) {
+      clearInterval(this.sessionClockTimer);
+      this.sessionClockTimer = null;
+    }
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
@@ -338,6 +395,13 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       this.chart.remove();
       this.chart = null;
     }
+  }
+
+  private updateSessionClock(): void {
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const timeStr = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())} UTC`;
+    this.currentSessionTime.set(timeStr);
   }
 
   // =========================================================================
@@ -921,6 +985,94 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       error: (err) => {
         this.isClosingPositionId.set(null);
         this.tradeErrorMessage.set(err.error?.message || err.message || 'Failed to close position');
+      }
+    });
+  }
+
+  openCloseConfirmModal(pos: PositionItem): void {
+    this.closingPositionTarget.set(pos);
+    this.isCloseConfirmModalOpen.set(true);
+  }
+
+  closeCloseConfirmModal(): void {
+    this.isCloseConfirmModalOpen.set(false);
+    this.closingPositionTarget.set(null);
+  }
+
+  confirmClosePosition(): void {
+    const pos = this.closingPositionTarget();
+    if (!pos || !pos.id) return;
+    this.closeCloseConfirmModal();
+    this.closePosition(pos);
+  }
+
+  openModifyModal(pos: PositionItem): void {
+    this.modifyingPosition.set(pos);
+    this.modifyStopLoss.set(pos.stopLoss || null);
+    this.modifyTakeProfit.set(pos.takeProfit || null);
+    this.modifyErrorMessage.set(null);
+    this.modifySuccessMessage.set(null);
+    this.isModifyModalOpen.set(true);
+  }
+
+  closeModifyModal(): void {
+    this.isModifyModalOpen.set(false);
+    this.modifyingPosition.set(null);
+    this.modifyErrorMessage.set(null);
+    this.modifySuccessMessage.set(null);
+  }
+
+  setModifySlPercent(percent: number): void {
+    const pos = this.modifyingPosition();
+    const curP = this.currentQuote()?.price || pos?.entryPrice;
+    if (!pos || !curP) return;
+
+    if (pos.side === 'LONG') {
+      const sl = curP * (1 - percent / 100);
+      this.modifyStopLoss.set(Number(sl.toFixed(2)));
+    } else {
+      const sl = curP * (1 + percent / 100);
+      this.modifyStopLoss.set(Number(sl.toFixed(2)));
+    }
+  }
+
+  setModifyTpPercent(percent: number): void {
+    const pos = this.modifyingPosition();
+    const curP = this.currentQuote()?.price || pos?.entryPrice;
+    if (!pos || !curP) return;
+
+    if (pos.side === 'LONG') {
+      const tp = curP * (1 + percent / 100);
+      this.modifyTakeProfit.set(Number(tp.toFixed(2)));
+    } else {
+      const tp = curP * (1 - percent / 100);
+      this.modifyTakeProfit.set(Number(tp.toFixed(2)));
+    }
+  }
+
+  submitModifyPosition(): void {
+    const pos = this.modifyingPosition();
+    if (!pos || !pos.id) return;
+
+    this.isSavingModify.set(true);
+    this.modifyErrorMessage.set(null);
+    this.modifySuccessMessage.set(null);
+
+    const sl = this.modifyStopLoss() || undefined;
+    const tp = this.modifyTakeProfit() || undefined;
+
+    this.tradingService.updateSlTp(pos.id, sl, tp).subscribe({
+      next: () => {
+        this.isSavingModify.set(false);
+        this.modifySuccessMessage.set('Position SL/TP updated successfully.');
+        this.refreshTradingState();
+        setTimeout(() => {
+          this.closeModifyModal();
+        }, 900);
+      },
+      error: (err) => {
+        this.isSavingModify.set(false);
+        this.modifyErrorMessage.set(err.error?.message || err.message || 'Failed to update position SL/TP');
       }
     });
   }
