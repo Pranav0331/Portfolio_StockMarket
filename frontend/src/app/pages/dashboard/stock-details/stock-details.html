@@ -457,11 +457,23 @@
               </div>
             </div>
             <div class="active-pos-actions">
-              <button type="button" class="btn-pos-action btn-pos-modify" (click)="openModifyModal(activePos)">
-                ✏️ Modify
-              </button>
-              <button type="button" class="btn-pos-action btn-pos-close" (click)="openCloseConfirmModal(activePos)">
-                ✕ Close
+              @if (activePos.side === 'LONG') {
+                <button type="button" class="btn-pos-action btn-pos-close" (click)="openCloseConfirmModal(activePos)">
+                  ✕ CLOSE LONG
+                </button>
+                <button type="button" class="btn-pos-action btn-pos-opposite" (click)="prepareOpenShort()">
+                  ⚡ SELL / OPEN SHORT
+                </button>
+              } @else {
+                <button type="button" class="btn-pos-action btn-pos-close-short" (click)="openCloseConfirmModal(activePos)">
+                  ✕ CLOSE SHORT
+                </button>
+                <button type="button" class="btn-pos-action btn-pos-opposite-long" (click)="prepareOpenLong()">
+                  ⚡ BUY / OPEN LONG
+                </button>
+              }
+              <button type="button" class="btn-pos-action btn-pos-modify full-span" (click)="openModifyModal(activePos)">
+                ✏️ Modify Stop Loss / Take Profit
               </button>
             </div>
           </div>
@@ -527,7 +539,15 @@
             (click)="setTradeSide('LONG')"
           >
             <div class="side-btn-content">
-              <span class="side-title">BUY / LONG</span>
+              <span class="side-title">
+                @if (activeSymbolPrimaryPosition()?.side === 'LONG') {
+                  BUY / MORE LONG
+                } @else if (activeSymbolPrimaryPosition()?.side === 'SHORT') {
+                  BUY / OPEN LONG
+                } @else {
+                  BUY / LONG
+                }
+              </span>
               <span class="side-price font-mono">
                 {{ formatCurrencySymbol(symbol()) }}{{ (currentQuote()?.price || 0) | number:'1.2-4' }}
               </span>
@@ -540,7 +560,15 @@
             (click)="setTradeSide('SHORT')"
           >
             <div class="side-btn-content">
-              <span class="side-title">SELL / SHORT</span>
+              <span class="side-title">
+                @if (activeSymbolPrimaryPosition()?.side === 'SHORT') {
+                  SELL / MORE SHORT
+                } @else if (activeSymbolPrimaryPosition()?.side === 'LONG') {
+                  SELL / OPEN SHORT
+                } @else {
+                  SELL / SHORT
+                }
+              </span>
               <span class="side-price font-mono">
                 {{ formatCurrencySymbol(symbol()) }}{{ (currentQuote()?.price || 0) | number:'1.2-4' }}
               </span>
@@ -1180,7 +1208,7 @@
 }
 
 <!-- =========================================================================
-     CLOSE POSITION CONFIRMATION MODAL
+     CLOSE POSITION CONFIRMATION MODAL (FULL & PARTIAL CLOSE)
      ========================================================================= -->
 @if (isCloseConfirmModalOpen()) {
   @if (closingPositionTarget(); as pos) {
@@ -1196,47 +1224,107 @@
               </svg>
             </div>
             <div>
-              <h3 class="modal-heading">Confirm Position Close</h3>
-              <span class="modal-sub font-mono">Position #{{ pos.id }} • {{ pos.symbol }}</span>
+              <h3 class="modal-heading">Close {{ pos.side }} Position #{{ pos.id }}</h3>
+              <span class="modal-sub font-mono">{{ pos.symbol }} • Open: {{ pos.quantity }} LOT (1:{{ pos.leverage }}x)</span>
             </div>
           </div>
           <button type="button" class="btn-close-modal" (click)="closeCloseConfirmModal()">✕</button>
         </div>
 
         <div class="modal-body">
-          <p class="close-confirm-lead">
-            Are you sure you want to close this leveraged position at the real live market price?
-          </p>
+          <div class="modal-instrument-preview font-mono">
+            <div class="preview-sym">{{ pos.symbol }} ({{ pos.side }} {{ pos.tradingMode }})</div>
+            <div class="preview-price">
+              <span>Entry: <strong>{{ formatCurrencySymbol(pos.symbol) }}{{ pos.entryPrice | number:'1.2-4' }}</strong></span>
+              <span style="margin-left: 1rem;">Live Exit: <strong>{{ formatCurrencySymbol(pos.symbol) }}{{ (currentQuote()?.price || pos.entryPrice) | number:'1.2-4' }}</strong></span>
+            </div>
+          </div>
 
-          <div class="order-summary-box font-mono" style="margin-top: 1rem;">
-            <div class="summary-line">
-              <span>Side / Mode</span>
-              <strong>{{ pos.side }} ({{ pos.tradingMode }})</strong>
+          <!-- Quantity / Lot to Close Selector -->
+          <div class="alert-form-group">
+            <div class="field-label-row">
+              <label class="alert-lbl">Quantity to Close</label>
+              <span class="owned-shares-hint font-mono">
+                Open: <strong>{{ pos.quantity }} LOT</strong>
+              </span>
             </div>
-            <div class="summary-line">
-              <span>Quantity / Lots</span>
-              <strong>{{ pos.quantity }}</strong>
+
+            <!-- Quick Percentage Chips (25%, 50%, 75%, 100%) -->
+            <div class="quick-qty-chips font-mono" style="margin-bottom: 0.5rem;">
+              <button type="button" class="chip-qty-btn" (click)="setClosePercent(25)">25%</button>
+              <button type="button" class="chip-qty-btn" (click)="setClosePercent(50)">50%</button>
+              <button type="button" class="chip-qty-btn" (click)="setClosePercent(75)">75%</button>
+              <button type="button" class="chip-qty-btn max-chip" (click)="setClosePercent(100)">100% (Full)</button>
             </div>
-            <div class="summary-line">
-              <span>Entry Price</span>
-              <strong>{{ formatCurrencySymbol(pos.symbol) }}{{ pos.entryPrice | number:'1.2-4' }}</strong>
+
+            <div class="quantity-input-box">
+              <button
+                type="button"
+                class="qty-stepper-btn"
+                (click)="adjustCloseQuantity(-0.1)"
+                [disabled]="closeQuantity() <= 0.01"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                class="qty-input font-mono"
+                [ngModel]="closeQuantity()"
+                (ngModelChange)="setCloseQuantity($event)"
+                min="0.0001"
+                [max]="pos.quantity"
+                step="0.01"
+              />
+              <button
+                type="button"
+                class="qty-stepper-btn"
+                (click)="adjustCloseQuantity(0.1)"
+                [disabled]="closeQuantity() >= pos.quantity"
+              >
+                +
+              </button>
             </div>
+          </div>
+
+          <!-- Live Breakdown & P&L Calculation for Closed Lot -->
+          <div class="order-summary-box font-mono" style="margin-top: 0.75rem;">
             <div class="summary-line">
-              <span>Execution Market Price</span>
-              <strong class="text-accent">{{ formatCurrencySymbol(pos.symbol) }}{{ (currentQuote()?.price || pos.entryPrice) | number:'1.2-4' }}</strong>
+              <span>Closing Lot Size</span>
+              <strong class="text-accent">{{ closeQuantity() }} LOT</strong>
             </div>
+            @if (closeRemainingQty() > 0) {
+              <div class="summary-line">
+                <span>Remaining Position</span>
+                <strong class="text-emerald">{{ closeRemainingQty() | number:'1.2-4' }} LOT</strong>
+              </div>
+            }
             <div class="summary-line highlight-line">
               <span>Estimated Realized P&L</span>
-              <strong [class.text-emerald]="(pos.unrealizedPnl || 0) >= 0" [class.text-rose]="(pos.unrealizedPnl || 0) < 0">
-                {{ (pos.unrealizedPnl || 0) >= 0 ? '+' : '' }}${{ pos.unrealizedPnl | number:'1.2-2' }}
-                ({{ (pos.unrealizedPnlPercent || 0) >= 0 ? '+' : '' }}{{ pos.unrealizedPnlPercent | number:'1.2-2' }}%)
+              <strong [class.text-emerald]="closeEstimatedPnl() >= 0" [class.text-rose]="closeEstimatedPnl() < 0">
+                {{ closeEstimatedPnl() >= 0 ? '+' : '' }}${{ closeEstimatedPnl() | number:'1.2-2' }}
+                ({{ closeEstimatedPnlPercent() >= 0 ? '+' : '' }}{{ closeEstimatedPnlPercent() | number:'1.2-2' }}%)
               </strong>
             </div>
             <div class="summary-line">
               <span>Margin Returned to Cash</span>
-              <strong class="text-emerald">${{ pos.marginUsed | number:'1.2-2' }}</strong>
+              <strong class="text-emerald">${{ closeMarginToRelease() | number:'1.2-2' }}</strong>
+            </div>
+            <div class="summary-line">
+              <span>Total Settlement Added</span>
+              <strong class="summary-val">${{ closeSettlementAmount() | number:'1.2-2' }}</strong>
             </div>
           </div>
+
+          <!-- Validation Warning -->
+          @if (!closeQuantityValid()) {
+            <div class="alert-modal-msg error font-mono" style="margin-top: 0.65rem;">
+              @if (!currentQuote()?.price) {
+                ⚠️ Real live market price unavailable. Cannot execute close without live feed.
+              } @else {
+                ⚠️ Insufficient position quantity. Open quantity is {{ pos.quantity }} LOT.
+              }
+            </div>
+          }
         </div>
 
         <div class="modal-footer">
@@ -1245,14 +1333,16 @@
             type="button"
             class="btn-modal-save"
             style="background: #f43f5e; color: #ffffff;"
-            [disabled]="isClosingPositionId() === pos.id"
+            [disabled]="isClosingPositionId() === pos.id || !closeQuantityValid()"
             (click)="confirmClosePosition()"
           >
             @if (isClosingPositionId() === pos.id) {
               <span class="btn-spinner"></span>
               <span>Closing...</span>
             } @else {
-              <span>Confirm Close Position</span>
+              <span>
+                {{ closeRemainingQty() === 0 ? 'Confirm Full Close (' + closeQuantity() + ' LOT)' : 'Confirm Partial Close (' + closeQuantity() + ' LOT)' }}
+              </span>
             }
           </button>
         </div>

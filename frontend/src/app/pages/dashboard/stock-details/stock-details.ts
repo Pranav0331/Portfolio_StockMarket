@@ -312,10 +312,60 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly modifySuccessMessage = signal<string | null>(null);
 
   // =========================================================================
-  // CLOSE POSITION CONFIRMATION MODAL STATE
+  // CLOSE POSITION CONFIRMATION MODAL STATE & PARTIAL CLOSE
   // =========================================================================
   readonly isCloseConfirmModalOpen = signal<boolean>(false);
   readonly closingPositionTarget = signal<PositionItem | null>(null);
+  readonly closeQuantity = signal<number>(1);
+
+  readonly closeQuantityValid = computed(() => {
+    const pos = this.closingPositionTarget();
+    const qty = this.closeQuantity();
+    const curP = this.currentQuote()?.price;
+    if (!pos || !qty || qty <= 0 || !curP || curP <= 0) return false;
+    return qty <= pos.quantity + 0.00001;
+  });
+
+  readonly closeMarginToRelease = computed(() => {
+    const pos = this.closingPositionTarget();
+    const qty = this.closeQuantity();
+    if (!pos || !qty || qty <= 0 || pos.quantity <= 0) return 0;
+    const ratio = Math.min(1, qty / pos.quantity);
+    return (pos.marginUsed || 0) * ratio;
+  });
+
+  readonly closeEstimatedPnl = computed(() => {
+    const pos = this.closingPositionTarget();
+    const qty = this.closeQuantity();
+    const curP = this.currentQuote()?.price;
+    if (!pos || !qty || qty <= 0 || !curP) return 0;
+
+    if (pos.side === 'LONG') {
+      return (curP - pos.entryPrice) * qty;
+    } else {
+      return (pos.entryPrice - curP) * qty;
+    }
+  });
+
+  readonly closeEstimatedPnlPercent = computed(() => {
+    const margin = this.closeMarginToRelease();
+    const pnl = this.closeEstimatedPnl();
+    if (margin <= 0) return 0;
+    return (pnl / margin) * 100;
+  });
+
+  readonly closeRemainingQty = computed(() => {
+    const pos = this.closingPositionTarget();
+    const qty = this.closeQuantity();
+    if (!pos) return 0;
+    return Math.max(0, Number((pos.quantity - (qty || 0)).toFixed(4)));
+  });
+
+  readonly closeSettlementAmount = computed(() => {
+    const margin = this.closeMarginToRelease();
+    const pnl = this.closeEstimatedPnl();
+    return Math.max(0, margin + pnl);
+  });
 
   // Quick navigation chips
   readonly quickShortcuts = [
@@ -973,11 +1023,12 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     });
   }
 
-  closePosition(pos: PositionItem): void {
+  closePosition(pos: PositionItem, quantity?: number): void {
     if (!pos || !pos.id) return;
 
+    const qtyToClose = quantity != null && quantity > 0 ? quantity : undefined;
     this.isClosingPositionId.set(pos.id);
-    this.tradingService.closePosition(pos.id).subscribe({
+    this.tradingService.closePosition(pos.id, qtyToClose).subscribe({
       next: () => {
         this.isClosingPositionId.set(null);
         this.refreshTradingState();
@@ -989,8 +1040,10 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     });
   }
 
-  openCloseConfirmModal(pos: PositionItem): void {
+  openCloseConfirmModal(pos: PositionItem, defaultQty?: number): void {
     this.closingPositionTarget.set(pos);
+    const initialQty = defaultQty != null && defaultQty > 0 ? Math.min(defaultQty, pos.quantity) : pos.quantity;
+    this.closeQuantity.set(initialQty);
     this.isCloseConfirmModalOpen.set(true);
   }
 
@@ -999,11 +1052,44 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     this.closingPositionTarget.set(null);
   }
 
+  setClosePercent(percent: number): void {
+    const pos = this.closingPositionTarget();
+    if (!pos || !pos.quantity) return;
+    const qty = Number(((pos.quantity * percent) / 100).toFixed(4));
+    this.closeQuantity.set(Math.max(0.0001, qty));
+  }
+
+  setCloseQuantity(qty: number): void {
+    const pos = this.closingPositionTarget();
+    const maxQty = pos?.quantity || 999999;
+    const val = Math.max(0.0001, Math.min(Number(qty) || 0.01, maxQty));
+    this.closeQuantity.set(val);
+  }
+
+  adjustCloseQuantity(delta: number): void {
+    const cur = this.closeQuantity() || 0.1;
+    const pos = this.closingPositionTarget();
+    const maxQty = pos?.quantity || 999999;
+    const nextVal = Math.max(0.0001, Math.min(Number((cur + delta).toFixed(4)), maxQty));
+    this.closeQuantity.set(nextVal);
+  }
+
   confirmClosePosition(): void {
     const pos = this.closingPositionTarget();
     if (!pos || !pos.id) return;
+    const qty = this.closeQuantity();
     this.closeCloseConfirmModal();
-    this.closePosition(pos);
+    this.closePosition(pos, qty);
+  }
+
+  prepareOpenLong(): void {
+    this.tradeSide.set('LONG');
+    this.tradeErrorMessage.set(null);
+  }
+
+  prepareOpenShort(): void {
+    this.tradeSide.set('SHORT');
+    this.tradeErrorMessage.set(null);
   }
 
   openModifyModal(pos: PositionItem): void {

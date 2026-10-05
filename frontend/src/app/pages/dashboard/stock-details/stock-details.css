@@ -2551,6 +2551,43 @@
   color: #ffffff;
 }
 
+.btn-pos-close-short {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.btn-pos-close-short:hover {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.btn-pos-opposite {
+  background: rgba(244, 63, 94, 0.1);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.2);
+}
+
+.btn-pos-opposite:hover {
+  background: rgba(244, 63, 94, 0.2);
+  color: #f43f5e;
+}
+
+.btn-pos-opposite-long {
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.btn-pos-opposite-long:hover {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.full-span {
+  grid-column: 1 / -1;
+}
+
 /* Positions Table Actions */
 .table-actions-cluster {
   display: inline-flex;

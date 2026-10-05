@@ -490,6 +490,16 @@ public class TradingService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Position is already closed");
             }
 
+            if (requestedCloseQty != null && requestedCloseQty.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Close quantity must be greater than zero");
+            }
+
+            if (requestedCloseQty != null && requestedCloseQty.compareTo(position.getQuantity()) > 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        String.format("Insufficient position quantity. Open quantity is %s, requested close: %s",
+                                position.getQuantity(), requestedCloseQty));
+            }
+
             String symbol = position.getStock() != null ? position.getStock().getSymbol() : "UNKNOWN";
             StockQuoteDto quote = fetchRealMarketQuote(symbol);
             if (quote == null || quote.price() == null || quote.price().compareTo(BigDecimal.ZERO) <= 0) {
@@ -497,45 +507,84 @@ public class TradingService {
             }
 
             BigDecimal closePrice = quote.price();
-            return executeClosePositionInternal(position, closePrice, "Manual Close");
+            return executeClosePositionInternal(position, closePrice, requestedCloseQty, "Manual Close");
         }
     }
 
-    private PositionDto executeClosePositionInternal(Position position, BigDecimal closePrice, String reason) {
+    private PositionDto executeClosePositionInternal(Position position, BigDecimal closePrice, BigDecimal requestedCloseQty, String reason) {
         User user = position.getUser();
         Stock stock = position.getStock();
         String symbol = stock != null ? stock.getSymbol() : "UNKNOWN";
-        BigDecimal qty = position.getQuantity();
+        BigDecimal totalPositionQty = position.getQuantity();
         BigDecimal entryPrice = position.getEntryPrice();
-        BigDecimal marginUsed = position.getMarginUsed() != null ? position.getMarginUsed() : BigDecimal.ZERO;
+        BigDecimal totalMarginUsed = position.getMarginUsed() != null ? position.getMarginUsed() : BigDecimal.ZERO;
 
-        // Calculate Realized P&L
+        BigDecimal closeQty = (requestedCloseQty != null && requestedCloseQty.compareTo(BigDecimal.ZERO) > 0 && requestedCloseQty.compareTo(totalPositionQty) < 0)
+                ? requestedCloseQty.setScale(4, RoundingMode.HALF_UP)
+                : totalPositionQty;
+
+        boolean isPartial = closeQty.compareTo(totalPositionQty) < 0;
+
+        // Margin to release proportionally
+        BigDecimal marginToRelease;
+        if (isPartial) {
+            marginToRelease = totalMarginUsed.multiply(closeQty).divide(totalPositionQty, 4, RoundingMode.HALF_UP);
+        } else {
+            marginToRelease = totalMarginUsed;
+        }
+
+        // Calculate Realized P&L for the closed quantity
         BigDecimal realizedPnl;
         if (position.getSide() == PositionSide.LONG) {
-            realizedPnl = closePrice.subtract(entryPrice).multiply(qty).setScale(4, RoundingMode.HALF_UP);
+            realizedPnl = closePrice.subtract(entryPrice).multiply(closeQty).setScale(4, RoundingMode.HALF_UP);
         } else {
-            realizedPnl = entryPrice.subtract(closePrice).multiply(qty).setScale(4, RoundingMode.HALF_UP);
+            realizedPnl = entryPrice.subtract(closePrice).multiply(closeQty).setScale(4, RoundingMode.HALF_UP);
         }
 
         BigDecimal realizedPnlPercent = BigDecimal.ZERO;
-        if (marginUsed.compareTo(BigDecimal.ZERO) > 0) {
-            realizedPnlPercent = realizedPnl.divide(marginUsed, 4, RoundingMode.HALF_UP)
+        if (marginToRelease.compareTo(BigDecimal.ZERO) > 0) {
+            realizedPnlPercent = realizedPnl.divide(marginToRelease, 4, RoundingMode.HALF_UP)
                     .multiply(new BigDecimal("100"))
                     .setScale(2, RoundingMode.HALF_UP);
         }
 
-        // Amount returned to wallet balance = marginUsed + realizedPnl (cannot drop balance negative beyond loss)
-        BigDecimal settlementAmount = marginUsed.add(realizedPnl).setScale(4, RoundingMode.HALF_UP);
+        // Settlement amount returned to cash balance = marginToRelease + realizedPnl
+        BigDecimal settlementAmount = marginToRelease.add(realizedPnl).setScale(4, RoundingMode.HALF_UP);
         if (settlementAmount.compareTo(BigDecimal.ZERO) < 0) {
             settlementAmount = BigDecimal.ZERO;
         }
 
         // Update Position entity
-        position.setStatus(PositionStatus.CLOSED);
-        position.setClosePrice(closePrice);
-        position.setCloseTime(Instant.now());
-        position.setRealizedPnl(realizedPnl);
+        if (isPartial) {
+            BigDecimal remainingQty = totalPositionQty.subtract(closeQty).setScale(4, RoundingMode.HALF_UP);
+            BigDecimal remainingMargin = totalMarginUsed.subtract(marginToRelease).setScale(4, RoundingMode.HALF_UP);
+            position.setQuantity(remainingQty);
+            position.setMarginUsed(remainingMargin);
+            position.setStatus(PositionStatus.OPEN);
+        } else {
+            position.setStatus(PositionStatus.CLOSED);
+            position.setClosePrice(closePrice);
+            position.setCloseTime(Instant.now());
+            position.setRealizedPnl(realizedPnl);
+        }
         position = positionRepository.save(position);
+
+        // Update spot Holding if LONG
+        if (position.getSide() == PositionSide.LONG && user != null) {
+            Optional<Holding> holdingOpt = holdingRepository.findByUserIdAndStock_Symbol(user.getId(), symbol);
+            if (holdingOpt.isPresent()) {
+                Holding h = holdingOpt.get();
+                BigDecimal newHoldingQty = h.getQuantity().subtract(closeQty).setScale(4, RoundingMode.HALF_UP);
+                if (newHoldingQty.compareTo(BigDecimal.ZERO) <= 0) {
+                    holdingRepository.delete(h);
+                } else {
+                    h.setQuantity(newHoldingQty);
+                    BigDecimal newInvested = h.getAverageBuyPrice().multiply(newHoldingQty).setScale(4, RoundingMode.HALF_UP);
+                    h.setTotalInvested(newInvested);
+                    holdingRepository.save(h);
+                }
+            }
+        }
 
         // Closing Order type: if LONG -> SELL to close; if SHORT -> BUY to close
         OrderType closingOrderType = position.getSide() == PositionSide.LONG ? OrderType.SELL : OrderType.BUY;
@@ -549,16 +598,16 @@ public class TradingService {
         order.setTradingMode(position.getTradingMode());
         order.setPositionSide(position.getSide());
         order.setLeverage(position.getLeverage());
-        order.setMarginUsed(marginUsed);
+        order.setMarginUsed(marginToRelease);
         order.setPositionId(position.getId());
         order.setRealizedPnl(realizedPnl);
-        order.setQuantity(qty);
+        order.setQuantity(closeQty);
         order.setPrice(closePrice);
         order.setExecutedPrice(closePrice);
         order.setExecutedAt(Instant.now());
         orderRepository.save(order);
 
-        // Transaction for position closing (returns settlementAmount)
+        // Transaction for position closing (settlement amount returned to cash balance)
         Transaction transaction = new Transaction();
         transaction.setUser(user);
         transaction.setStock(stock);
@@ -568,9 +617,9 @@ public class TradingService {
         transaction.setTradingMode(position.getTradingMode());
         transaction.setPositionSide(position.getSide());
         transaction.setLeverage(position.getLeverage());
-        transaction.setMarginUsed(marginUsed);
+        transaction.setMarginUsed(marginToRelease);
         transaction.setPositionId(position.getId());
-        transaction.setQuantity(qty);
+        transaction.setQuantity(closeQty);
         transaction.setPricePerUnit(closePrice);
         transaction.setTotalAmount(settlementAmount);
         transaction.setFees(BigDecimal.ZERO);
@@ -579,8 +628,8 @@ public class TradingService {
         transaction.setPnlPercent(realizedPnlPercent);
         transactionRepository.save(transaction);
 
-        log.info("Closed paper position #{} on {} ({}): entry={}, close={}, realizedPnL={} (ROI: {}%), Reason: {}",
-                position.getId(), symbol, position.getSide(), entryPrice, closePrice, realizedPnl, realizedPnlPercent, reason);
+        log.info("Closed {} paper position #{} on {} ({}): closedQty={}, remainingQty={}, entry={}, close={}, realizedPnL={} (ROI: {}%), Reason: {}",
+                isPartial ? "PARTIAL" : "FULL", position.getId(), symbol, position.getSide(), closeQty, position.getQuantity(), entryPrice, closePrice, realizedPnl, realizedPnlPercent, reason);
 
         return mapPositionToDto(position, closePrice);
     }
@@ -642,7 +691,7 @@ public class TradingService {
 
                 // Check automated SL / TP triggers
                 if (shouldTriggerSlOrTp(p, liveP)) {
-                    dtos.add(executeClosePositionInternal(p, liveP, "Automated SL/TP Trigger"));
+                    dtos.add(executeClosePositionInternal(p, liveP, null, "Automated SL/TP Trigger"));
                     continue;
                 }
 
@@ -809,8 +858,11 @@ public class TradingService {
 
             if (t.getPositionId() != null) {
                 // Margined position transaction
-                if (t.getPnl() != null && t.getPnl().compareTo(BigDecimal.ZERO) != 0) {
-                    // Position closed settlement
+                boolean isCloseTransaction = (t.getPositionSide() == PositionSide.LONG && t.getTransactionType() == TransactionType.SELL)
+                        || (t.getPositionSide() == PositionSide.SHORT && t.getTransactionType() == TransactionType.BUY);
+
+                if (isCloseTransaction) {
+                    // Position closed settlement returned to cash
                     balance = balance.add(amount).subtract(fees);
                 } else {
                     // Position opened: margin locked
