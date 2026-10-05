@@ -1,0 +1,862 @@
+<div class="algo-dashboard-container">
+  <!-- TOP HEADER BAR -->
+  <header class="algo-topbar">
+    <div class="topbar-left">
+      <div class="algo-title-block">
+        <div class="algo-icon-badge">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <div>
+          <h1 class="algo-title">AI Algo Trading Studio</h1>
+          <span class="algo-subtitle">Automated multi-condition rule execution & indicator confluence</span>
+        </div>
+      </div>
+
+      <!-- Active Symbol & Provider Badge -->
+      <div class="symbol-pill-box">
+        <span class="active-sym-tag">{{ formStrategy().symbol }}</span>
+        <span class="provider-badge" [class.upstox]="providerName() === 'Upstox'">
+          <span class="pulse-dot"></span>
+          {{ providerName() }} Real-Time
+        </span>
+        <span class="live-price-val">
+          {{ currentPrice() > 0 ? (currentPrice() | currency:(formStrategy().marketType === 'INDIAN' ? 'INR' : 'USD'):'symbol':'1.2-4') : 'Connecting...' }}
+        </span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <!-- Virtual Wallet Cash Balance -->
+      <div class="wallet-badge">
+        <span class="wallet-label">Paper Balance:</span>
+        <span class="wallet-value">{{ (tradingService.wallet()?.cashBalance ?? 100000) | currency:'USD':'symbol':'1.2-2' }}</span>
+        <span class="paper-tag">SIMULATED</span>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <button type="button" class="btn-secondary" (click)="saveStrategy()">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+          <polyline points="17 21 17 13 7 13 7 21"></polyline>
+          <polyline points="7 3 7 8 15 8"></polyline>
+        </svg>
+        Save Strategy
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN 3-COLUMN WORKSPACE GRID -->
+  <div class="algo-workspace-grid">
+    <!-- LEFT PANEL: STRATEGY BUILDER & ENTRY CONDITIONS -->
+    <aside class="algo-panel panel-builder">
+      <div class="panel-header">
+        <div class="panel-header-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="3" y1="9" x2="21" y2="9"></line>
+            <line x1="9" y1="21" x2="9" y2="9"></line>
+          </svg>
+          Strategy Builder
+        </div>
+      </div>
+
+      <div class="panel-scroll-content">
+        <!-- Strategy Name -->
+        <div class="form-group">
+          <label class="form-label">Strategy Name</label>
+          <input
+            type="text"
+            class="form-control"
+            [(ngModel)]="formStrategy().name"
+            placeholder="e.g. BTC Trend Scalper"
+          />
+        </div>
+
+        <!-- Market Selection -->
+        <div class="form-group">
+          <label class="form-label">Market</label>
+          <div class="segmented-btn-group">
+            <button
+              type="button"
+              [class.active]="formStrategy().marketType === 'CRYPTO'"
+              (click)="onMarketTypeChange('CRYPTO')"
+            >
+              Crypto
+            </button>
+            <button
+              type="button"
+              [class.active]="formStrategy().marketType === 'FOREX'"
+              (click)="onMarketTypeChange('FOREX')"
+            >
+              Forex
+            </button>
+            <button
+              type="button"
+              [class.active]="formStrategy().marketType === 'US'"
+              (click)="onMarketTypeChange('US')"
+            >
+              US
+            </button>
+            <button
+              type="button"
+              [class.active]="formStrategy().marketType === 'INDIAN'"
+              (click)="onMarketTypeChange('INDIAN')"
+            >
+              Indian
+            </button>
+          </div>
+        </div>
+
+        <!-- Popular Symbol Quick Picks -->
+        <div class="form-group">
+          <label class="form-label">Instrument / Symbol</label>
+          <div class="quick-picks-row">
+            @for (item of popularInstruments[formStrategy().marketType]; track item.symbol) {
+              <button
+                type="button"
+                class="pick-btn"
+                [class.selected]="formStrategy().symbol === item.symbol"
+                (click)="selectInstrument(item.symbol)"
+              >
+                {{ item.symbol }}
+              </button>
+            }
+          </div>
+          <input
+            type="text"
+            class="form-control mt-2"
+            [(ngModel)]="formStrategy().symbol"
+            (change)="onSymbolChanged()"
+            placeholder="Custom symbol (e.g. BTC/USD, RELIANCE)"
+          />
+        </div>
+
+        <!-- Mode & Timeframe -->
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Trading Mode</label>
+            <select class="form-control" [(ngModel)]="formStrategy().tradingMode">
+              <option value="SCALPING">Scalping</option>
+              <option value="INTRADAY">Intraday</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Timeframe</label>
+            <select
+              class="form-control"
+              [(ngModel)]="formStrategy().timeframe"
+              (change)="onSymbolChanged()"
+            >
+              <option value="1m">1m</option>
+              <option value="5m">5m</option>
+              <option value="15m">15m</option>
+              <option value="30m">30m</option>
+              <option value="1h">1H</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Direction -->
+        <div class="form-group">
+          <label class="form-label">Execution Direction</label>
+          <div class="segmented-btn-group direction-group">
+            <button
+              type="button"
+              [class.active]="formStrategy().direction === 'LONG'"
+              (click)="formStrategy().direction = 'LONG'"
+            >
+              LONG
+            </button>
+            <button
+              type="button"
+              [class.active]="formStrategy().direction === 'SHORT'"
+              (click)="formStrategy().direction = 'SHORT'"
+            >
+              SHORT
+            </button>
+            <button
+              type="button"
+              [class.active]="formStrategy().direction === 'BOTH'"
+              (click)="formStrategy().direction = 'BOTH'"
+            >
+              BOTH
+            </button>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- INDICATOR SUITE CONFIGURATION -->
+        <div class="section-heading">Technical Indicators</div>
+
+        <!-- EMA 9 & EMA 21 -->
+        <div class="indicator-card">
+          <div class="indicator-header">
+            <label class="checkbox-container">
+              <input type="checkbox" [(ngModel)]="formStrategy().useEma9" />
+              <span class="custom-checkbox"></span>
+              <span class="indicator-title">EMA Fast</span>
+            </label>
+            <input
+              type="number"
+              class="param-input"
+              [(ngModel)]="formStrategy().ema9Period"
+              min="2"
+              max="100"
+            />
+          </div>
+          <div class="indicator-header mt-1">
+            <label class="checkbox-container">
+              <input type="checkbox" [(ngModel)]="formStrategy().useEma21" />
+              <span class="custom-checkbox"></span>
+              <span class="indicator-title">EMA Slow</span>
+            </label>
+            <input
+              type="number"
+              class="param-input"
+              [(ngModel)]="formStrategy().ema21Period"
+              min="2"
+              max="200"
+            />
+          </div>
+        </div>
+
+        <!-- RSI -->
+        <div class="indicator-card">
+          <div class="indicator-header">
+            <label class="checkbox-container">
+              <input type="checkbox" [(ngModel)]="formStrategy().useRsi" />
+              <span class="custom-checkbox"></span>
+              <span class="indicator-title">RSI (Relative Strength)</span>
+            </label>
+            <input
+              type="number"
+              class="param-input"
+              [(ngModel)]="formStrategy().rsiPeriod"
+              min="2"
+              max="50"
+            />
+          </div>
+          <div class="indicator-params-row" *ngIf="formStrategy().useRsi">
+            <div class="sub-param">
+              <span>Long &gt;</span>
+              <input type="number" [(ngModel)]="formStrategy().rsiLongThreshold" />
+            </div>
+            <div class="sub-param">
+              <span>Short &lt;</span>
+              <input type="number" [(ngModel)]="formStrategy().rsiShortThreshold" />
+            </div>
+          </div>
+        </div>
+
+        <!-- MACD -->
+        <div class="indicator-card">
+          <div class="indicator-header">
+            <label class="checkbox-container">
+              <input type="checkbox" [(ngModel)]="formStrategy().useMacd" />
+              <span class="custom-checkbox"></span>
+              <span class="indicator-title">MACD Oscillator</span>
+            </label>
+          </div>
+          <div class="indicator-params-row" *ngIf="formStrategy().useMacd">
+            <div class="sub-param">
+              <span>Fast</span>
+              <input type="number" [(ngModel)]="formStrategy().macdFast" />
+            </div>
+            <div class="sub-param">
+              <span>Slow</span>
+              <input type="number" [(ngModel)]="formStrategy().macdSlow" />
+            </div>
+            <div class="sub-param">
+              <span>Sig</span>
+              <input type="number" [(ngModel)]="formStrategy().macdSignal" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Bollinger Bands -->
+        <div class="indicator-card">
+          <div class="indicator-header">
+            <label class="checkbox-container">
+              <input type="checkbox" [(ngModel)]="formStrategy().useBollinger" />
+              <span class="custom-checkbox"></span>
+              <span class="indicator-title">Bollinger Bands</span>
+            </label>
+          </div>
+          <div class="indicator-params-row" *ngIf="formStrategy().useBollinger">
+            <div class="sub-param">
+              <span>Period</span>
+              <input type="number" [(ngModel)]="formStrategy().bollingerPeriod" />
+            </div>
+            <div class="sub-param">
+              <span>StdDev</span>
+              <input type="number" step="0.1" [(ngModel)]="formStrategy().bollingerStdDev" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- ENTRY CONDITIONS -->
+        <div class="section-heading">Active Entry Conditions</div>
+
+        <div class="conditions-box">
+          <label class="condition-item">
+            <input type="checkbox" [(ngModel)]="formStrategy().condEmaCross" />
+            <span class="custom-checkbox"></span>
+            <div class="condition-desc">
+              <strong>EMA Trend Crossover</strong>
+              <small>Long: EMA 9 &gt; EMA 21 | Short: EMA 9 &lt; EMA 21</small>
+            </div>
+          </label>
+
+          <label class="condition-item">
+            <input type="checkbox" [(ngModel)]="formStrategy().condRsiThreshold" />
+            <span class="custom-checkbox"></span>
+            <div class="condition-desc">
+              <strong>RSI Momentum Threshold</strong>
+              <small>Long: RSI &gt; {{ formStrategy().rsiLongThreshold }} | Short: RSI &lt; {{ formStrategy().rsiShortThreshold }}</small>
+            </div>
+          </label>
+
+          <label class="condition-item">
+            <input type="checkbox" [(ngModel)]="formStrategy().condMacdDirection" />
+            <span class="custom-checkbox"></span>
+            <div class="condition-desc">
+              <strong>MACD Histogram Direction</strong>
+              <small>Long: MACD Line &gt; Signal | Short: MACD Line &lt; Signal</small>
+            </div>
+          </label>
+
+          <label class="condition-item">
+            <input type="checkbox" [(ngModel)]="formStrategy().condBollingerBounce" />
+            <span class="custom-checkbox"></span>
+            <div class="condition-desc">
+              <strong>Bollinger Band Volatility</strong>
+              <small>Price relative to upper/lower 2.0σ bands</small>
+            </div>
+          </label>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER PANEL: LIVE CHART + REAL-TIME AI SIGNAL ANALYSIS -->
+    <main class="algo-panel panel-chart-analysis">
+      <!-- AI SIGNAL ANALYSIS BAR -->
+      <section class="ai-signal-banner" [class.bullish]="aiEvaluation()?.marketTrend === 'BULLISH'" [class.bearish]="aiEvaluation()?.marketTrend === 'BEARISH'" [class.neutral]="aiEvaluation()?.marketTrend === 'NEUTRAL'">
+        <div class="ai-signal-header">
+          <div class="ai-title-wrap">
+            <span class="ai-badge">AI REAL MARKET EVALUATION</span>
+            <span class="trend-tag" [class.up]="aiEvaluation()?.marketTrend === 'BULLISH'" [class.down]="aiEvaluation()?.marketTrend === 'BEARISH'">
+              TREND: {{ aiEvaluation()?.marketTrend || 'ANALYZING...' }}
+            </span>
+          </div>
+
+          <div class="signal-highlight" [class.buy]="aiEvaluation()?.signal === 'BUY'" [class.sell]="aiEvaluation()?.signal === 'SELL'" [class.wait]="aiEvaluation()?.signal === 'WAIT'">
+            <span class="signal-action">{{ aiEvaluation()?.signal || 'WAIT' }}</span>
+            <span class="signal-conf">{{ aiEvaluation()?.confidence ?? 50 }}% CONFIDENCE</span>
+          </div>
+        </div>
+
+        @if (!marketDataError() && aiEvaluation()?.isMarketDataAvailable) {
+          <div class="ai-reasons-grid">
+            <div class="reason-points">
+              <span class="reasons-label">Strategy Confluence Factors:</span>
+              <ul class="reasons-list">
+                @for (reason of aiEvaluation()?.reasons; track reason) {
+                  <li>{{ reason }}</li>
+                }
+              </ul>
+            </div>
+
+            <div class="active-levels">
+              <span class="levels-label">Active Indicators ({{ providerName() }}):</span>
+              <div class="indicator-chips">
+                @for (key of objectKeys(aiEvaluation()?.activeIndicators || {}); track key) {
+                  <div class="ind-chip">
+                    <span class="k">{{ key }}:</span>
+                    <span class="v">{{ aiEvaluation()?.activeIndicators?.[key] }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        } @else {
+          <div class="ai-unavailable-alert">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>AI analysis unavailable — market data unavailable.</span>
+          </div>
+        }
+      </section>
+
+      <!-- CANDLESTICK CHART CONTAINER -->
+      <div class="chart-wrapper">
+        <div class="chart-header-overlay">
+          <div class="chart-meta">
+            <span class="meta-sym">{{ formStrategy().symbol }}</span>
+            <span class="meta-tf">{{ formStrategy().timeframe }}</span>
+            <span class="meta-mode">{{ formStrategy().tradingMode }}</span>
+          </div>
+          @if (isMarketDataLoading()) {
+            <span class="chart-loading-tag">Loading real {{ providerName() }} candles...</span>
+          }
+        </div>
+
+        <div #chartContainer class="lightweight-chart-container"></div>
+      </div>
+    </main>
+
+    <!-- RIGHT PANEL: ALGO STATUS + RISK MANAGEMENT + POSITION -->
+    <aside class="algo-panel panel-risk-execution">
+      <div class="panel-header">
+        <div class="panel-header-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          Execution & Risk
+        </div>
+        <span
+          class="status-pill"
+          [class.running]="formStrategy().status === 'RUNNING'"
+          [class.paused]="formStrategy().status === 'PAUSED'"
+          [class.stopped]="formStrategy().status === 'STOPPED'"
+        >
+          {{ formStrategy().status }}
+        </span>
+      </div>
+
+      <div class="panel-scroll-content">
+        <!-- EXECUTION CONTROL BUTTONS -->
+        <div class="execution-actions-row">
+          <button
+            type="button"
+            class="btn-algo btn-start"
+            [disabled]="formStrategy().status === 'RUNNING'"
+            (click)="startAlgo()"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            START ALGO
+          </button>
+
+          <button
+            type="button"
+            class="btn-algo btn-pause"
+            [disabled]="formStrategy().status !== 'RUNNING'"
+            (click)="pauseAlgo()"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <rect x="6" y="4" width="4" height="16"></rect>
+              <rect x="14" y="4" width="4" height="16"></rect>
+            </svg>
+            PAUSE
+          </button>
+
+          <button
+            type="button"
+            class="btn-algo btn-stop"
+            [disabled]="formStrategy().status === 'STOPPED'"
+            (click)="stopAlgo()"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <rect x="4" y="4" width="16" height="16"></rect>
+            </svg>
+            STOP
+          </button>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- RISK MANAGEMENT PARAMETERS -->
+        <div class="section-heading">Risk Management</div>
+
+        <!-- Paper Trading Toggle -->
+        <div class="paper-trading-lock">
+          <label class="checkbox-container disabled">
+            <input type="checkbox" [checked]="true" disabled />
+            <span class="custom-checkbox checked"></span>
+            <div>
+              <span class="lock-title">Paper Trading Only</span>
+              <span class="lock-desc">Real broker order execution disabled for safety</span>
+            </div>
+          </label>
+        </div>
+
+        <!-- Virtual Capital -->
+        <div class="form-group">
+          <label class="form-label">Virtual Capital</label>
+          <input
+            type="number"
+            class="form-control"
+            [(ngModel)]="formStrategy().virtualCapital"
+            min="1000"
+            step="1000"
+          />
+        </div>
+
+        <!-- Risk Per Trade % & Leverage -->
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Risk Per Trade %</label>
+            <input
+              type="number"
+              class="form-control"
+              [(ngModel)]="formStrategy().riskPerTradePercent"
+              min="0.1"
+              max="10"
+              step="0.5"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Leverage</label>
+            <select class="form-control" [(ngModel)]="formStrategy().leverage">
+              <option [ngValue]="1">1:1 (No Leverage)</option>
+              <option [ngValue]="5">1:5</option>
+              <option [ngValue]="10">1:10</option>
+              <option [ngValue]="20">1:20</option>
+              <option [ngValue]="50">1:50</option>
+              <option [ngValue]="100">1:100</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Lot/Quantity -->
+        <div class="form-group">
+          <label class="form-label">Order Quantity / Lot</label>
+          <input
+            type="number"
+            class="form-control"
+            [(ngModel)]="formStrategy().quantity"
+            min="0.01"
+            step="0.1"
+          />
+        </div>
+
+        <!-- Stop Loss % & Take Profit % -->
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Stop Loss %</label>
+            <input
+              type="number"
+              class="form-control"
+              [(ngModel)]="formStrategy().stopLossPercent"
+              min="0.1"
+              step="0.5"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Take Profit %</label>
+            <input
+              type="number"
+              class="form-control"
+              [(ngModel)]="formStrategy().takeProfitPercent"
+              min="0.1"
+              step="0.5"
+            />
+          </div>
+        </div>
+
+        <!-- Max Open Positions & Daily Loss Limit -->
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Max Positions</label>
+            <input
+              type="number"
+              class="form-control"
+              [(ngModel)]="formStrategy().maxOpenPositions"
+              min="1"
+              max="20"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Daily Loss Limit ($)</label>
+            <input
+              type="number"
+              class="form-control"
+              [(ngModel)]="formStrategy().dailyLossLimit"
+              min="50"
+              step="50"
+            />
+          </div>
+        </div>
+
+        <!-- REAL-TIME CALCULATED RISK METRICS -->
+        <div class="calculated-metrics-box">
+          <div class="calc-row">
+            <span class="calc-label">Required Margin:</span>
+            <span class="calc-val">{{ calculatedMargin() | currency:'USD':'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="calc-row">
+            <span class="calc-label">Maximum Risk (SL):</span>
+            <span class="calc-val text-loss">{{ calculatedMaxRisk() | currency:'USD':'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="calc-row">
+            <span class="calc-label">Position Notional Size:</span>
+            <span class="calc-val">{{ calculatedPositionSize() | currency:'USD':'symbol':'1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- BOTTOM PANEL: MULTI-TAB LIVE MONITOR, OPEN POSITIONS, PERFORMANCE & STRATEGIES -->
+  <section class="algo-bottom-tabs">
+    <div class="tabs-header">
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="activeBottomTab() === 'logs'"
+        (click)="activeBottomTab.set('logs')"
+      >
+        Live Trade Monitor ({{ algoService.tradeLogs().length }})
+      </button>
+
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="activeBottomTab() === 'positions'"
+        (click)="activeBottomTab.set('positions')"
+      >
+        Open Positions ({{ tradingService.openPositions().length }})
+      </button>
+
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="activeBottomTab() === 'performance'"
+        (click)="activeBottomTab.set('performance')"
+      >
+        Strategy Performance
+      </button>
+
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="activeBottomTab() === 'strategies'"
+        (click)="activeBottomTab.set('strategies')"
+      >
+        Saved Strategies ({{ algoService.strategies().length }})
+      </button>
+    </div>
+
+    <!-- TAB 1: LIVE TRADE LOG MONITOR -->
+    @if (activeBottomTab() === 'logs') {
+      <div class="tab-content table-responsive">
+        <table class="algo-table">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Time</th>
+              <th>Price</th>
+              <th>Signal</th>
+              <th>Confidence</th>
+              <th>Action</th>
+              <th>P&amp;L</th>
+              <th>Status</th>
+              <th>Rationale</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (log of algoService.tradeLogs(); track log.id) {
+              <tr>
+                <td class="font-bold">{{ log.symbol }}</td>
+                <td class="text-muted">{{ log.executedAt | date:'HH:mm:ss dd MMM' }}</td>
+                <td>{{ log.price | currency:'USD':'symbol':'1.2-4' }}</td>
+                <td>
+                  <span class="signal-tag" [class.buy]="log.signal === 'BUY'" [class.sell]="log.signal === 'SELL'" [class.wait]="log.signal === 'WAIT'">
+                    {{ log.signal }}
+                  </span>
+                </td>
+                <td>{{ log.confidence }}%</td>
+                <td>
+                  <span class="action-tag" [class.buy]="log.action === 'BUY'" [class.sell]="log.action === 'SELL'" [class.close]="log.action === 'CLOSE'">
+                    {{ log.action }}
+                  </span>
+                </td>
+                <td [class.text-profit]="(log.pnl ?? 0) > 0" [class.text-loss]="(log.pnl ?? 0) < 0">
+                  {{ (log.pnl ?? 0) !== 0 ? (log.pnl | currency:'USD':'symbol':'1.2-2') : '—' }}
+                </td>
+                <td>
+                  <span class="status-chip">{{ log.status }}</span>
+                </td>
+                <td class="text-rationale" [title]="log.reason">{{ log.reason }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9" class="empty-state-cell">
+                  <div class="empty-box">
+                    <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 14 14"></polyline>
+                    </svg>
+                    <span>No algorithm trade executions recorded yet. Start a strategy to trigger automated paper trades.</span>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <!-- TAB 2: OPEN POSITIONS -->
+    @if (activeBottomTab() === 'positions') {
+      <div class="tab-content table-responsive">
+        <table class="algo-table">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Side</th>
+              <th>Entry Price</th>
+              <th>Current Price</th>
+              <th>Quantity</th>
+              <th>Leverage</th>
+              <th>Margin</th>
+              <th>Stop Loss</th>
+              <th>Take Profit</th>
+              <th>Floating P&amp;L</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (pos of tradingService.openPositions(); track pos.id) {
+              <tr>
+                <td class="font-bold">{{ pos.symbol }}</td>
+                <td>
+                  <span class="side-tag" [class.long]="pos.side === 'LONG'" [class.short]="pos.side === 'SHORT'">
+                    {{ pos.side }}
+                  </span>
+                </td>
+                <td>{{ pos.entryPrice | currency:'USD':'symbol':'1.2-4' }}</td>
+                <td>{{ (pos.currentPrice ?? pos.entryPrice) | currency:'USD':'symbol':'1.2-4' }}</td>
+                <td>{{ pos.quantity }}</td>
+                <td>{{ pos.leverage }}x</td>
+                <td>{{ pos.marginUsed | currency:'USD':'symbol':'1.2-2' }}</td>
+                <td>{{ pos.stopLoss ? (pos.stopLoss | currency:'USD':'symbol':'1.2-2') : 'None' }}</td>
+                <td>{{ pos.takeProfit ? (pos.takeProfit | currency:'USD':'symbol':'1.2-2') : 'None' }}</td>
+                <td [class.text-profit]="(pos.unrealizedPnl ?? 0) > 0" [class.text-loss]="(pos.unrealizedPnl ?? 0) < 0">
+                  <strong>{{ (pos.unrealizedPnl ?? 0) | currency:'USD':'symbol':'1.2-2' }}</strong>
+                </td>
+                <td>
+                  <button type="button" class="btn-close-pos" (click)="closeOpenPosition(pos)">
+                    Close Position
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="11" class="empty-state-cell">
+                  <div class="empty-box">
+                    <span>No open positions currently active in paper trading wallet.</span>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <!-- TAB 3: STRATEGY PERFORMANCE -->
+    @if (activeBottomTab() === 'performance') {
+      <div class="tab-content performance-grid">
+        <div class="metric-card">
+          <span class="m-label">Total Trades</span>
+          <span class="m-value">{{ algoService.performanceSummary()?.totalTrades ?? formStrategy().totalTrades }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Winning Trades</span>
+          <span class="m-value text-profit">{{ algoService.performanceSummary()?.winningTrades ?? formStrategy().winningTrades }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Losing Trades</span>
+          <span class="m-value text-loss">{{ algoService.performanceSummary()?.losingTrades ?? formStrategy().losingTrades }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Win Rate</span>
+          <span class="m-value">{{ (algoService.performanceSummary()?.winRate ?? 0) | number:'1.1-1' }}%</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Total P&amp;L</span>
+          <span class="m-value" [class.text-profit]="(algoService.performanceSummary()?.totalPnl ?? 0) > 0" [class.text-loss]="(algoService.performanceSummary()?.totalPnl ?? 0) < 0">
+            {{ (algoService.performanceSummary()?.totalPnl ?? formStrategy().totalPnl) | currency:'USD':'symbol':'1.2-2' }}
+          </span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Profit Factor</span>
+          <span class="m-value">{{ (algoService.performanceSummary()?.profitFactor ?? 0) | number:'1.2-2' }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Average Profit</span>
+          <span class="m-value text-profit">{{ (algoService.performanceSummary()?.averageProfit ?? 0) | currency:'USD':'symbol':'1.2-2' }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Maximum Drawdown</span>
+          <span class="m-value text-loss">{{ (algoService.performanceSummary()?.maxDrawdown ?? 0) | currency:'USD':'symbol':'1.2-2' }}</span>
+        </div>
+      </div>
+    }
+
+    <!-- TAB 4: SAVED STRATEGIES -->
+    @if (activeBottomTab() === 'strategies') {
+      <div class="tab-content table-responsive">
+        <table class="algo-table">
+          <thead>
+            <tr>
+              <th>Strategy Name</th>
+              <th>Symbol</th>
+              <th>Mode</th>
+              <th>Timeframe</th>
+              <th>Status</th>
+              <th>Created At</th>
+              <th>Total Trades</th>
+              <th>P&amp;L</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (strat of algoService.strategies(); track strat.id) {
+              <tr [class.active-row]="strat.id === formStrategy().id" (click)="selectStrategy(strat)">
+                <td class="font-bold">{{ strat.name }}</td>
+                <td>{{ strat.symbol }}</td>
+                <td>{{ strat.tradingMode }}</td>
+                <td>{{ strat.timeframe }}</td>
+                <td>
+                  <span class="status-pill" [class.running]="strat.status === 'RUNNING'" [class.paused]="strat.status === 'PAUSED'" [class.stopped]="strat.status === 'STOPPED'">
+                    {{ strat.status }}
+                  </span>
+                </td>
+                <td class="text-muted">{{ strat.createdAt | date:'shortDate' }}</td>
+                <td>{{ strat.totalTrades }}</td>
+                <td [class.text-profit]="strat.totalPnl > 0" [class.text-loss]="strat.totalPnl < 0">
+                  {{ strat.totalPnl | currency:'USD':'symbol':'1.2-2' }}
+                </td>
+                <td>
+                  <div class="actions-inline">
+                    <button type="button" class="btn-sm" (click)="selectStrategy(strat); $event.stopPropagation()">Load</button>
+                    <button type="button" class="btn-sm btn-delete" (click)="deleteStrategy(strat, $event)">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9" class="empty-state-cell">
+                  <div class="empty-box">
+                    <span>No saved strategies found. Create and save your first strategy above.</span>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>

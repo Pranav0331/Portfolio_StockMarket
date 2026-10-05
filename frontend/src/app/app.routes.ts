@@ -16,6 +16,7 @@ import { StockDetailsComponent } from './pages/dashboard/stock-details/stock-det
 import { TechnicalAnalysisComponent } from './pages/dashboard/technical/technical';
 import { FundamentalComponent } from './pages/dashboard/fundamental/fundamental';
 import { RiskComponent } from './pages/dashboard/risk/risk';
+import { AlgoTradingComponent } from './pages/dashboard/algo-trading/algo-trading';
 import { authGuard, rootGuard, guestGuard } from './guards/auth.guard';
 import { adminGuard } from './guards/admin.guard';
 
@@ -54,6 +55,7 @@ export const routes: Routes = [
       { path: 'fundamental/:symbol', component: FundamentalComponent },
       { path: 'portfolio', component: PortfolioComponent },
       { path: 'risk', component: RiskComponent },
+      { path: 'algo-trading', component: AlgoTradingComponent },
       { path: 'watchlist', component: WatchlistComponent },
       { path: 'orders', component: OrdersComponent },
       { path: 'transactions', component: TransactionsComponent },
