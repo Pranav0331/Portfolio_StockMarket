@@ -383,24 +383,78 @@
     </div>
 
     <!-- =========================================================================
-         EXNESS-STYLE SIMULATED TRADING ORDER PANEL
+         EXNESS-STYLE SIMULATED TRADING ORDER PANEL (STICKY / FIXED)
          ========================================================================= -->
     <div class="trading-order-panel">
-      <!-- Panel Header -->
-      <div class="trading-panel-header">
-        <div class="panel-title-group">
-          <div class="trade-icon-box">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-              <polyline points="17 6 23 6 23 12"></polyline>
-            </svg>
+      <!-- FLOATING TOAST NOTIFICATION -->
+      @if (tradeToast(); as toast) {
+        <div class="trade-floating-toast" [class.toast-success]="toast.type === 'success'" [class.toast-error]="toast.type === 'error'">
+          <div class="toast-content">
+            <span class="toast-icon">{{ toast.type === 'success' ? '✓' : '⚠️' }}</span>
+            <div class="toast-text-group">
+              <strong class="toast-title">{{ toast.message }}</strong>
+              @if (toast.sub) {
+                <span class="toast-sub font-mono">{{ toast.sub }}</span>
+              }
+            </div>
           </div>
-          <div>
-            <h3 class="panel-heading">Exness Terminal</h3>
-            <span class="panel-sub font-mono">{{ currentSessionTime() || 'Live Market Feed' }}</span>
+          <button type="button" class="btn-toast-dismiss" (click)="dismissToast()">✕</button>
+        </div>
+      }
+
+      <!-- Panel Header: Instrument + Live Bid/Ask/Spread Telemetry -->
+      <div class="trading-panel-header">
+        <div class="panel-instrument-title-row">
+          <div class="panel-symbol-box">
+            <h3 class="panel-symbol-name font-mono">{{ symbol() }}</h3>
+            <span class="panel-exchange-tag">{{ exchange() }}</span>
+          </div>
+          <span class="paper-mode-tag">Simulated</span>
+        </div>
+
+        <!-- Live Price Telemetry Strip (Price, Bid, Ask, Spread) -->
+        <div class="panel-telemetry-strip font-mono">
+          <div class="telemetry-box">
+            <span class="t-lbl">Price</span>
+            <strong class="t-val">
+              @if (currentQuote()?.price != null) {
+                {{ formatCurrencySymbol(symbol()) }}{{ currentQuote()!.price | number:'1.2-4' }}
+              } @else {
+                <span class="text-dim">N/A</span>
+              }
+            </strong>
+          </div>
+          <div class="telemetry-box">
+            <span class="t-lbl">Bid</span>
+            <span class="t-val text-emerald">
+              @if (currentQuote()?.price != null) {
+                {{ formatCurrencySymbol(symbol()) }}{{ bidPrice() | number:'1.2-4' }}
+              } @else {
+                —
+              }
+            </span>
+          </div>
+          <div class="telemetry-box">
+            <span class="t-lbl">Ask</span>
+            <span class="t-val text-rose">
+              @if (currentQuote()?.price != null) {
+                {{ formatCurrencySymbol(symbol()) }}{{ askPrice() | number:'1.2-4' }}
+              } @else {
+                —
+              }
+            </span>
+          </div>
+          <div class="telemetry-box">
+            <span class="t-lbl">Spread</span>
+            <span class="t-val text-accent">
+              @if (currentQuote()?.price != null) {
+                {{ spreadValue() }}
+              } @else {
+                —
+              }
+            </span>
           </div>
         </div>
-        <span class="paper-mode-tag">Simulated</span>
       </div>
 
       <!-- User Auth State Guard -->
@@ -425,434 +479,472 @@
           </a>
         </div>
       } @else {
-        <!-- ACTIVE POSITION SUMMARY CARD ON THIS SYMBOL (IF OPEN) -->
-        @if (activeSymbolPrimaryPosition(); as activePos) {
-          <div class="active-pos-quick-card font-mono">
-            <div class="active-pos-hdr">
-              <div class="active-pos-tag-group">
-                <span class="side-badge" [class.side-long]="activePos.side === 'LONG'" [class.side-short]="activePos.side === 'SHORT'">
-                  {{ activePos.side }} {{ activePos.quantity }} LOT
-                </span>
-                <span class="lev-badge">1:{{ activePos.leverage }}x</span>
-              </div>
-              <div class="active-pos-pnl" [class.text-emerald]="(activePos.unrealizedPnl || 0) >= 0" [class.text-rose]="(activePos.unrealizedPnl || 0) < 0">
-                {{ (activePos.unrealizedPnl || 0) >= 0 ? '+' : '' }}${{ activePos.unrealizedPnl | number:'1.2-2' }}
-                <span class="active-pnl-roi">({{ (activePos.unrealizedPnlPercent || 0) >= 0 ? '+' : '' }}{{ activePos.unrealizedPnlPercent | number:'1.2-2' }}%)</span>
-              </div>
-            </div>
-            <div class="active-pos-meta">
-              <div class="meta-item">
-                <span class="meta-k">Entry:</span>
-                <strong class="meta-v">{{ formatCurrencySymbol(activePos.symbol) }}{{ activePos.entryPrice | number:'1.2-4' }}</strong>
-              </div>
-              <div class="meta-item">
-                <span class="meta-k">Live:</span>
-                <strong class="meta-v">{{ formatCurrencySymbol(activePos.symbol) }}{{ activePos.currentPrice | number:'1.2-4' }}</strong>
-              </div>
-              <div class="meta-item">
-                <span class="meta-k">SL / TP:</span>
-                <strong class="meta-v">
-                  {{ activePos.stopLoss ? activePos.stopLoss : '—' }} / {{ activePos.takeProfit ? activePos.takeProfit : '—' }}
-                </strong>
-              </div>
-            </div>
-            <div class="active-pos-actions">
-              @if (activePos.side === 'LONG') {
-                <button type="button" class="btn-pos-action btn-pos-close" (click)="openCloseConfirmModal(activePos)">
-                  ✕ CLOSE LONG
-                </button>
-                <button type="button" class="btn-pos-action btn-pos-opposite" (click)="prepareOpenShort()">
-                  ⚡ SELL / OPEN SHORT
-                </button>
-              } @else {
-                <button type="button" class="btn-pos-action btn-pos-close-short" (click)="openCloseConfirmModal(activePos)">
-                  ✕ CLOSE SHORT
-                </button>
-                <button type="button" class="btn-pos-action btn-pos-opposite-long" (click)="prepareOpenLong()">
-                  ⚡ BUY / OPEN LONG
-                </button>
-              }
-              <button type="button" class="btn-pos-action btn-pos-modify full-span" (click)="openModifyModal(activePos)">
-                ✏️ Modify Stop Loss / Take Profit
-              </button>
-            </div>
-          </div>
-        }
-
-        <!-- TRADING MODE SELECTOR (SCALPING, INTRADAY, SWING, LONG_TERM) -->
-        <div class="trading-mode-section">
-          <div class="mode-section-header">
-            <span class="mode-section-lbl">Trading Mode</span>
-            <span class="mode-selected-pill font-mono">{{ currentTradingModeInfo().badge }}</span>
-          </div>
-          <div class="mode-selector-grid">
-            @for (m of tradingModesList; track m.mode) {
-              <button
-                type="button"
-                class="mode-card-btn"
-                [class.active]="selectedTradingMode() === m.mode"
-                (click)="setTradingMode(m.mode)"
-                [title]="m.label + ': ' + m.desc"
-              >
-                <div class="mode-card-top">
-                  <span class="mode-card-icon">{{ m.icon }}</span>
-                  <span class="mode-card-title">{{ m.label }}</span>
-                </div>
-                <span class="mode-card-badge">{{ m.badge }}</span>
-              </button>
-            }
-          </div>
-          <div class="mode-description-box">
-            <span class="mode-desc-icon">ℹ️</span>
-            <span class="mode-desc-text">{{ currentTradingModeInfo().desc }}</span>
-          </div>
-        </div>
-
-        <!-- LEVERAGE SELECTOR (SCALPING & INTRADAY) -->
-        @if (isLeverageEnabled()) {
-          <div class="leverage-selector-section">
-            <div class="leverage-header">
-              <span class="leverage-lbl">Leverage Multiplier</span>
-              <span class="leverage-active-badge font-mono">1:{{ selectedLeverage() }}</span>
-            </div>
-            <div class="leverage-pills-row font-mono">
-              @for (lev of leverageOptions; track lev) {
-                <button
-                  type="button"
-                  class="leverage-pill-btn"
-                  [class.active]="selectedLeverage() === lev"
-                  (click)="setLeverage(lev)"
-                >
-                  1:{{ lev }}
-                </button>
-              }
-            </div>
-          </div>
-        }
-
-        <!-- BUY / LONG & SELL / SHORT ACTION BUTTONS -->
-        <div class="trade-side-selector">
+        <!-- PRIMARY TRADE SIDE BUTTONS (BUY/LONG vs SELL/SHORT) -->
+        <div class="primary-trade-side-grid">
           <button
             type="button"
-            class="side-btn side-buy"
+            class="primary-side-btn btn-side-buy"
             [class.active]="tradeSide() === 'LONG'"
-            (click)="setTradeSide('LONG')"
+            (click)="setTradeSide('LONG'); setActivePanelMode('NEW_ORDER')"
           >
-            <div class="side-btn-content">
-              <span class="side-title">
-                @if (activeSymbolPrimaryPosition()?.side === 'LONG') {
-                  BUY / MORE LONG
-                } @else if (activeSymbolPrimaryPosition()?.side === 'SHORT') {
-                  BUY / OPEN LONG
-                } @else {
-                  BUY / LONG
-                }
-              </span>
-              <span class="side-price font-mono">
+            <div class="side-btn-inner">
+              <span class="side-btn-label">BUY / LONG</span>
+              <span class="side-btn-price font-mono">
                 {{ formatCurrencySymbol(symbol()) }}{{ (currentQuote()?.price || 0) | number:'1.2-4' }}
               </span>
             </div>
           </button>
           <button
             type="button"
-            class="side-btn side-sell"
+            class="primary-side-btn btn-side-sell"
             [class.active]="tradeSide() === 'SHORT'"
-            (click)="setTradeSide('SHORT')"
+            (click)="setTradeSide('SHORT'); setActivePanelMode('NEW_ORDER')"
           >
-            <div class="side-btn-content">
-              <span class="side-title">
-                @if (activeSymbolPrimaryPosition()?.side === 'SHORT') {
-                  SELL / MORE SHORT
-                } @else if (activeSymbolPrimaryPosition()?.side === 'LONG') {
-                  SELL / OPEN SHORT
-                } @else {
-                  SELL / SHORT
-                }
-              </span>
-              <span class="side-price font-mono">
+            <div class="side-btn-inner">
+              <span class="side-btn-label">SELL / SHORT</span>
+              <span class="side-btn-price font-mono">
                 {{ formatCurrencySymbol(symbol()) }}{{ (currentQuote()?.price || 0) | number:'1.2-4' }}
               </span>
             </div>
           </button>
         </div>
 
-        <!-- TRADE SUCCESS RECEIPT BANNER -->
-        @if (tradeSuccessReceipt(); as receipt) {
-          <div class="trade-receipt-banner" [class.buy-receipt]="receipt.orderType === 'BUY'" [class.sell-receipt]="receipt.orderType === 'SELL'">
-            <div class="receipt-header">
-              <div class="receipt-title">
-                <span class="check-icon">✓</span>
-                <strong>{{ receipt.orderType === 'BUY' ? 'Buy / Long' : 'Sell / Short' }} Executed!</strong>
-              </div>
-              <button type="button" class="btn-dismiss-receipt" (click)="dismissTradeSuccess()" title="Dismiss">✕</button>
-            </div>
-            <div class="receipt-details font-mono">
-              <div class="receipt-row">
-                <span>Symbol:</span>
-                <strong>{{ receipt.symbol }}</strong>
-              </div>
-              <div class="receipt-row">
-                <span>Mode & Leverage:</span>
-                <strong class="receipt-mode-pill">{{ receipt.tradingMode }} 1:{{ receipt.leverage || 1 }}x</strong>
-              </div>
-              <div class="receipt-row">
-                <span>Quantity / Lot:</span>
-                <strong>{{ receipt.quantity }}</strong>
-              </div>
-              <div class="receipt-row">
-                <span>Execution Price:</span>
-                <strong>{{ formatCurrencySymbol(receipt.symbol) }}{{ receipt.executionPrice | number:'1.2-4' }}</strong>
-              </div>
-              @if (receipt.marginUsed) {
-                <div class="receipt-row">
-                  <span>Margin Locked:</span>
-                  <strong>${{ receipt.marginUsed | number:'1.2-2' }}</strong>
-                </div>
-              }
-              <div class="receipt-row total-row">
-                <span>Position Value:</span>
-                <strong>{{ formatCurrencySymbol(receipt.symbol) }}{{ receipt.totalAmount | number:'1.2-2' }}</strong>
-              </div>
-              <div class="receipt-row">
-                <span>Free Paper Cash:</span>
-                <strong>${{ receipt.remainingCashBalance | number:'1.2-2' }}</strong>
-              </div>
-            </div>
-          </div>
-        }
-
-        <!-- TRADE ERROR BANNER -->
+        <!-- ERROR MESSAGE BANNER (IF ANY) -->
         @if (tradeErrorMessage()) {
           <div class="trade-error-banner">
             <span class="err-icon">⚠️</span>
             <div class="err-msg-content">
-              <strong>Order Rejected</strong>
+              <strong>Notice</strong>
               <p>{{ tradeErrorMessage() }}</p>
             </div>
             <button type="button" class="btn-dismiss-receipt" (click)="tradeErrorMessage.set(null)">✕</button>
           </div>
         }
 
-        <!-- FORM CONTROLS -->
-        <div class="trade-form-body">
-          <!-- Quantity / Lot Size Input & Steppers -->
-          <div class="trade-field-group">
-            <div class="field-label-row">
-              <span class="field-label">Quantity / Lot Size</span>
-              @if (userWallet(); as wallet) {
-                <span class="owned-shares-hint font-mono">
-                  Available: <strong>${{ wallet.cashBalance | number:'1.2-2' }}</strong>
-                </span>
+        <!-- =========================================================================
+             SECTION A: ACTIVE POSITION MANAGEMENT (WHEN POSITION EXISTS & IN MGMT MODE)
+             ========================================================================= -->
+        @if (activeSymbolPrimaryPosition(); as activePos) {
+          @if (activePanelMode() === 'POSITION_MGMT') {
+            <div class="position-mgmt-card font-mono">
+              <div class="pos-mgmt-header">
+                <div class="pos-mgmt-title-cluster">
+                  <span class="pos-status-pulse"></span>
+                  <strong class="pos-mgmt-label">OPEN POSITION</strong>
+                  <span class="side-badge" [class.side-long]="activePos.side === 'LONG'" [class.side-short]="activePos.side === 'SHORT'">
+                    {{ activePos.side }} {{ activePos.quantity }} LOT
+                  </span>
+                  <span class="lev-badge">1:{{ activePos.leverage }}x</span>
+                </div>
+              </div>
+
+              <!-- Metrics Grid -->
+              <div class="pos-mgmt-metrics-grid">
+                <div class="mgmt-metric-item">
+                  <span class="mgmt-k">Entry Price</span>
+                  <strong class="mgmt-v">{{ formatCurrencySymbol(activePos.symbol) }}{{ activePos.entryPrice | number:'1.2-4' }}</strong>
+                </div>
+                <div class="mgmt-metric-item">
+                  <span class="mgmt-k">Current Price</span>
+                  <strong class="mgmt-v">{{ formatCurrencySymbol(activePos.symbol) }}{{ (activePos.currentPrice || activePos.entryPrice) | number:'1.2-4' }}</strong>
+                </div>
+                <div class="mgmt-metric-item">
+                  <span class="mgmt-k">Floating P&L</span>
+                  <strong class="mgmt-v" [class.text-emerald]="(activePos.unrealizedPnl || 0) >= 0" [class.text-rose]="(activePos.unrealizedPnl || 0) < 0">
+                    {{ (activePos.unrealizedPnl || 0) >= 0 ? '+' : '' }}${{ activePos.unrealizedPnl | number:'1.2-2' }}
+                    <span class="active-pnl-roi">({{ (activePos.unrealizedPnlPercent || 0) >= 0 ? '+' : '' }}{{ activePos.unrealizedPnlPercent | number:'1.2-2' }}%)</span>
+                  </strong>
+                </div>
+                <div class="mgmt-metric-item">
+                  <span class="mgmt-k">Margin Used</span>
+                  <strong class="mgmt-v">${{ activePos.marginUsed | number:'1.2-2' }}</strong>
+                </div>
+                <div class="mgmt-metric-item">
+                  <span class="mgmt-k">Stop Loss</span>
+                  <span class="mgmt-v" [class.text-rose]="activePos.stopLoss">
+                    {{ activePos.stopLoss ? formatCurrencySymbol(activePos.symbol) + (activePos.stopLoss | number:'1.2-2') : '—' }}
+                  </span>
+                </div>
+                <div class="mgmt-metric-item">
+                  <span class="mgmt-k">Take Profit</span>
+                  <span class="mgmt-v" [class.text-emerald]="activePos.takeProfit">
+                    {{ activePos.takeProfit ? formatCurrencySymbol(activePos.symbol) + (activePos.takeProfit | number:'1.2-2') : '—' }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Position Actions (CLOSE, OPEN OPPOSITE, MODIFY) -->
+              <div class="pos-mgmt-actions-cluster">
+                @if (activePos.side === 'LONG') {
+                  <button type="button" class="btn-mgmt-action btn-mgmt-close" (click)="openCloseConfirmModal(activePos)">
+                    ✕ CLOSE LONG
+                  </button>
+                  <button type="button" class="btn-mgmt-action btn-mgmt-opposite" (click)="prepareOpenShort()">
+                    ⚡ SELL / OPEN SHORT
+                  </button>
+                } @else {
+                  <button type="button" class="btn-mgmt-action btn-mgmt-close-short" (click)="openCloseConfirmModal(activePos)">
+                    ✕ CLOSE SHORT
+                  </button>
+                  <button type="button" class="btn-mgmt-action btn-mgmt-opposite-long" (click)="prepareOpenLong()">
+                    ⚡ BUY / OPEN LONG
+                  </button>
+                }
+                <button type="button" class="btn-mgmt-action btn-mgmt-modify" (click)="openModifyModal(activePos)">
+                  ✏️ MODIFY STOP LOSS / TAKE PROFIT
+                </button>
+              </div>
+
+              <!-- Link to New Order Configuration Form -->
+              <div class="pos-mgmt-footer-switch">
+                <button type="button" class="btn-switch-to-order" (click)="setActivePanelMode('NEW_ORDER')">
+                  <span>+ Place New Order / Add Lots</span>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          }
+        }
+
+        <!-- =========================================================================
+             SECTION B: ORDER CONFIGURATION FORM
+             ========================================================================= -->
+        @if (!activeSymbolPrimaryPosition() || activePanelMode() === 'NEW_ORDER') {
+          <div class="order-config-container">
+            @if (activeSymbolPrimaryPosition(); as existingPos) {
+              <div class="order-config-back-bar">
+                <button type="button" class="btn-back-to-pos font-mono" (click)="setActivePanelMode('POSITION_MGMT')">
+                  ← Back to Open Position ({{ existingPos.side }} {{ existingPos.quantity }} LOT)
+                </button>
+              </div>
+            }
+
+            <!-- 1. Order Type (Market vs Pending) -->
+            <div class="config-field-section">
+              <span class="config-section-lbl">Order Type</span>
+              <div class="order-type-btn-group">
+                <button
+                  type="button"
+                  class="order-type-btn"
+                  [class.active]="orderType() === 'MARKET'"
+                  (click)="setOrderType('MARKET')"
+                >
+                  Market Execution
+                </button>
+                <button
+                  type="button"
+                  class="order-type-btn"
+                  [class.active]="orderType() === 'PENDING'"
+                  (click)="setOrderType('PENDING')"
+                >
+                  Pending Order
+                </button>
+              </div>
+            </div>
+
+            <!-- 2. Trading Mode Selector -->
+            <div class="config-field-section">
+              <div class="field-hdr-row">
+                <span class="config-section-lbl">Trading Mode</span>
+                <span class="mode-badge-hint font-mono">{{ currentTradingModeInfo().badge }}</span>
+              </div>
+              <div class="mode-selector-grid">
+                @for (m of tradingModesList; track m.mode) {
+                  <button
+                    type="button"
+                    class="mode-card-btn"
+                    [class.active]="selectedTradingMode() === m.mode"
+                    (click)="setTradingMode(m.mode)"
+                    [title]="m.label + ': ' + m.desc"
+                  >
+                    <div class="mode-card-top">
+                      <span class="mode-card-icon">{{ m.icon }}</span>
+                      <span class="mode-card-title">{{ m.label }}</span>
+                    </div>
+                    <span class="mode-card-badge">{{ m.badge }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- 3. Leverage Multiplier (for Scalping & Intraday) -->
+            @if (isLeverageEnabled()) {
+              <div class="config-field-section">
+                <div class="field-hdr-row">
+                  <span class="config-section-lbl">Leverage Multiplier</span>
+                  <span class="leverage-active-badge font-mono">1:{{ selectedLeverage() }}</span>
+                </div>
+                <div class="leverage-pills-row font-mono">
+                  @for (lev of leverageOptions; track lev) {
+                    <button
+                      type="button"
+                      class="leverage-pill-btn"
+                      [class.active]="selectedLeverage() === lev"
+                      (click)="setLeverage(lev)"
+                    >
+                      1:{{ lev }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- 4. Quantity / Lot Size Input & Steppers & Quick Chips -->
+            <div class="config-field-section">
+              <div class="field-hdr-row">
+                <span class="config-section-lbl">Quantity / Lot Size</span>
+                @if (userWallet(); as wallet) {
+                  <span class="owned-shares-hint font-mono">
+                    Avail: <strong>${{ wallet.cashBalance | number:'1.2-2' }}</strong>
+                  </span>
+                }
+              </div>
+
+              <div class="quantity-input-box">
+                <button
+                  type="button"
+                  class="qty-stepper-btn"
+                  (click)="adjustQuantity(-0.1)"
+                  [disabled]="tradeQuantity() <= 0.01"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  class="qty-input font-mono"
+                  [ngModel]="tradeQuantity()"
+                  (ngModelChange)="setTradeQuantity($event)"
+                  min="0.0001"
+                  step="0.01"
+                />
+                <button
+                  type="button"
+                  class="qty-stepper-btn"
+                  (click)="adjustQuantity(0.1)"
+                >
+                  +
+                </button>
+              </div>
+
+              <!-- Quick Lot Chips -->
+              <div class="quick-qty-chips font-mono">
+                <button type="button" class="chip-qty-btn" (click)="setQuickLot(0.01)">0.01</button>
+                <button type="button" class="chip-qty-btn" (click)="setQuickLot(0.10)">0.10</button>
+                <button type="button" class="chip-qty-btn" (click)="setQuickLot(0.50)">0.50</button>
+                <button type="button" class="chip-qty-btn" (click)="setQuickLot(1.00)">1.00</button>
+                <button type="button" class="chip-qty-btn" (click)="setQuickLot(5.00)">5.00</button>
+                <button type="button" class="chip-qty-btn max-chip" (click)="setMaxQuantity()">MAX</button>
+              </div>
+            </div>
+
+            <!-- 5. Stop Loss & Take Profit Fields -->
+            <div class="config-field-section sl-tp-container">
+              <div class="sl-tp-row">
+                <!-- Stop Loss Card -->
+                <div class="sl-tp-input-card">
+                  <div class="sl-tp-header">
+                    <span class="sl-tp-title text-rose">Stop Loss</span>
+                    <div class="quick-pct-cluster">
+                      <button type="button" class="pct-btn" (click)="setQuickSlPercent(1)">-1%</button>
+                      <button type="button" class="pct-btn" (click)="setQuickSlPercent(2)">-2%</button>
+                      <button type="button" class="pct-btn" (click)="setQuickSlPercent(5)">-5%</button>
+                    </div>
+                  </div>
+                  <div class="sl-tp-field-wrap">
+                    <span class="curr-prefix">{{ formatCurrencySymbol(symbol()) }}</span>
+                    <input
+                      type="number"
+                      class="sl-tp-input font-mono"
+                      [ngModel]="stopLossPrice()"
+                      (ngModelChange)="stopLossPrice.set($event)"
+                      placeholder="Optional"
+                      step="0.01"
+                    />
+                    @if (stopLossPrice()) {
+                      <button type="button" class="btn-clear-sltp" (click)="stopLossPrice.set(null)">✕</button>
+                    }
+                  </div>
+                  @if (slProjection(); as slp) {
+                    <div class="projection-strip font-mono" [class.text-rose]="slp.valid" [class.text-warning]="!slp.valid">
+                      @if (slp.valid) {
+                        Est: {{ slp.pnl | number:'1.2-2' }} ({{ slp.roi | number:'1.2-2' }}%)
+                      } @else {
+                        ⚠️ Invalid SL Direction
+                      }
+                    </div>
+                  }
+                </div>
+
+                <!-- Take Profit Card -->
+                <div class="sl-tp-input-card">
+                  <div class="sl-tp-header">
+                    <span class="sl-tp-title text-emerald">Take Profit</span>
+                    <div class="quick-pct-cluster">
+                      <button type="button" class="pct-btn" (click)="setQuickTpPercent(2)">+2%</button>
+                      <button type="button" class="pct-btn" (click)="setQuickTpPercent(5)">+5%</button>
+                      <button type="button" class="pct-btn" (click)="setQuickTpPercent(10)">+10%</button>
+                    </div>
+                  </div>
+                  <div class="sl-tp-field-wrap">
+                    <span class="curr-prefix">{{ formatCurrencySymbol(symbol()) }}</span>
+                    <input
+                      type="number"
+                      class="sl-tp-input font-mono"
+                      [ngModel]="takeProfitPrice()"
+                      (ngModelChange)="takeProfitPrice.set($event)"
+                      placeholder="Optional"
+                      step="0.01"
+                    />
+                    @if (takeProfitPrice()) {
+                      <button type="button" class="btn-clear-sltp" (click)="takeProfitPrice.set(null)">✕</button>
+                    }
+                  </div>
+                  @if (tpProjection(); as tpp) {
+                    <div class="projection-strip font-mono" [class.text-emerald]="tpp.valid" [class.text-warning]="!tpp.valid">
+                      @if (tpp.valid) {
+                        Est: +{{ tpp.pnl | number:'1.2-2' }} (+{{ tpp.roi | number:'1.2-2' }}%)
+                      } @else {
+                        ⚠️ Invalid TP Direction
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- 6. Order Summary Calculation Box -->
+            <div class="order-summary-box font-mono">
+              <div class="summary-line">
+                <span>Entry Price</span>
+                <strong class="summary-val">
+                  {{ formatCurrencySymbol(symbol()) }}{{ (currentQuote()?.price || 0) | number:'1.2-4' }}
+                </strong>
+              </div>
+              <div class="summary-line">
+                <span>Current Price</span>
+                <strong class="summary-val">
+                  {{ formatCurrencySymbol(symbol()) }}{{ (currentQuote()?.price || 0) | number:'1.2-4' }}
+                </strong>
+              </div>
+              <div class="summary-line">
+                <span>Quantity</span>
+                <strong class="summary-val">{{ tradeQuantity() }} LOT</strong>
+              </div>
+              <div class="summary-line">
+                <span>Position Value</span>
+                <strong class="summary-val">
+                  {{ formatCurrencySymbol(symbol()) }}{{ positionValue() | number:'1.2-2' }}
+                </strong>
+              </div>
+              <div class="summary-line">
+                <span>Leverage</span>
+                <strong class="summary-val text-accent">1:{{ effectiveLeverage() }}</strong>
+              </div>
+              <div class="summary-line highlight-line">
+                <span>Required Margin</span>
+                <strong class="summary-val text-emerald">
+                  ${{ requiredMargin() | number:'1.2-2' }}
+                </strong>
+              </div>
+              <div class="summary-line">
+                <span>Available Balance</span>
+                <span class="summary-free">${{ freeMargin() | number:'1.2-2' }}</span>
+              </div>
+              @if (tpProjection() || slProjection()) {
+                <div class="summary-line">
+                  <span>Estimated P&L</span>
+                  <span class="summary-val">
+                    @if (tpProjection(); as tpp) {
+                      TP: +${{ tpp.pnl | number:'1.2-2' }}
+                    }
+                    @if (slProjection(); as slp) {
+                      SL: ${{ slp.pnl | number:'1.2-2' }}
+                    }
+                  </span>
+                </div>
               }
             </div>
 
-            <div class="quantity-input-box">
-              <button
-                type="button"
-                class="qty-stepper-btn"
-                (click)="adjustQuantity(-0.1)"
-                [disabled]="tradeQuantity() <= 0.01"
-              >
-                −
-              </button>
-              <input
-                type="number"
-                class="qty-input font-mono"
-                [ngModel]="tradeQuantity()"
-                (ngModelChange)="setTradeQuantity($event)"
-                min="0.0001"
-                step="0.01"
-              />
-              <button
-                type="button"
-                class="qty-stepper-btn"
-                (click)="adjustQuantity(0.1)"
-              >
-                +
-              </button>
-            </div>
-
-            <!-- Quick Add Chips -->
-            <div class="quick-qty-chips font-mono">
-              <button type="button" class="chip-qty-btn" (click)="setQuickLot(0.01)">0.01</button>
-              <button type="button" class="chip-qty-btn" (click)="setQuickLot(0.1)">0.10</button>
-              <button type="button" class="chip-qty-btn" (click)="setQuickLot(0.5)">0.50</button>
-              <button type="button" class="chip-qty-btn" (click)="setQuickLot(1.0)">1.00</button>
-              <button type="button" class="chip-qty-btn" (click)="setQuickLot(5.0)">5.00</button>
-              <button type="button" class="chip-qty-btn max-chip" (click)="setMaxQuantity()">Max</button>
-            </div>
-          </div>
-
-          <!-- STOP LOSS & TAKE PROFIT CONTROLS -->
-          <div class="sl-tp-container">
-            <div class="sl-tp-row">
-              <!-- Stop Loss -->
-              <div class="sl-tp-input-card">
-                <div class="sl-tp-header">
-                  <span class="sl-tp-title text-rose">Stop Loss</span>
-                  <div class="quick-pct-cluster">
-                    <button type="button" class="pct-btn" (click)="setQuickSlPercent(1)">-1%</button>
-                    <button type="button" class="pct-btn" (click)="setQuickSlPercent(2)">-2%</button>
-                    <button type="button" class="pct-btn" (click)="setQuickSlPercent(5)">-5%</button>
-                  </div>
-                </div>
-                <div class="sl-tp-field-wrap">
-                  <span class="curr-prefix">{{ formatCurrencySymbol(symbol()) }}</span>
-                  <input
-                    type="number"
-                    class="sl-tp-input font-mono"
-                    [ngModel]="stopLossPrice()"
-                    (ngModelChange)="stopLossPrice.set($event)"
-                    placeholder="Optional"
-                    step="0.01"
-                  />
-                  @if (stopLossPrice()) {
-                    <button type="button" class="btn-clear-sltp" (click)="stopLossPrice.set(null)">✕</button>
-                  }
-                </div>
-                @if (slProjection(); as slp) {
-                  <div class="projection-strip font-mono" [class.text-rose]="slp.valid" [class.text-warning]="!slp.valid">
-                    @if (slp.valid) {
-                      Est: {{ slp.pnl | number:'1.2-2' }} ({{ slp.roi | number:'1.2-2' }}%)
-                    } @else {
-                      ⚠️ Invalid SL Direction
-                    }
-                  </div>
-                }
+            <!-- Validation Warnings -->
+            @if (hasInsufficientMargin()) {
+              <div class="trade-validation-warning">
+                ⚠️ Insufficient virtual balance. Required Margin: ${{ requiredMargin() | number:'1.2-2' }} vs Free Margin: ${{ freeMargin() | number:'1.2-2' }}.
               </div>
-
-              <!-- Take Profit -->
-              <div class="sl-tp-input-card">
-                <div class="sl-tp-header">
-                  <span class="sl-tp-title text-emerald">Take Profit</span>
-                  <div class="quick-pct-cluster">
-                    <button type="button" class="pct-btn" (click)="setQuickTpPercent(2)">+2%</button>
-                    <button type="button" class="pct-btn" (click)="setQuickTpPercent(5)">+5%</button>
-                    <button type="button" class="pct-btn" (click)="setQuickTpPercent(10)">+10%</button>
-                  </div>
-                </div>
-                <div class="sl-tp-field-wrap">
-                  <span class="curr-prefix">{{ formatCurrencySymbol(symbol()) }}</span>
-                  <input
-                    type="number"
-                    class="sl-tp-input font-mono"
-                    [ngModel]="takeProfitPrice()"
-                    (ngModelChange)="takeProfitPrice.set($event)"
-                    placeholder="Optional"
-                    step="0.01"
-                  />
-                  @if (takeProfitPrice()) {
-                    <button type="button" class="btn-clear-sltp" (click)="takeProfitPrice.set(null)">✕</button>
-                  }
-                </div>
-                @if (tpProjection(); as tpp) {
-                  <div class="projection-strip font-mono" [class.text-emerald]="tpp.valid" [class.text-warning]="!tpp.valid">
-                    @if (tpp.valid) {
-                      Est: +{{ tpp.pnl | number:'1.2-2' }} (+{{ tpp.roi | number:'1.2-2' }}%)
-                    } @else {
-                      ⚠️ Invalid TP Direction
-                    }
-                  </div>
-                }
-              </div>
-            </div>
-          </div>
-
-          <!-- EXNESS MARGIN CALCULATOR & EQUITY ANALYTICS -->
-          <div class="order-summary-box font-mono">
-            <div class="summary-line">
-              <span>Entry Price</span>
-              <strong class="summary-val">
-                {{ formatCurrencySymbol(symbol()) }}{{ (currentQuote()?.price || 0) | number:'1.2-4' }}
-              </strong>
-            </div>
-            <div class="summary-line">
-              <span>Current Price</span>
-              <strong class="summary-val">
-                {{ formatCurrencySymbol(symbol()) }}{{ (currentQuote()?.price || 0) | number:'1.2-4' }}
-              </strong>
-            </div>
-            <div class="summary-line">
-              <span>Position Value</span>
-              <strong class="summary-val">
-                {{ formatCurrencySymbol(symbol()) }}{{ positionValue() | number:'1.2-2' }}
-              </strong>
-            </div>
-            <div class="summary-line">
-              <span>Leverage</span>
-              <strong class="summary-val text-accent">1:{{ effectiveLeverage() }}</strong>
-            </div>
-            <div class="summary-line highlight-line">
-              <span>Required Margin</span>
-              <strong class="summary-val text-emerald">
-                ${{ requiredMargin() | number:'1.2-2' }}
-              </strong>
-            </div>
-            <div class="summary-line">
-              <span>Free Margin</span>
-              <span class="summary-free">${{ freeMargin() | number:'1.2-2' }}</span>
-            </div>
-            <div class="summary-line">
-              <span>Used Margin</span>
-              <span class="summary-val">${{ usedMargin() | number:'1.2-2' }}</span>
-            </div>
-            <div class="summary-line">
-              <span>Total Equity</span>
-              <strong class="summary-val" [class.text-emerald]="totalEquity() >= (freeMargin() + usedMargin())" [class.text-rose]="totalEquity() < (freeMargin() + usedMargin())">
-                ${{ totalEquity() | number:'1.2-2' }}
-              </strong>
-            </div>
-          </div>
-
-          <!-- Validation Warning Messages -->
-          @if (hasInsufficientMargin()) {
-            <div class="trade-validation-warning">
-              ⚠️ Insufficient virtual balance. Required Margin: ${{ requiredMargin() | number:'1.2-2' }} vs Free Margin: ${{ freeMargin() | number:'1.2-2' }}.
-            </div>
-          }
-
-          @if (hasInsufficientHoldings()) {
-            <div class="trade-validation-warning">
-              ⚠️ Insufficient spot holdings to sell. Owned: {{ userHolding()?.quantity || 0 }}.
-            </div>
-          }
-
-          <!-- Execution CTA Button -->
-          <button
-            type="button"
-            class="btn-execute-trade"
-            [class.btn-buy-mode]="tradeSide() === 'LONG'"
-            [class.btn-sell-mode]="tradeSide() === 'SHORT'"
-            [disabled]="isSubmittingTrade() || hasInsufficientMargin() || hasInsufficientHoldings() || !currentQuote()?.price || (tradeQuantity() <= 0)"
-            (click)="submitTrade()"
-          >
-            @if (isSubmittingTrade()) {
-              <div class="btn-spinner"></div>
-              <span>Executing Order...</span>
-            } @else {
-              <span>
-                {{ tradeSide() === 'LONG' ? 'BUY / LONG' : 'SELL / SHORT' }} {{ tradeQuantity() }} {{ symbol() }}
-                (Margin: ${{ requiredMargin() | number:'1.2-2' }})
-              </span>
             }
-          </button>
-        </div>
+
+            @if (hasInsufficientHoldings()) {
+              <div class="trade-validation-warning">
+                ⚠️ Insufficient spot holdings to sell. Owned: {{ userHolding()?.quantity || 0 }}.
+              </div>
+            }
+
+            <!-- 7. Bottom Execution CTA Button -->
+            <button
+              type="button"
+              class="btn-execute-trade"
+              [class.btn-buy-mode]="tradeSide() === 'LONG'"
+              [class.btn-sell-mode]="tradeSide() === 'SHORT'"
+              [disabled]="isSubmittingTrade() || hasInsufficientMargin() || hasInsufficientHoldings() || !currentQuote()?.price || (tradeQuantity() <= 0)"
+              (click)="submitTrade()"
+            >
+              @if (isSubmittingTrade()) {
+                <div class="btn-spinner"></div>
+                <span>Executing Order...</span>
+              } @else {
+                <span>
+                  {{ tradeSide() === 'LONG' ? 'BUY / LONG' : 'SELL / SHORT' }} {{ tradeQuantity() }} LOT
+                  (Margin: ${{ requiredMargin() | number:'1.2-2' }})
+                </span>
+              }
+            </button>
+          </div>
+        }
       }
     </div>
   </div>
 
   <!-- =========================================================================
-       ACTIVE OPEN POSITIONS & LIVE FLOATING P&L PANEL
+       BOTTOM POSITIONS / ORDERS TERMINAL PANEL (3 TABS: OPEN, PENDING, CLOSED)
        ========================================================================= -->
   @if (authService.isAuthenticated()) {
     <div class="positions-panel-card">
-      <div class="positions-panel-header">
-        <div class="pos-hdr-left">
-          <div class="pos-pulse-icon"></div>
-          <h3 class="pos-heading">Open Leveraged Positions</h3>
-          <span class="pos-count-badge font-mono">{{ activeSymbolPositions().length }} on {{ symbol() }}</span>
+      <div class="positions-terminal-tabs-header">
+        <div class="terminal-tab-group font-mono">
+          <button
+            type="button"
+            class="terminal-tab-btn"
+            [class.active]="activePositionsTab() === 'OPEN'"
+            (click)="setActivePositionsTab('OPEN')"
+          >
+            <span class="tab-dot dot-open"></span>
+            <span>Open Positions</span>
+            <span class="tab-count-badge">{{ activeSymbolPositions().length }}</span>
+          </button>
+          <button
+            type="button"
+            class="terminal-tab-btn"
+            [class.active]="activePositionsTab() === 'PENDING'"
+            (click)="setActivePositionsTab('PENDING')"
+          >
+            <span class="tab-dot dot-pending"></span>
+            <span>Pending Orders</span>
+            <span class="tab-count-badge">0</span>
+          </button>
+          <button
+            type="button"
+            class="terminal-tab-btn"
+            [class.active]="activePositionsTab() === 'CLOSED'"
+            (click)="setActivePositionsTab('CLOSED')"
+          >
+            <span class="tab-dot dot-closed"></span>
+            <span>Closed History</span>
+            <span class="tab-count-badge">{{ activeSymbolClosedPositions().length }}</span>
+          </button>
         </div>
-        @if (activeSymbolPositions().length > 0) {
+
+        @if (activePositionsTab() === 'OPEN' && activeSymbolPositions().length > 0) {
           <div class="total-floating-pnl font-mono" [class.text-emerald]="totalSymbolFloatingPnl() >= 0" [class.text-rose]="totalSymbolFloatingPnl() < 0">
             <span>Symbol Floating P&L:</span>
             <strong>{{ totalSymbolFloatingPnl() >= 0 ? '+' : '' }}${{ totalSymbolFloatingPnl() | number:'1.2-2' }}</strong>
@@ -860,101 +952,161 @@
         }
       </div>
 
-      @if (activeSymbolPositions().length === 0) {
-        <div class="no-positions-box">
-          <span class="no-pos-icon">📊</span>
-          <p class="no-pos-text">No open leveraged positions for <strong>{{ symbol() }}</strong>. Execute a Scalping or Intraday order to start paper trading.</p>
-        </div>
-      } @else {
-        <div class="positions-table-wrapper">
-          <table class="positions-table font-mono">
-            <thead>
-              <tr>
-                <th>Position ID</th>
-                <th>Symbol</th>
-                <th>Side / Mode</th>
-                <th>Lots / Qty</th>
-                <th>Entry Price</th>
-                <th>Current Price</th>
-                <th>Leverage</th>
-                <th>Margin</th>
-                <th>Stop Loss</th>
-                <th>Take Profit</th>
-                <th>Floating P&L</th>
-                <th>Open Time</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (pos of activeSymbolPositions(); track pos.id) {
+      <!-- TAB 1: OPEN POSITIONS TABLE -->
+      @if (activePositionsTab() === 'OPEN') {
+        @if (activeSymbolPositions().length === 0) {
+          <div class="no-positions-box">
+            <span class="no-pos-icon">📊</span>
+            <p class="no-pos-text">No open leveraged positions for <strong>{{ symbol() }}</strong>. Select BUY or SELL above to execute a paper trade.</p>
+          </div>
+        } @else {
+          <div class="positions-table-wrapper">
+            <table class="positions-table font-mono">
+              <thead>
                 <tr>
-                  <td><span class="pos-id-tag font-mono">#{{ pos.id }}</span></td>
-                  <td><strong class="font-mono">{{ pos.symbol }}</strong></td>
-                  <td>
-                    <div class="pos-side-cell">
+                  <th>Symbol</th>
+                  <th>Side</th>
+                  <th>Quantity</th>
+                  <th>Entry Price</th>
+                  <th>Current Price</th>
+                  <th>SL</th>
+                  <th>TP</th>
+                  <th>Margin</th>
+                  <th>Floating P&L</th>
+                  <th>Open Time</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (pos of activeSymbolPositions(); track pos.id) {
+                  <tr>
+                    <td>
+                      <div class="sym-col-cell">
+                        <strong class="font-mono">{{ pos.symbol }}</strong>
+                        <span class="pos-mode-sub">{{ pos.tradingMode }}</span>
+                      </div>
+                    </td>
+                    <td>
                       <span class="side-badge" [class.side-long]="pos.side === 'LONG'" [class.side-short]="pos.side === 'SHORT'">
                         {{ pos.side }}
                       </span>
-                      <span class="mode-mini-tag">{{ pos.tradingMode }}</span>
-                    </div>
-                  </td>
-                  <td><strong>{{ pos.quantity }}</strong></td>
-                  <td>{{ formatCurrencySymbol(pos.symbol) }}{{ pos.entryPrice | number:'1.2-4' }}</td>
-                  <td>{{ formatCurrencySymbol(pos.symbol) }}{{ pos.currentPrice | number:'1.2-4' }}</td>
-                  <td><span class="lev-badge">1:{{ pos.leverage }}</span></td>
-                  <td>${{ pos.marginUsed | number:'1.2-2' }}</td>
-                  <td>
-                    @if (pos.stopLoss) {
-                      <span class="sl-tag font-mono text-rose">{{ formatCurrencySymbol(pos.symbol) }}{{ pos.stopLoss | number:'1.2-2' }}</span>
-                    } @else {
-                      <span class="text-dim">—</span>
-                    }
-                  </td>
-                  <td>
-                    @if (pos.takeProfit) {
-                      <span class="tp-tag font-mono text-emerald">{{ formatCurrencySymbol(pos.symbol) }}{{ pos.takeProfit | number:'1.2-2' }}</span>
-                    } @else {
-                      <span class="text-dim">—</span>
-                    }
-                  </td>
-                  <td>
-                    <div class="floating-pnl-cell" [class.text-emerald]="(pos.unrealizedPnl || 0) >= 0" [class.text-rose]="(pos.unrealizedPnl || 0) < 0">
-                      <strong>{{ (pos.unrealizedPnl || 0) >= 0 ? '+' : '' }}${{ pos.unrealizedPnl | number:'1.2-2' }}</strong>
-                      <span class="pnl-roi">({{ (pos.unrealizedPnlPercent || 0) >= 0 ? '+' : '' }}{{ pos.unrealizedPnlPercent | number:'1.2-2' }}%)</span>
-                    </div>
-                  </td>
-                  <td class="time-cell-text">{{ pos.createdAt ? (pos.createdAt | date:'short') : '—' }}</td>
-                  <td>
-                    <div class="table-actions-cluster">
-                      <button
-                        type="button"
-                        class="btn-tbl-modify"
-                        (click)="openModifyModal(pos)"
-                        title="Modify Stop Loss and Take Profit"
-                      >
-                        Modify
-                      </button>
-                      <button
-                        type="button"
-                        class="btn-close-pos"
-                        [disabled]="isClosingPositionId() === pos.id"
-                        (click)="openCloseConfirmModal(pos)"
-                        title="Close position at live market price"
-                      >
-                        @if (isClosingPositionId() === pos.id) {
-                          <span class="mini-spinner"></span>
-                          <span>Closing...</span>
-                        } @else {
-                          <span>Close</span>
-                        }
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+                    </td>
+                    <td><strong>{{ pos.quantity }} LOT</strong></td>
+                    <td>{{ formatCurrencySymbol(pos.symbol) }}{{ pos.entryPrice | number:'1.2-4' }}</td>
+                    <td>{{ formatCurrencySymbol(pos.symbol) }}{{ pos.currentPrice | number:'1.2-4' }}</td>
+                    <td>
+                      @if (pos.stopLoss) {
+                        <span class="sl-tag font-mono text-rose">{{ formatCurrencySymbol(pos.symbol) }}{{ pos.stopLoss | number:'1.2-2' }}</span>
+                      } @else {
+                        <span class="text-dim">—</span>
+                      }
+                    </td>
+                    <td>
+                      @if (pos.takeProfit) {
+                        <span class="tp-tag font-mono text-emerald">{{ formatCurrencySymbol(pos.symbol) }}{{ pos.takeProfit | number:'1.2-2' }}</span>
+                      } @else {
+                        <span class="text-dim">—</span>
+                      }
+                    </td>
+                    <td>${{ pos.marginUsed | number:'1.2-2' }} (1:{{ pos.leverage }}x)</td>
+                    <td>
+                      <div class="floating-pnl-cell" [class.text-emerald]="(pos.unrealizedPnl || 0) >= 0" [class.text-rose]="(pos.unrealizedPnl || 0) < 0">
+                        <strong>{{ (pos.unrealizedPnl || 0) >= 0 ? '+' : '' }}${{ pos.unrealizedPnl | number:'1.2-2' }}</strong>
+                        <span class="pnl-roi">({{ (pos.unrealizedPnlPercent || 0) >= 0 ? '+' : '' }}{{ pos.unrealizedPnlPercent | number:'1.2-2' }}%)</span>
+                      </div>
+                    </td>
+                    <td class="time-cell-text">{{ pos.createdAt ? (pos.createdAt | date:'short') : '—' }}</td>
+                    <td>
+                      <div class="table-actions-cluster">
+                        <button
+                          type="button"
+                          class="btn-tbl-modify"
+                          (click)="openModifyModal(pos)"
+                          title="Modify Stop Loss and Take Profit"
+                        >
+                          Modify
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-close-pos"
+                          [disabled]="isClosingPositionId() === pos.id"
+                          (click)="openCloseConfirmModal(pos)"
+                          title="Close position at live market price"
+                        >
+                          @if (isClosingPositionId() === pos.id) {
+                            <span class="mini-spinner"></span>
+                            <span>Closing...</span>
+                          } @else {
+                            <span>Close</span>
+                          }
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+
+      <!-- TAB 2: PENDING ORDERS TABLE -->
+      @if (activePositionsTab() === 'PENDING') {
+        <div class="no-positions-box">
+          <span class="no-pos-icon">⏱️</span>
+          <p class="no-pos-text">No active pending limit/stop orders. Orders execute immediately at live market quotes.</p>
         </div>
+      }
+
+      <!-- TAB 3: CLOSED HISTORY TABLE -->
+      @if (activePositionsTab() === 'CLOSED') {
+        @if (activeSymbolClosedPositions().length === 0) {
+          <div class="no-positions-box">
+            <span class="no-pos-icon">📜</span>
+            <p class="no-pos-text">No closed position history for <strong>{{ symbol() }}</strong> yet.</p>
+          </div>
+        } @else {
+          <div class="positions-table-wrapper">
+            <table class="positions-table font-mono">
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th>Side</th>
+                  <th>Quantity</th>
+                  <th>Entry Price</th>
+                  <th>Close Price</th>
+                  <th>Leverage</th>
+                  <th>Realized P&L</th>
+                  <th>Open Time</th>
+                  <th>Close Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (pos of activeSymbolClosedPositions(); track pos.id) {
+                  <tr>
+                    <td><strong>{{ pos.symbol }}</strong></td>
+                    <td>
+                      <span class="side-badge" [class.side-long]="pos.side === 'LONG'" [class.side-short]="pos.side === 'SHORT'">
+                        {{ pos.side }}
+                      </span>
+                    </td>
+                    <td><strong>{{ pos.quantity }} LOT</strong></td>
+                    <td>{{ formatCurrencySymbol(pos.symbol) }}{{ pos.entryPrice | number:'1.2-4' }}</td>
+                    <td>{{ formatCurrencySymbol(pos.symbol) }}{{ (pos.closePrice || pos.entryPrice) | number:'1.2-4' }}</td>
+                    <td>1:{{ pos.leverage }}x</td>
+                    <td>
+                      <strong [class.text-emerald]="(pos.realizedPnl || 0) >= 0" [class.text-rose]="(pos.realizedPnl || 0) < 0">
+                        {{ (pos.realizedPnl || 0) >= 0 ? '+' : '' }}${{ pos.realizedPnl | number:'1.2-2' }}
+                      </strong>
+                    </td>
+                    <td class="time-cell-text">{{ pos.createdAt ? (pos.createdAt | date:'short') : '—' }}</td>
+                    <td class="time-cell-text">{{ pos.closeTime ? (pos.closeTime | date:'short') : '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
       }
     </div>
   }

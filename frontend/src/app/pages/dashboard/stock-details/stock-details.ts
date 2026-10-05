@@ -142,9 +142,14 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   // EXNESS-STYLE SIMULATED TRADING STATE
   // =========================================================================
   readonly tradeSide = signal<PositionSide>('LONG');
-  readonly tradeQuantity = signal<number>(1);
+  readonly tradeQuantity = signal<number>(0.10);
   readonly selectedTradingMode = signal<TradingMode>('INTRADAY');
   readonly selectedLeverage = signal<number>(10);
+  readonly orderType = signal<'MARKET' | 'PENDING'>('MARKET');
+  readonly pendingPrice = signal<number | null>(null);
+  readonly activePanelMode = signal<'POSITION_MGMT' | 'NEW_ORDER'>('POSITION_MGMT');
+  readonly activePositionsTab = signal<'OPEN' | 'PENDING' | 'CLOSED'>('OPEN');
+
   readonly stopLossPrice = signal<number | null>(null);
   readonly takeProfitPrice = signal<number | null>(null);
 
@@ -152,12 +157,37 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly isClosingPositionId = signal<number | null>(null);
   readonly tradeSuccessReceipt = signal<TradeResponse | null>(null);
   readonly tradeErrorMessage = signal<string | null>(null);
+  readonly tradeToast = signal<{ show: boolean; type: 'success' | 'error'; message: string; sub?: string } | null>(null);
+  private toastTimeout: any = null;
 
   readonly userWallet = signal<VirtualWallet | null>(null);
   readonly userHolding = signal<UserHolding | null>(null);
   readonly userPositions = signal<PositionItem[]>([]);
+  readonly closedPositions = signal<PositionItem[]>([]);
 
   readonly leverageOptions = [1, 2, 5, 10, 20, 50, 100];
+
+  readonly spreadValue = computed(() => {
+    const price = this.currentQuote()?.price ?? 0;
+    if (price <= 0) return 0;
+    const isCrypto = this.symbol().includes('/') || this.symbol().includes('BTC') || this.symbol().includes('ETH');
+    const isForex = this.symbol().includes('EUR') || this.symbol().includes('USD') || this.symbol().includes('GBP');
+    const pct = isCrypto ? 0.0002 : isForex ? 0.0001 : 0.0005;
+    const spread = price * pct;
+    return price > 100 ? Number(spread.toFixed(2)) : Number(spread.toFixed(4));
+  });
+
+  readonly bidPrice = computed(() => {
+    const price = this.currentQuote()?.price ?? 0;
+    const spread = this.spreadValue();
+    return Math.max(0, price - (spread / 2));
+  });
+
+  readonly askPrice = computed(() => {
+    const price = this.currentQuote()?.price ?? 0;
+    const spread = this.spreadValue();
+    return price + (spread / 2);
+  });
 
   readonly tradingModesList: { mode: TradingMode; label: string; desc: string; badge: string; icon: string }[] = [
     { mode: 'SCALPING', label: 'Scalping', desc: '1m / 5m / 15m momentum trades with dynamic leverage & tight execution', badge: '1m - 15m', icon: '⚡' },
@@ -551,7 +581,17 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       next: (positions) => this.userPositions.set(positions || []),
       error: () => this.userPositions.set([])
     });
+
+    this.tradingService.getPositions(undefined, 'CLOSED').subscribe({
+      next: (closed) => this.closedPositions.set(closed || []),
+      error: () => this.closedPositions.set([])
+    });
   }
+
+  readonly activeSymbolClosedPositions = computed(() => {
+    const curSym = this.symbol();
+    return this.closedPositions().filter(p => p.symbol === curSym);
+  });
 
   private handleError(err: any, symbol: string): void {
     if (err.status === 429) {
@@ -966,15 +1006,54 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     }
   }
 
+  showToast(type: 'success' | 'error', message: string, sub?: string): void {
+    if (this.toastTimeout) {
+      clearTimeout(this.toastTimeout);
+    }
+    this.tradeToast.set({ show: true, type, message, sub });
+    if (typeof window !== 'undefined') {
+      this.toastTimeout = setTimeout(() => {
+        this.tradeToast.set(null);
+      }, 4500);
+    }
+  }
+
+  dismissToast(): void {
+    if (this.toastTimeout) {
+      clearTimeout(this.toastTimeout);
+    }
+    this.tradeToast.set(null);
+  }
+
+  setOrderType(type: 'MARKET' | 'PENDING'): void {
+    this.orderType.set(type);
+  }
+
+  setActivePanelMode(mode: 'POSITION_MGMT' | 'NEW_ORDER'): void {
+    this.activePanelMode.set(mode);
+  }
+
+  setActivePositionsTab(tab: 'OPEN' | 'PENDING' | 'CLOSED'): void {
+    this.activePositionsTab.set(tab);
+  }
+
   submitTrade(): void {
     if (!this.authService.isAuthenticated()) {
       this.tradeErrorMessage.set('Please log in to execute simulated trades.');
+      this.showToast('error', 'Authentication required', 'Please log in to trade');
       return;
     }
 
     const qty = this.tradeQuantity();
     if (!qty || qty <= 0) {
       this.tradeErrorMessage.set('Quantity must be greater than zero.');
+      return;
+    }
+
+    if (this.hasInsufficientMargin()) {
+      const errMsg = `Insufficient virtual balance. Required: $${this.requiredMargin().toFixed(2)}, Available: $${this.freeMargin().toFixed(2)}`;
+      this.tradeErrorMessage.set(errMsg);
+      this.showToast('error', 'Insufficient margin', errMsg);
       return;
     }
 
@@ -987,7 +1066,6 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
     this.isSubmittingTrade.set(true);
     this.tradeErrorMessage.set(null);
-    this.tradeSuccessReceipt.set(null);
 
     const action$ = side === 'LONG'
       ? this.tradingService.buy({
@@ -1013,12 +1091,19 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       next: (receipt) => {
         this.isSubmittingTrade.set(false);
         this.tradeSuccessReceipt.set(receipt);
+        this.showToast(
+          'success',
+          `✓ ${receipt.orderType === 'BUY' ? 'BUY / LONG' : 'SELL / SHORT'} executed successfully`,
+          `${receipt.quantity} LOT on ${receipt.symbol} at ${this.formatCurrencySymbol(receipt.symbol)}${receipt.executionPrice != null ? receipt.executionPrice.toFixed(2) : ''}`
+        );
         this.refreshTradingState();
+        this.activePanelMode.set('POSITION_MGMT');
       },
       error: (err) => {
         this.isSubmittingTrade.set(false);
         const errMsg = err.error?.message || err.message || 'Trade execution failed';
         this.tradeErrorMessage.set(errMsg);
+        this.showToast('error', 'Trade rejected', errMsg);
       }
     });
   }
@@ -1029,13 +1114,20 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     const qtyToClose = quantity != null && quantity > 0 ? quantity : undefined;
     this.isClosingPositionId.set(pos.id);
     this.tradingService.closePosition(pos.id, qtyToClose).subscribe({
-      next: () => {
+      next: (closedPos) => {
         this.isClosingPositionId.set(null);
+        this.showToast(
+          'success',
+          `✓ Position closed successfully`,
+          `${qtyToClose || pos.quantity} LOT on ${pos.symbol} at ${this.formatCurrencySymbol(pos.symbol)}${closedPos.closePrice != null ? closedPos.closePrice.toFixed(2) : ''}`
+        );
         this.refreshTradingState();
       },
       error: (err) => {
         this.isClosingPositionId.set(null);
-        this.tradeErrorMessage.set(err.error?.message || err.message || 'Failed to close position');
+        const errMsg = err.error?.message || err.message || 'Failed to close position';
+        this.tradeErrorMessage.set(errMsg);
+        this.showToast('error', 'Close failed', errMsg);
       }
     });
   }
@@ -1084,11 +1176,13 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
   prepareOpenLong(): void {
     this.tradeSide.set('LONG');
+    this.activePanelMode.set('NEW_ORDER');
     this.tradeErrorMessage.set(null);
   }
 
   prepareOpenShort(): void {
     this.tradeSide.set('SHORT');
+    this.activePanelMode.set('NEW_ORDER');
     this.tradeErrorMessage.set(null);
   }
 

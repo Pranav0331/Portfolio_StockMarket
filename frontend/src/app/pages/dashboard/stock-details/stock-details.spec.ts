@@ -356,6 +356,7 @@ describe('StockDetailsComponent', () => {
     vi.spyOn(marketService, 'getQuote').mockReturnValue(of(mockRelianceQuote));
     vi.spyOn(marketService, 'getCandles').mockReturnValue(of(mockRelianceCandles));
     vi.spyOn(authService, 'isAuthenticated').mockReturnValue(true);
+    vi.spyOn(tradingService, 'getWallet').mockReturnValue(of({ cashBalance: 500000, reservedMargin: 0, totalEquity: 500000, freeMargin: 500000 } as any));
     vi.spyOn(tradingService, 'buy').mockReturnValue(throwError(() => ({
       error: { message: 'Insufficient virtual balance' }
     })));
