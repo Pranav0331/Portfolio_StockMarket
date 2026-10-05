@@ -278,11 +278,11 @@ describe('StockDetailsComponent', () => {
     const component = fixture.componentInstance;
     fixture.detectChanges();
 
-    component.setTradeType('BUY');
+    component.setTradeSide('LONG');
     component.setTradeQuantity(5);
     component.submitTrade();
 
-    expect(buySpy).toHaveBeenCalledWith({ symbol: 'RELIANCE', quantity: 5, tradingMode: 'INTRADAY' });
+    expect(buySpy).toHaveBeenCalledWith({ symbol: 'RELIANCE', quantity: 5, tradingMode: 'INTRADAY', side: 'LONG', leverage: 10, stopLoss: undefined, takeProfit: undefined });
     expect(component.tradeSuccessReceipt()).toEqual(mockTradeRes);
   });
 
@@ -318,32 +318,34 @@ describe('StockDetailsComponent', () => {
     fixture.detectChanges();
 
     component.selectedTradingMode.set('SWING');
-    component.setTradeType('SELL');
+    component.setTradeSide('SHORT');
     component.setTradeQuantity(5);
     component.submitTrade();
 
-    expect(sellSpy).toHaveBeenCalledWith({ symbol: 'RELIANCE', quantity: 5, tradingMode: 'SWING' });
+    expect(sellSpy).toHaveBeenCalledWith({ symbol: 'RELIANCE', quantity: 5, tradingMode: 'SWING', side: 'SHORT', leverage: 1, stopLoss: undefined, takeProfit: undefined });
     expect(component.tradeSuccessReceipt()).toEqual(mockTradeRes);
   });
 
-  it('should detect insufficient balance on BUY', () => {
+  it('should detect insufficient margin on BUY', () => {
     const fixture = TestBed.createComponent(StockDetailsComponent);
     const component = fixture.componentInstance;
 
     component.currentQuote.set(mockRelianceQuote); // price 2950.5
-    component.userWallet.set({ cashBalance: 5000, totalInvested: 0, totalPortfolioValue: 5000, currency: 'USD' });
-    component.setTradeType('BUY');
-    component.setTradeQuantity(10); // total 29,505 > 5,000
+    component.userWallet.set({ cashBalance: 50, totalInvested: 0, totalPortfolioValue: 50, currency: 'USD' });
+    component.selectedLeverage.set(1);
+    component.setTradeSide('LONG');
+    component.setTradeQuantity(10); // required margin 29,505 > 50
 
-    expect(component.hasInsufficientBalance()).toBe(true);
+    expect(component.hasInsufficientMargin()).toBe(true);
   });
 
   it('should detect insufficient holdings on SELL', () => {
     const fixture = TestBed.createComponent(StockDetailsComponent);
     const component = fixture.componentInstance;
 
+    component.selectedTradingMode.set('SWING');
+    component.setTradeSide('SHORT');
     component.userHolding.set({ ...mockHolding, quantity: 5 });
-    component.setTradeType('SELL');
     component.setTradeQuantity(10); // 10 > 5
 
     expect(component.hasInsufficientHoldings()).toBe(true);
@@ -362,7 +364,7 @@ describe('StockDetailsComponent', () => {
     const component = fixture.componentInstance;
     fixture.detectChanges();
 
-    component.setTradeType('BUY');
+    component.setTradeSide('LONG');
     component.setTradeQuantity(10);
     component.submitTrade();
 

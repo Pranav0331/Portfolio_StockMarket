@@ -76,6 +76,9 @@ describe('TradingService', () => {
 
     const symHoldingReq = httpMock.expectOne('http://localhost:8080/api/trading/holdings/RELIANCE');
     symHoldingReq.flush({ holdingId: 1, symbol: 'RELIANCE', companyName: 'Reliance', exchange: 'NSE', currency: 'INR', quantity: 10, averageBuyPrice: 2950, totalInvested: 29500, currentPrice: 2950, currentValue: 29500, unrealizedPnL: 0, unrealizedPnLPercent: 0 });
+
+    const posReq = httpMock.expectOne('http://localhost:8080/api/trading/positions?symbol=RELIANCE&status=OPEN');
+    posReq.flush([]);
   });
 
   it('should execute SELL trade and update wallet signal', () => {
@@ -122,6 +125,9 @@ describe('TradingService', () => {
 
     const symHoldingReq = httpMock.expectOne('http://localhost:8080/api/trading/holdings/RELIANCE');
     symHoldingReq.flush({ holdingId: 1, symbol: 'RELIANCE', companyName: 'Reliance', exchange: 'NSE', currency: 'INR', quantity: 5, averageBuyPrice: 2950, totalInvested: 14750, currentPrice: 3000, currentValue: 15000, unrealizedPnL: 250, unrealizedPnLPercent: 1.69 });
+
+    const posReq = httpMock.expectOne('http://localhost:8080/api/trading/positions?symbol=RELIANCE&status=OPEN');
+    posReq.flush([]);
   });
 
   it('should fetch virtual wallet', () => {
