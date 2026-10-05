@@ -5,6 +5,7 @@ import { provideRouter, ActivatedRoute } from '@angular/router';
 import { of, throwError, BehaviorSubject } from 'rxjs';
 import { StockDetailsComponent } from './stock-details';
 import { MarketService } from '../../../services/market.service';
+import { MarketWebSocketService } from '../../../services/market-websocket.service';
 import { AuthService } from '../../../services/auth.service';
 import { TradingService } from '../../../services/trading.service';
 import { AlertService } from '../../../services/alert.service';
@@ -439,5 +440,81 @@ describe('StockDetailsComponent', () => {
       targetPrice: 3000,
       notes: 'Breakout target'
     });
+  });
+
+  it('should handle live WebSocket tick and update currentQuote, bid/ask/spread, and open position P&L in real time', () => {
+    paramMap$.next({ get: (k: string) => (k === 'symbol' ? 'RELIANCE' : null) });
+    vi.spyOn(marketService, 'getQuote').mockReturnValue(of(mockRelianceQuote));
+    vi.spyOn(marketService, 'getCandles').mockReturnValue(of(mockRelianceCandles));
+    vi.spyOn(authService, 'isAuthenticated').mockReturnValue(true);
+
+    const fixture = TestBed.createComponent(StockDetailsComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    // Set an open position
+    component.userPositions.set([
+      {
+        id: 101,
+        symbol: 'RELIANCE',
+        companyName: 'Reliance Industries Ltd',
+        exchange: 'NSE',
+        currency: 'INR',
+        side: 'LONG',
+        tradingMode: 'INTRADAY',
+        quantity: 10,
+        entryPrice: 2950.0,
+        currentPrice: 2950.0,
+        leverage: 10,
+        marginUsed: 2950.0,
+        positionValue: 29500.0,
+        unrealizedPnl: 0,
+        unrealizedPnlPercent: 0,
+        status: 'OPEN',
+        createdAt: '2026-10-05T09:00:00Z'
+      }
+    ]);
+
+    // Dispatch a live tick with updated price
+    const webSocketService = TestBed.inject(MarketWebSocketService);
+    (webSocketService as any).ticksSubject.next({
+      type: 'TICK',
+      symbol: 'RELIANCE',
+      price: 2980.0,
+      high: 2985.0,
+      low: 2920.0,
+      volume: 6000000,
+      change: 61.9,
+      changePercent: '+2.12%',
+      timestamp: Date.now()
+    });
+
+    expect(component.currentQuote()?.price).toBe(2980.0);
+    expect(component.bidPrice()).toBeCloseTo(2979.255, 2);
+    expect(component.askPrice()).toBeCloseTo(2980.745, 2);
+    expect(component.spreadValue()).toBeCloseTo(1.49, 2);
+    expect(component.isReceivingRealTicks()).toBe(true);
+
+    // Verify open position live P&L recalculated: (2980 - 2950) * 10 = +300
+    const activePositions = component.activeSymbolPositions();
+    expect(activePositions.length).toBe(1);
+    expect(activePositions[0].currentPrice).toBe(2980.0);
+    expect(activePositions[0].unrealizedPnl).toBe(300.0);
+  });
+
+  it('should disable execution and show error when market data is unavailable', () => {
+    paramMap$.next({ get: (k: string) => (k === 'symbol' ? 'UNKNOWN' : null) });
+    vi.spyOn(marketService, 'getQuote').mockReturnValue(throwError(() => ({ status: 404 })));
+    vi.spyOn(marketService, 'getCandles').mockReturnValue(throwError(() => ({ status: 404 })));
+    vi.spyOn(authService, 'isAuthenticated').mockReturnValue(true);
+
+    const fixture = TestBed.createComponent(StockDetailsComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(component.hasTradableQuote()).toBe(false);
+
+    component.submitTrade();
+    expect(component.tradeErrorMessage()).toBe('Live market data unavailable');
   });
 });

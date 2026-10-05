@@ -8,9 +8,9 @@
         <div class="badge-cluster">
           <span class="exchange-badge">{{ exchange() }}</span>
           <span class="instrument-type-badge">{{ instrumentType() }}</span>
-          <span class="provider-pill" [class.upstox]="currentProvider() === 'Upstox'" [class.twelvedata]="currentProvider() === 'Twelve Data'">
-            <span class="live-dot"></span>
-            {{ currentProvider() }} Live
+          <span class="provider-pill" [class.upstox]="currentProvider() === 'Upstox'" [class.twelvedata]="currentProvider() === 'Twelve Data'" [class.offline]="isMarketDataUnavailable()">
+            <span class="live-dot" [class.live]="isLiveConnected()"></span>
+            {{ currentProvider() }} {{ isMarketDataUnavailable() ? 'Offline' : (isLiveConnected() ? 'Live' : 'Syncing') }}
           </span>
         </div>
       </div>
