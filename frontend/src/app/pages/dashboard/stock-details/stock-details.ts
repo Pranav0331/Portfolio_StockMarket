@@ -195,9 +195,15 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly alertErrorMessage = signal<string | null>(null);
   readonly alertSuccessMessage = signal<string | null>(null);
 
+  // Left Toolbar popover menus state
+  readonly isIndicatorMenuOpen = signal<boolean>(false);
+  readonly isChartTypeMenuOpen = signal<boolean>(false);
+  readonly isTimeframeMenuOpen = signal<boolean>(false);
+
   // =========================================================================
   // EXNESS-INSPIRED ORDER PANEL & TRADING STATE
   // =========================================================================
+  readonly openNewOrderMode = signal<boolean>(false);
   readonly tradeSide = signal<PositionSide>('LONG');
   readonly tradeQuantity = signal<number>(0.10);
   readonly selectedTradingMode = signal<TradingMode>('INTRADAY');
@@ -367,6 +373,19 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly activeSymbolPositions = computed(() => {
     const curSym = this.symbol();
     return this.liveOpenPositions().filter(p => p.symbol === curSym);
+  });
+
+  readonly activeSymbolPosition = computed(() => {
+    const symPositions = this.activeSymbolPositions();
+    return symPositions.length > 0 ? symPositions[0] : null;
+  });
+
+  readonly hasActivePosition = computed(() => {
+    return this.activeSymbolPosition() !== null;
+  });
+
+  readonly isShowingPositionCard = computed(() => {
+    return this.hasActivePosition() && !this.openNewOrderMode();
   });
 
   // Total floating P&L across all open positions
@@ -1860,6 +1879,38 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
   refreshData(): void {
     this.loadInstrumentData(this.symbol());
+  }
+
+  toggleOpenNewOrder(force?: boolean): void {
+    if (force !== undefined) {
+      this.openNewOrderMode.set(force);
+    } else {
+      this.openNewOrderMode.update(v => !v);
+    }
+  }
+
+  toggleIndicatorMenu(): void {
+    this.isIndicatorMenuOpen.update(v => !v);
+    this.isTimeframeMenuOpen.set(false);
+    this.isChartTypeMenuOpen.set(false);
+  }
+
+  toggleChartTypeMenu(): void {
+    this.isChartTypeMenuOpen.update(v => !v);
+    this.isIndicatorMenuOpen.set(false);
+    this.isTimeframeMenuOpen.set(false);
+  }
+
+  toggleTimeframeMenu(): void {
+    this.isTimeframeMenuOpen.update(v => !v);
+    this.isIndicatorMenuOpen.set(false);
+    this.isChartTypeMenuOpen.set(false);
+  }
+
+  closeAllToolMenus(): void {
+    this.isIndicatorMenuOpen.set(false);
+    this.isChartTypeMenuOpen.set(false);
+    this.isTimeframeMenuOpen.set(false);
   }
 
   navigateToStock(sym: string): void {
