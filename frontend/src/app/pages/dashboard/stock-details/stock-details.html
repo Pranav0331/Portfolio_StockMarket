@@ -196,39 +196,41 @@
               <!-- Submenu indicator arrow -->
               <span class="v-tool-arrow">›</span>
             </button>
-
-            <!-- FLOATING FLYOUT SUBMENU (OPENS TO RIGHT OF TOOLBAR) -->
-            @if (openToolGroupId() === group.id) {
-              <div class="tool-popover drawing-category-popover" (click)="$event.stopPropagation()">
-                <div class="popover-category-header">
-                  <div class="cat-title-wrap">
-                    <span class="cat-title">{{ group.name }}</span>
-                    <span class="cat-subtitle">{{ group.tools.length }} tools</span>
-                  </div>
-                  <button type="button" class="btn-close-popover" (click)="selectToolGroup(group.id, $event)">✕</button>
-                </div>
-                <div class="popover-tools-list">
-                  @for (tool of group.tools; track tool.id) {
-                    <button
-                      type="button"
-                      class="category-tool-item"
-                      [class.active]="activeDrawingTool()?.id === tool.id"
-                      (click)="selectDrawingTool(group, tool, $event)">
-                      <span class="tool-item-icon">{{ tool.icon || '•' }}</span>
-                      <span class="tool-name">{{ tool.name }}</span>
-                      @if (tool.shortcut) {
-                        <span class="tool-shortcut">{{ tool.shortcut }}</span>
-                      } @else if (tool.pointsRequired > 0) {
-                        <span class="tool-pts-badge">{{ tool.pointsRequired }} pt</span>
-                      }
-                    </button>
-                  }
-                </div>
-              </div>
-            }
           </div>
         }
       </div>
+
+      <!-- FLOATING FLYOUT SUBMENU (RENDERED AT TOOLBAR ROOT TO PREVENT SCROLL OVERFLOW CLIPPING) -->
+      @if (openToolGroupId(); as curGroupId) {
+        @if (getGroupById(curGroupId); as curGroup) {
+          <div class="tool-popover drawing-category-popover" (click)="$event.stopPropagation()">
+            <div class="popover-category-header">
+              <div class="cat-title-wrap">
+                <span class="cat-title">{{ curGroup.name }}</span>
+                <span class="cat-subtitle">{{ curGroup.tools.length }} tools</span>
+              </div>
+              <button type="button" class="btn-close-popover" (click)="closeFlyout($event)">✕</button>
+            </div>
+            <div class="popover-tools-list">
+              @for (tool of curGroup.tools; track tool.id) {
+                <button
+                  type="button"
+                  class="category-tool-item"
+                  [class.active]="activeDrawingTool()?.id === tool.id"
+                  (click)="selectDrawingTool(curGroup, tool, $event)">
+                  <span class="tool-item-icon">{{ tool.icon || '•' }}</span>
+                  <span class="tool-name">{{ tool.name }}</span>
+                  @if (tool.shortcut) {
+                    <span class="tool-shortcut">{{ tool.shortcut }}</span>
+                  } @else if (tool.pointsRequired > 0) {
+                    <span class="tool-pts-badge">{{ tool.pointsRequired }} pt</span>
+                  }
+                </button>
+              }
+            </div>
+          </div>
+        }
+      }
     </aside>
 
     <!-- CENTER: MAXIMUM SCREEN AREA CHART WITH DRAWING OVERLAY -->

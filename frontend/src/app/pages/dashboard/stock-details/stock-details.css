@@ -200,7 +200,7 @@
   align-items: center;
   gap: 2px;
   padding: 6px 0;
-  z-index: 40;
+  z-index: 1000;
   position: relative;
   box-sizing: border-box;
 }

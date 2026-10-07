@@ -7,7 +7,8 @@ import {
   computed,
   ElementRef,
   viewChild,
-  effect
+  effect,
+  HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -170,7 +171,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     },
     {
       id: 'lines',
-      name: 'Trend Lines',
+      name: 'Lines',
       iconName: 'lines',
       activeToolId: 'trend_line',
       tools: [
@@ -2163,15 +2164,33 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     this.isChartTypeMenuOpen.set(false);
   }
 
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.left-vertical-toolbar') && !target.closest('.header-chart-type-picker') && !target.closest('.header-indicators-toggles')) {
+      this.closeAllToolMenus();
+    }
+  }
+
   closeAllToolMenus(): void {
     this.isIndicatorMenuOpen.set(false);
     this.isChartTypeMenuOpen.set(false);
     this.isTimeframeMenuOpen.set(false);
+    this.openToolGroupId.set(null);
   }
 
   // =========================================================================
   // DRAWING TOOL INTERACTIONS & SVG OVERLAY ENGINE
   // =========================================================================
+
+  getGroupById(groupId: string): DrawingToolGroup | undefined {
+    return this.drawingToolGroups().find(g => g.id === groupId);
+  }
+
+  closeFlyout(event?: Event): void {
+    if (event) event.stopPropagation();
+    this.openToolGroupId.set(null);
+  }
 
   selectToolGroup(groupId: string, event?: Event): void {
     if (event) event.stopPropagation();
