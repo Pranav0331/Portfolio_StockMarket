@@ -412,9 +412,18 @@ public class AlgoTradingService {
 
         // 4. If Strategy is RUNNING and executeIfSatisfied is true -> Trigger Paper Trade Execution
         if (executeIfSatisfied && strategy.getStatus() == StrategyStatus.RUNNING && (signal == AlgoSignal.BUY || signal == AlgoSignal.SELL)) {
-            // Check open positions count
+            // Check open positions count and existing active side
             List<PositionDto> openPositions = tradingService.getUserPositions(userId, symbol, PositionStatus.OPEN);
-            if (openPositions.size() < strategy.getMaxOpenPositions()) {
+            PositionSide targetSide = (signal == AlgoSignal.BUY) ? PositionSide.LONG : PositionSide.SHORT;
+            boolean alreadyHasSameSidePosition = openPositions.stream().anyMatch(pos -> pos.side() == targetSide);
+            boolean isRepeatedContinuousSignal = signal.name().equalsIgnoreCase(strategy.getLastSignal());
+
+            if (alreadyHasSameSidePosition && isRepeatedContinuousSignal) {
+                executionMessage = String.format("Active %s position already open for %s. Skipping repeated execution on continuous %s signal.",
+                        targetSide, symbol, signal);
+            } else if (openPositions.size() >= strategy.getMaxOpenPositions()) {
+                executionMessage = "Max open positions reached (" + openPositions.size() + "/" + strategy.getMaxOpenPositions() + "). Skipping execution.";
+            } else {
                 try {
                     // Compute dynamic Stop Loss and Take Profit prices if percentage specified
                     BigDecimal slPrice = null;
@@ -439,7 +448,7 @@ public class AlgoTradingService {
                             symbol,
                             strategy.getQuantity(),
                             strategy.getTradingMode(),
-                            signal == AlgoSignal.BUY ? PositionSide.LONG : PositionSide.SHORT,
+                            targetSide,
                             strategy.getLeverage(),
                             slPrice,
                             tpPrice
@@ -464,8 +473,6 @@ public class AlgoTradingService {
                     log.warn("Algo auto-execution failed for strategy {}: {}", strategy.getId(), e.getMessage());
                     executionMessage = "Auto-execution failed: " + e.getMessage();
                 }
-            } else {
-                executionMessage = "Max open positions reached (" + openPositions.size() + "/" + strategy.getMaxOpenPositions() + "). Skipping execution.";
             }
         }
 

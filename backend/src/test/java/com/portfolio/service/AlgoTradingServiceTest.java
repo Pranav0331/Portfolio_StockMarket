@@ -6,6 +6,7 @@ import com.portfolio.dto.algo.AlgoStrategyRequestDto;
 import com.portfolio.dto.algo.AlgoStrategyResponseDto;
 import com.portfolio.dto.market.CandleDto;
 import com.portfolio.dto.market.CandleSeriesDto;
+import com.portfolio.dto.trading.PositionDto;
 import com.portfolio.dto.trading.TradeRequestDto;
 import com.portfolio.dto.trading.TradeResponseDto;
 import com.portfolio.entity.*;
@@ -242,6 +243,53 @@ class AlgoTradingServiceTest {
         verify(tradingService, never()).executeBuy(any(), any());
         verify(tradingService, never()).executeSell(any(), any());
         // Verify NO trade log is saved to DB for WAIT evaluations
+        verify(tradeLogRepository, never()).save(any(AlgoTradeLog.class));
+    }
+
+    @Test
+    void testEvaluateStrategySameSignalDoesNotExecuteRepeatedly() {
+        testStrategy.setStatus(StrategyStatus.RUNNING);
+        testStrategy.setUseRsiFilter(false);
+        testStrategy.setUseMacdFilter(false);
+        testStrategy.setLastSignal("BUY"); // Previous evaluation was already BUY
+        when(strategyRepository.findByIdAndUserId(100L, 1L)).thenReturn(Optional.of(testStrategy));
+
+        // Uptrend candle series
+        List<CandleDto> candles = new ArrayList<>();
+        double basePrice = 50000.0;
+        Instant now = Instant.now();
+        for (int i = 0; i < 50; i++) {
+            double close = basePrice + (i * 50.0);
+            candles.add(new CandleDto(
+                    now.minusSeconds((50 - i) * 60).toEpochMilli(),
+                    now.minusSeconds((50 - i) * 60).toString(),
+                    BigDecimal.valueOf(close - 10),
+                    BigDecimal.valueOf(close + 20),
+                    BigDecimal.valueOf(close - 20),
+                    BigDecimal.valueOf(close),
+                    1000L
+            ));
+        }
+        CandleSeriesDto seriesDto = new CandleSeriesDto("BTC/USD", "15m", "USD", "BINANCE", "crypto", candles);
+        when(marketDataService.getCandles("BTC/USD", "15m", 80)).thenReturn(seriesDto);
+
+        // Mock existing open LONG position
+        PositionDto openLong = new PositionDto(
+                55L, "BTC/USD", "Bitcoin", "BINANCE", "USD",
+                PositionSide.LONG, TradingMode.INTRADAY,
+                new BigDecimal("0.1000"), new BigDecimal("52000.00"), new BigDecimal("52500.00"),
+                10, new BigDecimal("525.00"), new BigDecimal("5250.00"),
+                BigDecimal.ZERO, BigDecimal.ZERO, null, null,
+                PositionStatus.OPEN, null, null, null, Instant.now()
+        );
+        when(tradingService.getUserPositions(eq(1L), eq("BTC/USD"), eq(PositionStatus.OPEN))).thenReturn(List.of(openLong));
+
+        AlgoEvaluationResponseDto eval = algoTradingService.evaluateStrategy(1L, 100L, true);
+
+        assertNotNull(eval);
+        assertEquals(AlgoSignal.BUY, eval.signal());
+        assertFalse(eval.tradeExecuted()); // Must not execute duplicate trade
+        verify(tradingService, never()).executeBuy(any(), any());
         verify(tradeLogRepository, never()).save(any(AlgoTradeLog.class));
     }
 
