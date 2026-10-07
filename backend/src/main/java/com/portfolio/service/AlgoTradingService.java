@@ -134,14 +134,14 @@ public class AlgoTradingService {
         strategyRepository.findByIdAndUserId(strategyId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Strategy not found"));
 
-        List<AlgoTradeLog> logs = tradeLogRepository.findByStrategyIdOrderByCreatedAtDesc(strategyId);
+        List<AlgoTradeLog> logs = tradeLogRepository.findByStrategyIdAndStatusOrderByCreatedAtDesc(strategyId, "EXECUTED");
         syncClosedPositionsPnl(logs);
         return logs.stream().map(AlgoTradeLogDto::fromEntity).toList();
     }
 
     @Transactional
     public List<AlgoTradeLogDto> getUserTrades(Long userId) {
-        List<AlgoTradeLog> logs = tradeLogRepository.findTop50ByUserIdOrderByCreatedAtDesc(userId);
+        List<AlgoTradeLog> logs = tradeLogRepository.findTop50ByUserIdAndStatusOrderByCreatedAtDesc(userId, "EXECUTED");
         syncClosedPositionsPnl(logs);
         return logs.stream().map(AlgoTradeLogDto::fromEntity).toList();
     }
@@ -151,7 +151,7 @@ public class AlgoTradingService {
         AlgoStrategy strategy = strategyRepository.findByIdAndUserId(strategyId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Strategy not found"));
 
-        List<AlgoTradeLog> trades = tradeLogRepository.findByStrategyIdOrderByCreatedAtDesc(strategyId);
+        List<AlgoTradeLog> trades = tradeLogRepository.findByStrategyIdAndStatusOrderByCreatedAtDesc(strategyId, "EXECUTED");
         syncClosedPositionsPnl(trades);
 
         int total = 0;
@@ -469,28 +469,30 @@ public class AlgoTradingService {
             }
         }
 
-        // 5. Record Execution Log & Update Strategy Status
+        // 5. Record Execution Log (Only for executed trades) & Update Strategy Status
         strategy.setLastRunAt(LocalDateTime.now());
         strategy.setLastSignal(signal.name());
         strategy.setLastSignalReasons(String.join("; ", reasons));
         if (strategy.getId() != null) {
             strategyRepository.save(strategy);
 
-            AlgoTradeLog logEntry = new AlgoTradeLog();
-            logEntry.setStrategy(strategy);
-            logEntry.setUser(strategy.getUser() != null ? strategy.getUser() : userRepository.getReferenceById(userId));
-            logEntry.setSymbol(symbol);
-            logEntry.setAction(tradeExecuted ? signal.name() : (signal == AlgoSignal.WAIT ? "WAIT" : "SKIPPED"));
-            logEntry.setPrice(curPriceBd);
-            logEntry.setQuantity(strategy.getQuantity());
-            logEntry.setSignal(signal.name());
-            logEntry.setConfidence(BigDecimal.valueOf(confidenceVal).setScale(2, RoundingMode.HALF_UP));
-            logEntry.setTrend(trend);
-            logEntry.setReasons(String.join("; ", reasons));
-            logEntry.setOrderId(orderId);
-            logEntry.setPositionId(positionId);
-            logEntry.setStatus(tradeExecuted ? "EXECUTED" : (signal == AlgoSignal.WAIT ? "EVALUATED" : "SKIPPED"));
-            tradeLogRepository.save(logEntry);
+            if (tradeExecuted) {
+                AlgoTradeLog logEntry = new AlgoTradeLog();
+                logEntry.setStrategy(strategy);
+                logEntry.setUser(strategy.getUser() != null ? strategy.getUser() : userRepository.getReferenceById(userId));
+                logEntry.setSymbol(symbol);
+                logEntry.setAction(signal.name());
+                logEntry.setPrice(curPriceBd);
+                logEntry.setQuantity(strategy.getQuantity());
+                logEntry.setSignal(signal.name());
+                logEntry.setConfidence(BigDecimal.valueOf(confidenceVal).setScale(2, RoundingMode.HALF_UP));
+                logEntry.setTrend(trend);
+                logEntry.setReasons(String.join("; ", reasons));
+                logEntry.setOrderId(orderId);
+                logEntry.setPositionId(positionId);
+                logEntry.setStatus("EXECUTED");
+                tradeLogRepository.save(logEntry);
+            }
         }
 
         return new AlgoEvaluationResponseDto(

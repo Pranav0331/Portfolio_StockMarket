@@ -202,9 +202,47 @@ class AlgoTradingServiceTest {
         assertEquals("BTC/USD", eval.symbol());
         assertEquals("BULLISH", eval.trend());
         assertEquals(AlgoSignal.BUY, eval.signal());
-        assertTrue(eval.tradeExecuted());
-        verify(tradingService, times(1)).executeBuy(eq(1L), any(TradeRequestDto.class));
-        verify(tradeLogRepository, atLeastOnce()).save(any(AlgoTradeLog.class));
+        verify(tradeLogRepository, times(1)).save(any(AlgoTradeLog.class));
+    }
+
+    @Test
+    void testEvaluateStrategyWaitDoesNotCreateTradeLog() {
+        testStrategy.setStatus(StrategyStatus.RUNNING);
+        testStrategy.setDirection(StrategyDirection.LONG); // Looking only for LONGs
+        testStrategy.setUseEmaCross(true);
+        testStrategy.setUseRsiFilter(true);
+        testStrategy.setUseMacdFilter(true);
+        when(strategyRepository.findByIdAndUserId(100L, 1L)).thenReturn(Optional.of(testStrategy));
+
+        // Generate downtrend candle series (causes longScore < longTotal -> WAIT)
+        List<CandleDto> candles = new ArrayList<>();
+        double basePrice = 50000.0;
+        Instant now = Instant.now();
+        for (int i = 0; i < 50; i++) {
+            double close = basePrice - (i * 20.0);
+            candles.add(new CandleDto(
+                    now.minusSeconds((50 - i) * 60).toEpochMilli(),
+                    now.minusSeconds((50 - i) * 60).toString(),
+                    BigDecimal.valueOf(close + 10),
+                    BigDecimal.valueOf(close + 20),
+                    BigDecimal.valueOf(close - 20),
+                    BigDecimal.valueOf(close),
+                    1000L
+            ));
+        }
+        CandleSeriesDto seriesDto = new CandleSeriesDto("BTC/USD", "15m", "USD", "BINANCE", "crypto", candles);
+        when(marketDataService.getCandles("BTC/USD", "15m", 80)).thenReturn(seriesDto);
+
+        AlgoEvaluationResponseDto eval = algoTradingService.evaluateStrategy(1L, 100L, true);
+
+        assertNotNull(eval);
+        assertEquals(AlgoSignal.WAIT, eval.signal());
+        assertFalse(eval.tradeExecuted());
+        // Verify no buy/sell trade is executed
+        verify(tradingService, never()).executeBuy(any(), any());
+        verify(tradingService, never()).executeSell(any(), any());
+        // Verify NO trade log is saved to DB for WAIT evaluations
+        verify(tradeLogRepository, never()).save(any(AlgoTradeLog.class));
     }
 
     @Test
@@ -221,7 +259,7 @@ class AlgoTradingServiceTest {
         log2.setStatus("EXECUTED");
         log2.setPnl(new BigDecimal("-100.00"));
 
-        when(tradeLogRepository.findByStrategyIdOrderByCreatedAtDesc(100L)).thenReturn(List.of(log1, log2));
+        when(tradeLogRepository.findByStrategyIdAndStatusOrderByCreatedAtDesc(100L, "EXECUTED")).thenReturn(List.of(log1, log2));
 
         AlgoPerformanceDto perf = algoTradingService.getStrategyPerformance(1L, 100L);
 
