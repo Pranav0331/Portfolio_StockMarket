@@ -28,7 +28,10 @@ import {
   Time,
   CandlestickData,
   LineData,
-  HistogramData
+  HistogramData,
+  SeriesMarker,
+  createSeriesMarkers,
+  ISeriesMarkersPluginApi
 } from 'lightweight-charts';
 import { MarketService } from '../../../services/market.service';
 import { MarketWebSocketService, MarketTick } from '../../../services/market-websocket.service';
@@ -45,6 +48,7 @@ import {
   PositionItem
 } from '../../../models/trading.model';
 import { AlertConditionType } from '../../../models/alert.model';
+import { calculateSMA, calculateEMA } from '../../../utils/technical-analysis.utils';
 
 export type ChartType = 'candles' | 'line' | 'area';
 export type StockDetailInterval = '1min' | '5min' | '15min' | '30min' | '1h' | '4h' | '1day' | '1week';
@@ -63,6 +67,12 @@ export interface HoveredBarData {
   low: number;
   close: number;
   volume?: number | null;
+}
+
+export interface TopInstrumentItem {
+  symbol: string;
+  name: string;
+  marketType: string;
 }
 
 @Component({
@@ -85,11 +95,30 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly chartContainerRef = viewChild<ElementRef<HTMLDivElement>>('chartContainer');
 
   // Active Symbol & State
-  readonly symbol = signal<string>('RELIANCE');
-  readonly companyName = signal<string>('Reliance Industries Ltd');
-  readonly exchange = signal<string>('NSE');
-  readonly instrumentType = signal<string>('Stock');
+  readonly symbol = signal<string>('BTC/USD');
+  readonly companyName = signal<string>('Bitcoin / US Dollar');
+  readonly exchange = signal<string>('Crypto');
+  readonly instrumentType = signal<string>('Crypto');
   readonly currentQuote = signal<StockQuote | null>(null);
+
+  // Top Symbol Bar Instruments List
+  readonly topInstruments = signal<TopInstrumentItem[]>([
+    { symbol: 'BTC/USD', name: 'Bitcoin', marketType: 'Crypto' },
+    { symbol: 'ETH/USD', name: 'Ethereum', marketType: 'Crypto' },
+    { symbol: 'SOL/USD', name: 'Solana', marketType: 'Crypto' },
+    { symbol: 'USOIL', name: 'WTI Crude Oil', marketType: 'Commodity' },
+    { symbol: 'XAU/USD', name: 'Gold / USD', marketType: 'Commodity' },
+    { symbol: 'AAPL', name: 'Apple Inc.', marketType: 'US Stock' },
+    { symbol: 'NIFTY 50', name: 'Nifty 50 Index', marketType: 'Index' },
+    { symbol: 'SENSEX', name: 'BSE Sensex', marketType: 'Index' },
+    { symbol: 'EUR/USD', name: 'Euro / USD', marketType: 'Forex' }
+  ]);
+
+  // Symbol Search Modal State
+  readonly isSearchModalOpen = signal<boolean>(false);
+  readonly symbolSearchQuery = signal<string>('');
+  readonly isSearchingSymbols = signal<boolean>(false);
+  readonly searchResults = signal<any[]>([]);
 
   // Provider routing identification
   readonly currentProvider = computed(() => {
@@ -125,13 +154,26 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly currentTimeframe = signal<TimeframeRange>('1D');
   readonly isFullscreen = signal<boolean>(false);
 
+  // Technical Indicators Toggles
+  readonly activeIndicators = signal<{
+    ema9: boolean;
+    ema21: boolean;
+    sma50: boolean;
+    volume: boolean;
+  }>({
+    ema9: true,
+    ema21: true,
+    sma50: false,
+    volume: true
+  });
+
   // Live Hovered Candle / Bar Info
   readonly hoveredBar = signal<HoveredBarData | null>(null);
 
   // Real Candlestick Data Cache
   readonly candleData = signal<Candle[]>([]);
 
-  // Timeframe / Interval Options Available (1m, 5m, 15m, 30m, 1H, 4H, 1D, 1W)
+  // Timeframe / Interval Options Available (1m, 5m, 15m, 30m, 1H, 4H, 1D)
   readonly intervals: IntervalOption[] = [
     { label: '1m', value: '1min', outputsize: 100 },
     { label: '5m', value: '5min', outputsize: 100 },
@@ -139,12 +181,8 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     { label: '30m', value: '30min', outputsize: 100 },
     { label: '1H', value: '1h', outputsize: 120 },
     { label: '4H', value: '4h', outputsize: 120 },
-    { label: '1D', value: '1day', outputsize: 180 },
-    { label: '1W', value: '1week', outputsize: 260 }
+    { label: '1D', value: '1day', outputsize: 180 }
   ];
-
-  // Range Ranges Available
-  readonly timeframes: TimeframeRange[] = ['1D', '1W', '1M', '3M', '6M', '1Y'];
 
   // =========================================================================
   // PRICE ALERT MODAL STATE
@@ -158,7 +196,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly alertSuccessMessage = signal<string | null>(null);
 
   // =========================================================================
-  // EXNESS-STYLE SIMULATED TRADING STATE
+  // EXNESS-INSPIRED ORDER PANEL & TRADING STATE
   // =========================================================================
   readonly tradeSide = signal<PositionSide>('LONG');
   readonly tradeQuantity = signal<number>(0.10);
@@ -166,11 +204,14 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly selectedLeverage = signal<number>(10);
   readonly orderType = signal<'MARKET' | 'PENDING'>('MARKET');
   readonly pendingPrice = signal<number | null>(null);
-  readonly activePanelMode = signal<'POSITION_MGMT' | 'NEW_ORDER'>('POSITION_MGMT');
-  readonly activePositionsTab = signal<'OPEN' | 'PENDING' | 'CLOSED'>('OPEN');
+  readonly activeBottomTab = signal<'OPEN' | 'PENDING' | 'CLOSED'>('OPEN');
+  readonly isTerminalCollapsed = signal<boolean>(false);
+  readonly isTerminalExpanded = signal<boolean>(false);
 
   readonly stopLossPrice = signal<number | null>(null);
   readonly takeProfitPrice = signal<number | null>(null);
+  readonly slInputMode = signal<'PRICE' | 'PERCENT'>('PRICE');
+  readonly tpInputMode = signal<'PRICE' | 'PERCENT'>('PRICE');
 
   readonly isSubmittingTrade = signal<boolean>(false);
   readonly isClosingPositionId = signal<number | null>(null);
@@ -209,10 +250,10 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   });
 
   readonly tradingModesList: { mode: TradingMode; label: string; desc: string; badge: string; icon: string }[] = [
-    { mode: 'SCALPING', label: 'Scalping', desc: '1m / 5m / 15m momentum trades with dynamic leverage & tight execution', badge: '1m - 15m', icon: '⚡' },
-    { mode: 'INTRADAY', label: 'Intraday', desc: '5m / 15m / 30m / 1H same-day trading with leverage up to 1:100', badge: 'Same Day', icon: '⏱️' },
-    { mode: 'SWING', label: 'Swing', desc: 'Multi-day momentum and trend holding across sessions (Spot 1:1)', badge: 'Multi-Day', icon: '📈' },
-    { mode: 'LONG_TERM', label: 'Long Term', desc: 'Fundamental investment and long-duration wealth holding (Spot 1:1)', badge: 'Long Hold', icon: '💎' }
+    { mode: 'SCALPING', label: 'Scalping', desc: '1m - 15m fast momentum execution', badge: '1m - 15m', icon: '⚡' },
+    { mode: 'INTRADAY', label: 'Intraday', desc: 'Same-day leveraged session trading', badge: 'Same Day', icon: '⏱️' },
+    { mode: 'SWING', label: 'Swing', desc: 'Multi-day spot trend trading', badge: 'Multi-Day', icon: '📈' },
+    { mode: 'LONG_TERM', label: 'Long Term', desc: 'Long-term investment portfolio holding', badge: 'Long Hold', icon: '💎' }
   ];
 
   readonly currentTradingModeInfo = computed(() => {
@@ -227,9 +268,17 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     return this.isLeverageEnabled() ? this.selectedLeverage() : 1;
   });
 
-  // Position Value = Quantity * Entry Price
+  // Effective execution price (pending or market)
+  readonly effectiveEntryPrice = computed(() => {
+    if (this.orderType() === 'PENDING' && this.pendingPrice() && this.pendingPrice()! > 0) {
+      return this.pendingPrice()!;
+    }
+    return this.currentQuote()?.price ?? 0;
+  });
+
+  // Position Value = Quantity * Price
   readonly positionValue = computed(() => {
-    const price = this.currentQuote()?.price ?? 0;
+    const price = this.effectiveEntryPrice();
     const qty = this.tradeQuantity() ?? 0;
     return price * qty;
   });
@@ -255,7 +304,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   // SL / TP projected P&L calculations
   readonly slProjection = computed(() => {
     const sl = this.stopLossPrice();
-    const curP = this.currentQuote()?.price;
+    const curP = this.effectiveEntryPrice();
     const qty = this.tradeQuantity();
     const margin = this.requiredMargin();
     if (!sl || !curP || !qty || sl <= 0 || curP <= 0 || margin <= 0) return null;
@@ -272,7 +321,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
   readonly tpProjection = computed(() => {
     const tp = this.takeProfitPrice();
-    const curP = this.currentQuote()?.price;
+    const curP = this.effectiveEntryPrice();
     const qty = this.tradeQuantity();
     const margin = this.requiredMargin();
     if (!tp || !curP || !qty || tp <= 0 || curP <= 0 || margin <= 0) return null;
@@ -287,14 +336,15 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     return { pnl, roi, valid: this.tradeSide() === 'LONG' ? tp > curP : tp < curP };
   });
 
-  // Active open positions for current symbol with live floating P&L
-  readonly activeSymbolPositions = computed(() => {
+  // REAL-TIME CONTINUOUS FLOATING P&L FOR ALL OPEN POSITIONS
+  readonly liveOpenPositions = computed(() => {
     const curSym = this.symbol();
     const curP = this.currentQuote()?.price;
+
     return this.userPositions()
-      .filter(p => p.symbol === curSym && p.status === 'OPEN')
+      .filter(p => p.status === 'OPEN')
       .map(p => {
-        const livePrice = curP && curP > 0 ? curP : p.entryPrice;
+        const livePrice = (p.symbol === curSym && curP && curP > 0) ? curP : (p.currentPrice || p.entryPrice);
         let floatingPnl = 0;
         if (p.side === 'LONG') {
           floatingPnl = (livePrice - p.entryPrice) * p.quantity;
@@ -313,22 +363,27 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       });
   });
 
-  // Total floating P&L across symbol positions
+  // Active open positions for currently selected symbol
+  readonly activeSymbolPositions = computed(() => {
+    const curSym = this.symbol();
+    return this.liveOpenPositions().filter(p => p.symbol === curSym);
+  });
+
+  // Total floating P&L across all open positions
+  readonly totalFloatingPnl = computed(() => {
+    return this.liveOpenPositions().reduce((acc, p) => acc + (p.unrealizedPnl || 0), 0);
+  });
+
+  // Total floating P&L for currently selected symbol
   readonly totalSymbolFloatingPnl = computed(() => {
     return this.activeSymbolPositions().reduce((acc, p) => acc + (p.unrealizedPnl || 0), 0);
   });
-
-  // Live Terminal Session Time Clock
-  readonly currentSessionTime = signal<string>('');
-  private sessionClockTimer: any = null;
 
   // Margin & Account Analytics
   readonly usedMargin = computed(() => {
     const fromWallet = this.userWallet()?.marginUsed;
     if (fromWallet != null && fromWallet > 0) return fromWallet;
-    return this.userPositions()
-      .filter(p => p.status === 'OPEN')
-      .reduce((acc, p) => acc + (p.marginUsed || 0), 0);
+    return this.liveOpenPositions().reduce((acc, p) => acc + (p.marginUsed || 0), 0);
   });
 
   readonly freeMargin = computed(() => {
@@ -340,14 +395,18 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly totalEquity = computed(() => {
     const cash = this.userWallet()?.cashBalance ?? 0;
     const used = this.usedMargin();
-    return cash + used + this.totalSymbolFloatingPnl();
+    return cash + used + this.totalFloatingPnl();
   });
 
-  // Active Symbol's primary position (if open)
-  readonly activeSymbolPrimaryPosition = computed(() => {
-    const active = this.activeSymbolPositions();
-    return active.length > 0 ? active[0] : null;
+  readonly marginLevelPercent = computed(() => {
+    const used = this.usedMargin();
+    if (used <= 0) return 9999;
+    return (this.totalEquity() / used) * 100;
   });
+
+  // Live Terminal Session Clock
+  readonly currentSessionTime = signal<string>('');
+  private sessionClockTimer: any = null;
 
   // =========================================================================
   // MODIFY POSITION MODAL STATE
@@ -361,7 +420,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly modifySuccessMessage = signal<string | null>(null);
 
   // =========================================================================
-  // CLOSE POSITION CONFIRMATION MODAL STATE & PARTIAL CLOSE
+  // CLOSE POSITION MODAL STATE & PARTIAL CLOSE
   // =========================================================================
   readonly isCloseConfirmModalOpen = signal<boolean>(false);
   readonly closingPositionTarget = signal<PositionItem | null>(null);
@@ -416,25 +475,18 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     return Math.max(0, margin + pnl);
   });
 
-  // Quick navigation chips
-  readonly quickShortcuts = [
-    { symbol: 'RELIANCE', name: 'Reliance Industries', category: 'stocks' },
-    { symbol: 'TCS', name: 'Tata Consultancy Services', category: 'stocks' },
-    { symbol: 'NIFTY 50', name: 'Nifty 50 Index', category: 'indices' },
-    { symbol: 'BANK NIFTY', name: 'Nifty Bank Index', category: 'indices' },
-    { symbol: 'AAPL', name: 'Apple Inc.', category: 'stocks' },
-    { symbol: 'NVDA', name: 'NVIDIA Corp.', category: 'stocks' },
-    { symbol: 'EUR/USD', name: 'Euro / USD', category: 'forex' },
-    { symbol: 'BTC/USD', name: 'BTC/USD', category: 'crypto' }
-  ];
-
   // Lightweight Charts Instances
   private chart: IChartApi | null = null;
   private candlestickSeries: ISeriesApi<'Candlestick'> | null = null;
   private lineSeries: ISeriesApi<'Line'> | null = null;
   private areaSeries: ISeriesApi<'Area'> | null = null;
   private volumeSeries: ISeriesApi<'Histogram'> | null = null;
+  private ema9Series: ISeriesApi<'Line'> | null = null;
+  private ema21Series: ISeriesApi<'Line'> | null = null;
+  private sma50Series: ISeriesApi<'Line'> | null = null;
+  private seriesMarkersPlugin: ISeriesMarkersPluginApi<Time> | null = null;
   private chartPriceLines: IPriceLine[] = [];
+  private livePriceLine: IPriceLine | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private paramSub?: Subscription;
   private wsTickSub?: Subscription;
@@ -454,12 +506,13 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Effect to sync price lines on chart when open positions or active quote changes
+    // Effect to sync price lines and markers on chart when open positions change
     effect(() => {
       const positions = this.activeSymbolPositions();
       const quote = this.currentQuote();
-      if (this.candlestickSeries || this.lineSeries) {
+      if (this.candlestickSeries || this.lineSeries || this.areaSeries) {
         this.updateChartPriceLines(positions);
+        this.updateLivePriceLine(quote?.price ?? 0);
       }
     });
   }
@@ -482,7 +535,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       }
     });
 
-    // 2. Handle tab visibility change to pause polling when hidden
+    // 2. Handle tab visibility change
     if (typeof document !== 'undefined') {
       this.boundOnVisibilityChange = () => {
         if (document.hidden) {
@@ -531,6 +584,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       this.resizeObserver = null;
     }
     if (this.chart) {
+      this.seriesMarkersPlugin = null;
       this.chart.remove();
       this.chart = null;
     }
@@ -541,6 +595,62 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     const pad = (n: number) => n.toString().padStart(2, '0');
     const timeStr = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())} UTC`;
     this.currentSessionTime.set(timeStr);
+  }
+
+  // =========================================================================
+  // INSTRUMENT SELECTION & SYMBOL SEARCH
+  // =========================================================================
+
+  selectSymbol(sym: string): void {
+    const cleanSym = sym.trim().toUpperCase();
+    if (!cleanSym || cleanSym === this.symbol()) return;
+
+    // Check if symbol is in top bar; if not, add it
+    const exists = this.topInstruments().some(i => i.symbol === cleanSym);
+    if (!exists) {
+      this.topInstruments.update(list => [
+        { symbol: cleanSym, name: cleanSym, marketType: 'Custom' },
+        ...list
+      ]);
+    }
+
+    this.navigateToStock(cleanSym);
+  }
+
+  openSearchModal(): void {
+    this.symbolSearchQuery.set('');
+    this.searchResults.set([]);
+    this.isSearchModalOpen.set(true);
+  }
+
+  closeSearchModal(): void {
+    this.isSearchModalOpen.set(false);
+  }
+
+  onSearchQueryChange(query: string): void {
+    this.symbolSearchQuery.set(query);
+    const q = query.trim();
+    if (!q) {
+      this.searchResults.set([]);
+      return;
+    }
+
+    this.isSearchingSymbols.set(true);
+    this.marketService.searchSymbols(q).subscribe({
+      next: (results) => {
+        this.searchResults.set(results?.bestMatches || []);
+        this.isSearchingSymbols.set(false);
+      },
+      error: () => {
+        this.isSearchingSymbols.set(false);
+      }
+    });
+  }
+
+  selectSearchResult(item: any): void {
+    const sym = item.symbol || item;
+    this.closeSearchModal();
+    this.selectSymbol(sym);
   }
 
   // =========================================================================
@@ -564,30 +674,35 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     if (cleanSym.includes('NIFTY') || cleanSym.includes('SENSEX')) {
       this.instrumentType.set('Index');
       this.exchange.set(cleanSym.includes('SENSEX') ? 'BSE' : 'NSE');
+      this.companyName.set(cleanSym.includes('SENSEX') ? 'BSE SENSEX Index' : 'NIFTY 50 Index');
+    } else if (cleanSym === 'XAU/USD') {
+      this.instrumentType.set('Commodity');
+      this.exchange.set('Metals');
+      this.companyName.set('Gold / US Dollar');
+    } else if (cleanSym === 'USOIL') {
+      this.instrumentType.set('Commodity');
+      this.exchange.set('Energy');
+      this.companyName.set('WTI Crude Oil');
     } else if (cleanSym.includes('/')) {
       this.instrumentType.set(cleanSym.startsWith('BTC') || cleanSym.startsWith('ETH') || cleanSym.startsWith('SOL') ? 'Crypto' : 'Forex');
-      this.exchange.set(this.instrumentType() === 'Crypto' ? 'Coinbase' : 'Forex');
+      this.exchange.set(this.instrumentType() === 'Crypto' ? 'Binance' : 'Forex');
+      this.companyName.set(cleanSym);
     } else if (this.marketService.isIndianSymbol(cleanSym)) {
       this.instrumentType.set('Stock');
       this.exchange.set('NSE');
+      this.companyName.set(cleanSym);
     } else {
       this.instrumentType.set('Stock');
       this.exchange.set('NASDAQ');
+      this.companyName.set(cleanSym);
     }
 
-    // Default interval recommendations based on initial mode
-    if (this.selectedTradingMode() === 'SCALPING') {
-      this.currentInterval.set('1min');
-    } else if (this.selectedTradingMode() === 'INTRADAY') {
-      this.currentInterval.set('5min');
-    }
-
-    // Fetch initial live quote and historical candle series
+    // Fetch initial quote & candles
     this.fetchQuote(cleanSym);
     const opt = this.intervals.find(i => i.value === this.currentInterval());
     this.fetchCandlesByInterval(cleanSym, this.currentInterval(), opt ? opt.outputsize : 100);
 
-    // Start WebSocket tick stream + REST fallback polling
+    // Start WebSocket stream + fallback
     this.startLiveStream(cleanSym);
 
     if (this.authService.isAuthenticated()) {
@@ -604,10 +719,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     this.isStreamingUnavailable.set(false);
     this.streamStatusMessage.set(null);
 
-    // Subscribe to Spring Boot WebSocket gateway
     this.marketWebSocketService.subscribe(cleanSym, this.currentInterval());
-
-    // Start periodic polling fallback
     this.startPollingFallback(cleanSym);
   }
 
@@ -617,11 +729,10 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       this.livePollingSub = undefined;
     }
 
-    // Poll quote every 3.5 seconds when active to guarantee fresh prices
-    this.livePollingSub = timer(3500, 3500).subscribe(() => {
+    this.livePollingSub = timer(3000, 3000).subscribe(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       const timeSinceLastTick = Date.now() - this.lastLiveTimestamp();
-      if (timeSinceLastTick >= 3000) {
+      if (timeSinceLastTick >= 2500) {
         this.pollFreshQuote(symbol);
       }
     });
@@ -647,7 +758,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         if (tick.status === 'DATA_UNAVAILABLE' || tick.streamingSupported === false) {
           this.isStreamingUnavailable.set(true);
           this.isReceivingRealTicks.set(false);
-          this.streamStatusMessage.set(tick.message || 'Streaming unavailable for current market/plan');
+          this.streamStatusMessage.set(tick.message || 'Streaming unavailable');
         } else if (tick.status === 'CONNECTED') {
           this.isWebSocketConnected.set(true);
         }
@@ -661,14 +772,13 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Real tick received for currently selected instrument
     this.isReceivingRealTicks.set(true);
     this.isStreamingUnavailable.set(false);
     this.streamStatusMessage.set(null);
     this.isMarketDataUnavailable.set(false);
     this.lastLiveTimestamp.set(Date.now());
 
-    if (this.errorMessage() === 'Live market data unavailable' || this.errorMessage() === 'Data unavailable') {
+    if (this.errorMessage() === 'Live market data unavailable') {
       this.errorMessage.set(null);
     }
 
@@ -702,7 +812,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       next: (quote) => {
         if (quote && quote.price != null && quote.price > 0) {
           this.isMarketDataUnavailable.set(false);
-          if (this.errorMessage() === 'Live market data unavailable' || this.errorMessage() === 'Data unavailable') {
+          if (this.errorMessage() === 'Live market data unavailable') {
             this.errorMessage.set(null);
           }
           this.currentQuote.set(quote);
@@ -712,7 +822,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
           this.processLiveCandleTick(quote.price, quote.volume, quote.timestamp ? quote.timestamp * 1000 : Date.now());
         }
       },
-      error: (err) => {
+      error: () => {
         if (!this.currentQuote() || this.currentQuote()?.price == null) {
           this.isMarketDataUnavailable.set(true);
           this.errorMessage.set('Live market data unavailable');
@@ -734,7 +844,6 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     const lastBucket = Math.floor(last.timestamp / intervalSec) * intervalSec;
 
     if (currentBucket > lastBucket) {
-      // New interval candle created
       const newCandle: Candle = {
         timestamp: currentBucket,
         datetime: new Date(currentBucket * 1000).toISOString(),
@@ -773,18 +882,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
           });
         } catch (e) {}
       }
-
-      if (this.volumeSeries) {
-        try {
-          this.volumeSeries.update({
-            time: (newCandle.timestamp as unknown) as Time,
-            value: newCandle.volume || 0,
-            color: newCandle.close >= newCandle.open ? 'rgba(16, 185, 129, 0.45)' : 'rgba(244, 63, 94, 0.45)'
-          });
-        } catch (e) {}
-      }
     } else {
-      // Update the current in-progress candle
       const updatedCandle: Candle = {
         ...last,
         high: Math.max(last.high, livePrice),
@@ -821,28 +919,6 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
           });
         } catch (e) {}
       }
-
-      if (this.volumeSeries) {
-        try {
-          this.volumeSeries.update({
-            time: (updatedCandle.timestamp as unknown) as Time,
-            value: updatedCandle.volume || 0,
-            color: updatedCandle.close >= updatedCandle.open ? 'rgba(16, 185, 129, 0.45)' : 'rgba(244, 63, 94, 0.45)'
-          });
-        } catch (e) {}
-      }
-    }
-
-    // Update hover bar info if not crosshair hovered
-    if (!this.hoveredBar()) {
-      this.hoveredBar.set({
-        timeStr: this.formatBarDateTime(new Date(tickTsSec * 1000)),
-        open: last.open,
-        high: Math.max(last.high, livePrice),
-        low: Math.min(last.low, livePrice),
-        close: livePrice,
-        volume: last.volume
-      });
     }
   }
 
@@ -943,32 +1019,14 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     } else if (err.status === 404) {
       this.errorMessage.set('Data unavailable');
     } else if (err.status === 504) {
-      this.errorMessage.set('Market data request timed out. Please try again.');
+      this.errorMessage.set('Market data request timed out.');
     } else {
       this.errorMessage.set(err.error?.message || err.message || 'Data unavailable');
     }
   }
 
-  private getApiParamsForTimeframe(tf: TimeframeRange): { interval: string; outputsize: number } {
-    switch (tf) {
-      case '1D':
-        return { interval: '5min', outputsize: 78 };
-      case '1W':
-        return { interval: '15min', outputsize: 130 };
-      case '1M':
-        return { interval: '1h', outputsize: 160 };
-      case '3M':
-        return { interval: '1day', outputsize: 90 };
-      case '6M':
-        return { interval: '1day', outputsize: 180 };
-      case '1Y':
-      default:
-        return { interval: '1day', outputsize: 365 };
-    }
-  }
-
   // =========================================================================
-  // LIGHTWEIGHT CHARTS RENDERING & POSITION OVERLAYS
+  // LIGHTWEIGHT CHARTS RENDERING & OVERLAYS
   // =========================================================================
 
   formatBarDateTime(timeVal: any): string {
@@ -978,21 +1036,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       const pad = (n: number) => n.toString().padStart(2, '0');
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
-    if (typeof timeVal === 'object' && timeVal !== null && 'year' in timeVal) {
-      const pad = (n: number) => n.toString().padStart(2, '0');
-      const h = 'hour' in timeVal ? ` ${pad((timeVal as any).hour)}:${pad((timeVal as any).minute)}:${pad((timeVal as any).second || 0)}` : ' 00:00:00';
-      return `${timeVal.year}-${pad(timeVal.month)}-${pad(timeVal.day)}${h}`;
-    }
     if (typeof timeVal === 'string') {
-      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(timeVal)) {
-        return timeVal;
-      }
-      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(timeVal)) {
-        return `${timeVal}:00`;
-      }
-      if (/^\d{4}-\d{2}-\d{2}$/.test(timeVal)) {
-        return `${timeVal} 00:00:00`;
-      }
       const d = new Date(timeVal);
       if (!isNaN(d.getTime())) {
         const pad = (n: number) => n.toString().padStart(2, '0');
@@ -1009,18 +1053,18 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     try {
       if (!this.chart) {
         const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-        const bgColor = isDark ? '#08080a' : '#ffffff';
-        const textColor = isDark ? '#a1a1aa' : '#475569';
-        const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(226, 232, 240, 0.6)';
+        const bgColor = isDark ? '#0b0e14' : '#ffffff';
+        const textColor = isDark ? '#94a3b8' : '#475569';
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(226, 232, 240, 0.6)';
         const borderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.8)';
 
         this.chart = createChart(container, {
           width: container.clientWidth || 800,
-          height: container.clientHeight || 480,
+          height: container.clientHeight || 500,
           layout: {
             background: { type: ColorType.Solid, color: bgColor },
             textColor: textColor,
-            fontFamily: "'JetBrains Mono', 'Fira Code', 'Inter', monospace",
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
             fontSize: 11
           },
           grid: {
@@ -1047,20 +1091,16 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
             visible: true,
             autoScale: true,
             scaleMargins: {
-              top: 0.08,
-              bottom: 0.22
+              top: 0.06,
+              bottom: 0.18
             }
           },
           timeScale: {
             borderColor: borderColor,
             timeVisible: true,
             secondsVisible: false,
-            fixLeftEdge: false,
-            fixRightEdge: false,
-            shiftVisibleRangeOnNewBar: true,
             rightOffset: 12,
-            barSpacing: 10,
-            minBarSpacing: 0.5
+            barSpacing: 10
           }
         });
 
@@ -1135,7 +1175,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       const volumeData: HistogramData<Time>[] = candles.map(c => ({
         time: (c.timestamp as unknown) as Time,
         value: c.volume || 0,
-        color: c.close >= c.open ? 'rgba(16, 185, 129, 0.45)' : 'rgba(244, 63, 94, 0.45)'
+        color: c.close >= c.open ? 'rgba(16, 185, 129, 0.4)' : 'rgba(244, 63, 94, 0.4)'
       }));
 
       // Clear existing series
@@ -1155,16 +1195,30 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         this.chart.removeSeries(this.volumeSeries);
         this.volumeSeries = null;
       }
+      if (this.ema9Series) {
+        this.chart.removeSeries(this.ema9Series);
+        this.ema9Series = null;
+      }
+      if (this.ema21Series) {
+        this.chart.removeSeries(this.ema21Series);
+        this.ema21Series = null;
+      }
+      if (this.sma50Series) {
+        this.chart.removeSeries(this.sma50Series);
+        this.sma50Series = null;
+      }
 
       // Add Volume Series
-      this.volumeSeries = this.chart.addSeries(HistogramSeries, {
-        priceFormat: { type: 'volume' },
-        priceScaleId: ''
-      });
-      this.volumeSeries.priceScale().applyOptions({
-        scaleMargins: { top: 0.8, bottom: 0 }
-      });
-      this.volumeSeries.setData(volumeData);
+      if (this.activeIndicators().volume) {
+        this.volumeSeries = this.chart.addSeries(HistogramSeries, {
+          priceFormat: { type: 'volume' },
+          priceScaleId: ''
+        });
+        this.volumeSeries.priceScale().applyOptions({
+          scaleMargins: { top: 0.82, bottom: 0 }
+        });
+        this.volumeSeries.setData(volumeData);
+      }
 
       // Add Main Series
       if (chartType === 'candles') {
@@ -1192,24 +1246,79 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         this.areaSeries.setData(lineData);
       }
 
-      // Set initial hover bar
-      const latest = candles[candles.length - 1];
-      if (latest) {
-        this.hoveredBar.set({
-          timeStr: this.formatBarDateTime(latest.datetime || latest.timestamp),
-          open: latest.open,
-          high: latest.high,
-          low: latest.low,
-          close: latest.close,
-          volume: latest.volume
-        });
+      // Add Indicator Overlay Series
+      if (this.activeIndicators().ema9) {
+        const ema9Result = calculateEMA(candles, 9);
+        if (ema9Result.isSufficient) {
+          this.ema9Series = this.chart.addSeries(LineSeries, {
+            color: '#06b6d4',
+            lineWidth: 1,
+            title: 'EMA 9'
+          });
+          this.ema9Series.setData(ema9Result.data.map(d => ({ time: (d.time as unknown) as Time, value: d.value })));
+        }
+      }
+
+      if (this.activeIndicators().ema21) {
+        const ema21Result = calculateEMA(candles, 21);
+        if (ema21Result.isSufficient) {
+          this.ema21Series = this.chart.addSeries(LineSeries, {
+            color: '#ec4899',
+            lineWidth: 1,
+            title: 'EMA 21'
+          });
+          this.ema21Series.setData(ema21Result.data.map(d => ({ time: (d.time as unknown) as Time, value: d.value })));
+        }
+      }
+
+      if (this.activeIndicators().sma50) {
+        const sma50Result = calculateSMA(candles, 50);
+        if (sma50Result.isSufficient) {
+          this.sma50Series = this.chart.addSeries(LineSeries, {
+            color: '#eab308',
+            lineWidth: 1,
+            title: 'SMA 50'
+          });
+          this.sma50Series.setData(sma50Result.data.map(d => ({ time: (d.time as unknown) as Time, value: d.value })));
+        }
       }
 
       this.chart.timeScale().fitContent();
       this.updateChartPriceLines(this.activeSymbolPositions());
-    } catch (e) {
-      // Headless or canvas error catch
+      this.updateLivePriceLine(this.currentQuote()?.price ?? 0);
+    } catch (e) {}
+  }
+
+  toggleIndicator(name: 'ema9' | 'ema21' | 'sma50' | 'volume'): void {
+    this.activeIndicators.update(prev => ({
+      ...prev,
+      [name]: !prev[name]
+    }));
+    const container = this.chartContainerRef()?.nativeElement;
+    const data = this.candleData();
+    if (container && data.length > 0) {
+      this.initOrUpdateChart(container, data, this.currentChartType());
     }
+  }
+
+  private updateLivePriceLine(price: number): void {
+    const activeSeries = this.candlestickSeries || this.lineSeries || this.areaSeries;
+    if (!activeSeries || !price || price <= 0) return;
+
+    try {
+      if (this.livePriceLine) {
+        activeSeries.removePriceLine(this.livePriceLine);
+        this.livePriceLine = null;
+      }
+      this.livePriceLine = activeSeries.createPriceLine({
+        price: price,
+        color: '#38bdf8',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: 'LIVE'
+      });
+    } catch {}
   }
 
   private updateChartPriceLines(positions: any[]): void {
@@ -1217,7 +1326,6 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     if (!activeSeries) return;
 
     try {
-      // Remove old price lines
       for (const pl of this.chartPriceLines) {
         try {
           activeSeries.removePriceLine(pl);
@@ -1225,15 +1333,18 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       }
       this.chartPriceLines = [];
 
-      // Add price lines for active positions
+      const markers: SeriesMarker<Time>[] = [];
+
       for (const pos of positions) {
         if (!pos || pos.status !== 'OPEN') continue;
 
         const isLong = pos.side === 'LONG';
-        const pnlStr = (pos.unrealizedPnl || 0) >= 0 ? `+$${(pos.unrealizedPnl || 0).toFixed(2)}` : `-$${Math.abs(pos.unrealizedPnl || 0).toFixed(2)}`;
-        const label = `${pos.side} ${pos.quantity} @ ${pos.entryPrice.toFixed(2)} | P&L: ${pnlStr} (1:${pos.leverage}x)`;
+        const pnl = pos.unrealizedPnl || 0;
+        const pnlSign = pnl >= 0 ? '+' : '-';
+        const pnlStr = `${pnlSign}$${Math.abs(pnl).toFixed(2)} (${pos.unrealizedPnlPercent >= 0 ? '+' : ''}${(pos.unrealizedPnlPercent || 0).toFixed(2)}%)`;
+        const label = `${pos.side} ${pos.quantity}L @ ${pos.entryPrice.toFixed(2)} | ${pnlStr}`;
 
-        // Entry Price Line
+        // Entry Line
         const entryLine = activeSeries.createPriceLine({
           price: pos.entryPrice,
           color: isLong ? '#10b981' : '#f43f5e',
@@ -1244,7 +1355,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         });
         this.chartPriceLines.push(entryLine);
 
-        // Stop Loss Line
+        // SL Line
         if (pos.stopLoss && pos.stopLoss > 0) {
           const slLine = activeSeries.createPriceLine({
             price: pos.stopLoss,
@@ -1257,7 +1368,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
           this.chartPriceLines.push(slLine);
         }
 
-        // Take Profit Line
+        // TP Line
         if (pos.takeProfit && pos.takeProfit > 0) {
           const tpLine = activeSeries.createPriceLine({
             price: pos.takeProfit,
@@ -1269,6 +1380,33 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
           });
           this.chartPriceLines.push(tpLine);
         }
+
+        // Position Marker
+        if (pos.createdAt && this.candleData().length > 0) {
+          const tsSec = Math.floor(new Date(pos.createdAt).getTime() / 1000);
+          const candles = this.candleData();
+          // Find closest candle time
+          const matchCandle = candles.find(c => Math.abs(c.timestamp - tsSec) < 1800) || candles[candles.length - 1];
+          if (matchCandle) {
+            markers.push({
+              time: (matchCandle.timestamp as unknown) as Time,
+              position: isLong ? 'belowBar' : 'aboveBar',
+              color: isLong ? '#10b981' : '#f43f5e',
+              shape: isLong ? 'arrowUp' : 'arrowDown',
+              text: `${pos.side} ${pos.quantity}L @ ${pos.entryPrice.toFixed(2)}`
+            });
+          }
+        }
+      }
+
+      if (this.candlestickSeries) {
+        try {
+          if (!this.seriesMarkersPlugin) {
+            this.seriesMarkersPlugin = createSeriesMarkers(this.candlestickSeries, markers);
+          } else {
+            this.seriesMarkersPlugin.setMarkers(markers);
+          }
+        } catch {}
       }
     } catch {}
   }
@@ -1280,17 +1418,14 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   setTradeSide(side: PositionSide): void {
     this.tradeSide.set(side);
     this.tradeErrorMessage.set(null);
-    this.tradeSuccessReceipt.set(null);
   }
 
   setTradingMode(mode: TradingMode): void {
     this.selectedTradingMode.set(mode);
     if (mode === 'SCALPING') {
-      this.currentInterval.set('1min');
-      this.fetchCandlesByInterval(this.symbol(), '1min', 100);
+      this.setInterval('1min');
     } else if (mode === 'INTRADAY') {
-      this.currentInterval.set('5min');
-      this.fetchCandlesByInterval(this.symbol(), '5min', 100);
+      this.setInterval('5min');
     }
   }
 
@@ -1299,12 +1434,12 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   }
 
   setTradeQuantity(qty: number): void {
-    const val = Math.max(0.0001, Number(qty) || 1);
+    const val = Math.max(0.0001, Number(qty) || 0.1);
     this.tradeQuantity.set(val);
   }
 
   adjustQuantity(delta: number): void {
-    const cur = this.tradeQuantity() || 1;
+    const cur = this.tradeQuantity() || 0.1;
     const nextVal = Math.max(0.0001, Number((cur + delta).toFixed(4)));
     this.tradeQuantity.set(nextVal);
   }
@@ -1314,7 +1449,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   }
 
   setMaxQuantity(): void {
-    const currentPrice = this.currentQuote()?.price;
+    const currentPrice = this.effectiveEntryPrice();
     if (!currentPrice || currentPrice <= 0) return;
 
     const balance = this.userWallet()?.cashBalance ?? 0;
@@ -1324,7 +1459,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   }
 
   setQuickSlPercent(percent: number): void {
-    const curP = this.currentQuote()?.price;
+    const curP = this.effectiveEntryPrice();
     if (!curP) return;
 
     if (this.tradeSide() === 'LONG') {
@@ -1337,7 +1472,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   }
 
   setQuickTpPercent(percent: number): void {
-    const curP = this.currentQuote()?.price;
+    const curP = this.effectiveEntryPrice();
     if (!curP) return;
 
     if (this.tradeSide() === 'LONG') {
@@ -1370,14 +1505,24 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
   setOrderType(type: 'MARKET' | 'PENDING'): void {
     this.orderType.set(type);
+    if (type === 'PENDING' && !this.pendingPrice()) {
+      this.pendingPrice.set(this.currentQuote()?.price || 100);
+    }
   }
 
-  setActivePanelMode(mode: 'POSITION_MGMT' | 'NEW_ORDER'): void {
-    this.activePanelMode.set(mode);
+  setActiveBottomTab(tab: 'OPEN' | 'PENDING' | 'CLOSED'): void {
+    this.activeBottomTab.set(tab);
+    if (this.isTerminalCollapsed()) {
+      this.isTerminalCollapsed.set(false);
+    }
   }
 
-  setActivePositionsTab(tab: 'OPEN' | 'PENDING' | 'CLOSED'): void {
-    this.activePositionsTab.set(tab);
+  toggleTerminalCollapse(): void {
+    this.isTerminalCollapsed.update(v => !v);
+  }
+
+  toggleTerminalExpand(): void {
+    this.isTerminalExpanded.update(v => !v);
   }
 
   submitTrade(): void {
@@ -1446,7 +1591,6 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
           `${receipt.quantity} LOT on ${receipt.symbol} at ${this.formatCurrencySymbol(receipt.symbol)}${receipt.executionPrice != null ? receipt.executionPrice.toFixed(2) : ''}`
         );
         this.refreshTradingState();
-        this.activePanelMode.set('POSITION_MGMT');
       },
       error: (err) => {
         this.isSubmittingTrade.set(false);
@@ -1529,18 +1673,6 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     this.closePosition(pos, qty);
   }
 
-  prepareOpenLong(): void {
-    this.tradeSide.set('LONG');
-    this.activePanelMode.set('NEW_ORDER');
-    this.tradeErrorMessage.set(null);
-  }
-
-  prepareOpenShort(): void {
-    this.tradeSide.set('SHORT');
-    this.activePanelMode.set('NEW_ORDER');
-    this.tradeErrorMessage.set(null);
-  }
-
   openModifyModal(pos: PositionItem): void {
     this.modifyingPosition.set(pos);
     this.modifyStopLoss.set(pos.stopLoss || null);
@@ -1612,12 +1744,8 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     });
   }
 
-  dismissTradeSuccess(): void {
-    this.tradeSuccessReceipt.set(null);
-  }
-
   // =========================================================================
-  // PRICE ALERT ACTIONS & STATE HANDLERS
+  // PRICE ALERT ACTIONS
   // =========================================================================
 
   openAlertModal(): void {
@@ -1690,9 +1818,18 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
   setTimeframe(tf: TimeframeRange): void {
     this.currentTimeframe.set(tf);
-    const { interval, outputsize } = this.getApiParamsForTimeframe(tf);
-    this.currentInterval.set(interval as StockDetailInterval);
-    this.fetchCandlesByInterval(this.symbol(), interval as StockDetailInterval, outputsize);
+    let interval: StockDetailInterval = '5min';
+    let outputsize = 100;
+    switch (tf) {
+      case '1D': interval = '5min'; outputsize = 78; break;
+      case '1W': interval = '15min'; outputsize = 130; break;
+      case '1M': interval = '1h'; outputsize = 160; break;
+      case '3M': interval = '1day'; outputsize = 90; break;
+      case '6M': interval = '1day'; outputsize = 180; break;
+      case '1Y': interval = '1day'; outputsize = 365; break;
+    }
+    this.currentInterval.set(interval);
+    this.fetchCandlesByInterval(this.symbol(), interval, outputsize);
     this.marketWebSocketService.subscribe(this.symbol(), interval);
   }
 
@@ -1739,14 +1876,5 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       return parts[1] === 'USD' ? '$' : parts[1];
     }
     return '$';
-  }
-
-  getDayProgressPercent(quote: StockQuote): number {
-    if (!quote.high || !quote.low || quote.high === quote.low || !quote.price) {
-      return 50;
-    }
-    const range = quote.high - quote.low;
-    const progress = ((quote.price - quote.low) / range) * 100;
-    return Math.min(Math.max(progress, 0), 100);
   }
 }
