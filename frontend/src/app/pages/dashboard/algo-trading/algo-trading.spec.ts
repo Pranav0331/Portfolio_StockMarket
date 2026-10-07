@@ -85,6 +85,17 @@ describe('AlgoTradingComponent', () => {
         activeIndicators: ['EMA 9 (85100)', 'EMA 21 (84900)'],
         isMarketDataAvailable: true
       }),
+      evaluateAdHoc: () => of({
+        symbol: 'BTC/USD',
+        currentPrice: 85000,
+        trend: 'BULLISH',
+        signal: 'BUY',
+        confidence: 85,
+        riskLevel: 'LOW',
+        reasons: ['EMA bullish cross'],
+        activeIndicators: ['EMA 9 (85100)', 'EMA 21 (84900)'],
+        isMarketDataAvailable: true
+      }),
       evaluateStrategy: () => of({
         symbol: 'BTC/USD',
         currentPrice: 85000,

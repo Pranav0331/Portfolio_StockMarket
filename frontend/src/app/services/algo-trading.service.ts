@@ -63,7 +63,7 @@ function mapBackendToStrategy(raw: any): AlgoStrategy {
 
 function mapStrategyToRequest(s: Partial<AlgoStrategy>): any {
   return {
-    name: s.name,
+    name: s.name || 'Ad-Hoc Strategy',
     symbol: s.symbol,
     market: s.marketType,
     tradingMode: s.tradingMode,
@@ -79,10 +79,10 @@ function mapStrategyToRequest(s: Partial<AlgoStrategy>): any {
     macdSignal: s.macdSignal ?? 9,
     bbPeriod: s.bollingerPeriod ?? 20,
     bbStdDev: s.bollingerStdDev ?? 2.0,
-    useEmaCross: s.condEmaCross ?? s.useEma9 ?? true,
-    useRsiFilter: s.condRsiThreshold ?? s.useRsi ?? true,
-    useMacdFilter: s.condMacdDirection ?? s.useMacd ?? true,
-    useBbFilter: s.condBollingerBounce ?? s.useBollinger ?? false,
+    useEmaCross: (s.condEmaCross !== false) && (s.useEma9 !== false || s.useEma21 !== false),
+    useRsiFilter: (s.condRsiThreshold !== false) && (s.useRsi !== false),
+    useMacdFilter: (s.condMacdDirection !== false) && (s.useMacd !== false),
+    useBbFilter: (s.condBollingerBounce === true) && (s.useBollinger === true),
     riskPerTradePct: s.riskPerTradePercent ?? 2.0,
     leverage: s.leverage ?? 10,
     quantity: s.quantity ?? 0.1,
@@ -206,6 +206,13 @@ export class AlgoTradingService {
   evaluateStrategy(id: number, execute: boolean = false): Observable<AlgoEvaluationResult> {
     const params = new HttpParams().set('execute', execute.toString());
     return this.http.get<AlgoEvaluationResult>(`${this.baseUrl}/strategies/${id}/evaluate`, { params }).pipe(
+      tap((res) => this.evaluationResult.set(res))
+    );
+  }
+
+  evaluateAdHoc(strategy: Partial<AlgoStrategy>): Observable<AlgoEvaluationResult> {
+    const payload = mapStrategyToRequest(strategy);
+    return this.http.post<AlgoEvaluationResult>(`${this.baseUrl}/evaluate`, payload).pipe(
       tap((res) => this.evaluationResult.set(res))
     );
   }

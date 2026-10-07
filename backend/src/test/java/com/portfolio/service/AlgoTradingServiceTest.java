@@ -319,4 +319,101 @@ class AlgoTradingServiceTest {
         assertEquals(new BigDecimal("150.00"), perf.totalPnl());
         assertEquals(new BigDecimal("2.50"), perf.profitFactor());
     }
+
+    @Test
+    void testEvaluateStrategyBearishConfluenceSell() {
+        testStrategy.setStatus(StrategyStatus.RUNNING);
+        testStrategy.setDirection(StrategyDirection.SHORT);
+        testStrategy.setUseEmaCross(true);
+        testStrategy.setUseRsiFilter(true);
+        testStrategy.setRsiOverbought(new BigDecimal("55.00"));
+        testStrategy.setRsiOversold(new BigDecimal("45.00"));
+        testStrategy.setUseMacdFilter(true);
+        when(strategyRepository.findByIdAndUserId(100L, 1L)).thenReturn(Optional.of(testStrategy));
+
+        // Generate strong downtrend candle series
+        List<CandleDto> candles = new ArrayList<>();
+        double basePrice = 50000.0;
+        Instant now = Instant.now();
+        for (int i = 0; i < 50; i++) {
+            double close = basePrice - (i * 50.0);
+            candles.add(new CandleDto(
+                    now.minusSeconds((50 - i) * 60).toEpochMilli(),
+                    now.minusSeconds((50 - i) * 60).toString(),
+                    BigDecimal.valueOf(close + 10),
+                    BigDecimal.valueOf(close + 20),
+                    BigDecimal.valueOf(close - 20),
+                    BigDecimal.valueOf(close),
+                    1000L
+            ));
+        }
+        CandleSeriesDto seriesDto = new CandleSeriesDto("BTC/USD", "15m", "USD", "BINANCE", "crypto", candles);
+        when(marketDataService.getCandles("BTC/USD", "15m", 80)).thenReturn(seriesDto);
+        when(tradingService.getUserPositions(eq(1L), eq("BTC/USD"), eq(PositionStatus.OPEN))).thenReturn(List.of());
+        when(tradingService.executeSell(eq(1L), any(TradeRequestDto.class))).thenReturn(
+                new TradeResponseDto(
+                        11L, 21L, 31L, "BTC/USD", "Bitcoin",
+                        OrderType.SELL, PositionSide.SHORT, OrderStatus.EXECUTED, TradingMode.INTRADAY,
+                        new BigDecimal("0.1000"),
+                        new BigDecimal("47500.00"),
+                        new BigDecimal("475.00"),
+                        10,
+                        new BigDecimal("47.50"),
+                        null,
+                        null,
+                        new BigDecimal("95000.00"),
+                        BigDecimal.ZERO,
+                        Instant.now(),
+                        "EXECUTED"
+                )
+        );
+
+        AlgoEvaluationResponseDto eval = algoTradingService.evaluateStrategy(1L, 100L, true);
+
+        assertNotNull(eval);
+        assertEquals("BTC/USD", eval.symbol());
+        assertEquals("BEARISH", eval.trend());
+        assertEquals(AlgoSignal.SELL, eval.signal());
+        assertTrue(eval.reasons().stream().anyMatch(r -> r.contains("below EMA") && r.contains("[Bearish]")));
+        assertTrue(eval.reasons().stream().anyMatch(r -> r.contains("[Bearish]")));
+        verify(tradeLogRepository, times(1)).save(any(AlgoTradeLog.class));
+    }
+
+    @Test
+    void testEvaluateStrategyNoContradictoryTrend() {
+        testStrategy.setStatus(StrategyStatus.STOPPED);
+        testStrategy.setDirection(StrategyDirection.BOTH);
+        testStrategy.setUseEmaCross(true);
+        testStrategy.setUseRsiFilter(true);
+        testStrategy.setRsiOverbought(new BigDecimal("55.00"));
+        testStrategy.setRsiOversold(new BigDecimal("45.00"));
+        testStrategy.setUseMacdFilter(true);
+        when(strategyRepository.findByIdAndUserId(100L, 1L)).thenReturn(Optional.of(testStrategy));
+
+        // Downtrend candle series -> EMA bearish, RSI bearish, MACD bearish
+        List<CandleDto> candles = new ArrayList<>();
+        double basePrice = 50000.0;
+        Instant now = Instant.now();
+        for (int i = 0; i < 50; i++) {
+            double close = basePrice - (i * 30.0);
+            candles.add(new CandleDto(
+                    now.minusSeconds((50 - i) * 60).toEpochMilli(),
+                    now.minusSeconds((50 - i) * 60).toString(),
+                    BigDecimal.valueOf(close + 10),
+                    BigDecimal.valueOf(close + 20),
+                    BigDecimal.valueOf(close - 20),
+                    BigDecimal.valueOf(close),
+                    1000L
+            ));
+        }
+        CandleSeriesDto seriesDto = new CandleSeriesDto("BTC/USD", "15m", "USD", "BINANCE", "crypto", candles);
+        when(marketDataService.getCandles("BTC/USD", "15m", 80)).thenReturn(seriesDto);
+
+        AlgoEvaluationResponseDto eval = algoTradingService.evaluateStrategy(1L, 100L, false);
+
+        assertNotNull(eval);
+        assertEquals("BEARISH", eval.trend(), "Trend must be BEARISH when indicators are bearish, never BULLISH");
+        assertNotEquals("BULLISH", eval.trend());
+        assertTrue(eval.reasons().stream().anyMatch(r -> r.contains("[Bearish]")));
+    }
 }

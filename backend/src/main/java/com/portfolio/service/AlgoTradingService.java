@@ -295,8 +295,10 @@ public class AlgoTradingService {
         boolean emaBearishCross = currentEmaFast < currentEmaSlow;
         boolean emaFreshCrossDown = prevEmaFast >= prevEmaSlow && currentEmaFast < currentEmaSlow;
 
-        boolean rsiBullish = currentRsi > strategy.getRsiOversold().doubleValue() && currentRsi <= strategy.getRsiOverbought().doubleValue();
-        boolean rsiBearish = currentRsi < strategy.getRsiOverbought().doubleValue() && currentRsi >= strategy.getRsiOversold().doubleValue();
+        double rsiOverbought = strategy.getRsiOverbought() != null ? strategy.getRsiOverbought().doubleValue() : 55.0;
+        double rsiOversold = strategy.getRsiOversold() != null ? strategy.getRsiOversold().doubleValue() : 45.0;
+        boolean rsiBullish = currentRsi > rsiOverbought;
+        boolean rsiBearish = currentRsi < rsiOversold;
 
         boolean macdBullish = currentMacdHist > 0;
         boolean macdBearish = currentMacdHist < 0;
@@ -312,54 +314,60 @@ public class AlgoTradingService {
         if (strategy.isUseEmaCross()) {
             longTotal++;
             shortTotal++;
-            activeIndicators.add(String.format("EMA(%d/%d)", strategy.getEmaFastPeriod(), strategy.getEmaSlowPeriod()));
+            activeIndicators.add(String.format("EMA %d (%.2f) / EMA %d (%.2f)", strategy.getEmaFastPeriod(), currentEmaFast, strategy.getEmaSlowPeriod(), currentEmaSlow));
             if (emaBullishCross) {
                 longScore++;
                 reasons.add(String.format("EMA %d (%.2f) is above EMA %d (%.2f) [Bullish]", strategy.getEmaFastPeriod(), currentEmaFast, strategy.getEmaSlowPeriod(), currentEmaSlow));
-            } else {
+            } else if (emaBearishCross) {
                 shortScore++;
                 reasons.add(String.format("EMA %d (%.2f) is below EMA %d (%.2f) [Bearish]", strategy.getEmaFastPeriod(), currentEmaFast, strategy.getEmaSlowPeriod(), currentEmaSlow));
+            } else {
+                reasons.add(String.format("EMA %d (%.2f) is equal to EMA %d (%.2f) [Neutral]", strategy.getEmaFastPeriod(), currentEmaFast, strategy.getEmaSlowPeriod(), currentEmaSlow));
             }
         }
 
         if (strategy.isUseRsiFilter()) {
             longTotal++;
             shortTotal++;
-            activeIndicators.add(String.format("RSI(%d)", strategy.getRsiPeriod()));
+            activeIndicators.add(String.format("RSI %d (%.1f)", strategy.getRsiPeriod(), currentRsi));
             if (rsiBullish) {
                 longScore++;
-                reasons.add(String.format("RSI is %.1f (Healthy Bullish Momentum)", currentRsi));
-            } else if (currentRsi > strategy.getRsiOverbought().doubleValue()) {
+                reasons.add(String.format("RSI is %.1f (> %.0f) [Bullish]", currentRsi, rsiOverbought));
+            } else if (rsiBearish) {
                 shortScore++;
-                reasons.add(String.format("RSI is %.1f (Overbought territory > %.0f)", currentRsi, strategy.getRsiOverbought().doubleValue()));
+                reasons.add(String.format("RSI is %.1f (< %.0f) [Bearish]", currentRsi, rsiOversold));
             } else {
-                reasons.add(String.format("RSI is %.1f (Oversold territory < %.0f)", currentRsi, strategy.getRsiOversold().doubleValue()));
+                reasons.add(String.format("RSI is %.1f (Neutral between %.0f and %.0f) [Neutral]", currentRsi, rsiOversold, rsiOverbought));
             }
         }
 
         if (strategy.isUseMacdFilter()) {
             longTotal++;
             shortTotal++;
-            activeIndicators.add(String.format("MACD(%d,%d,%d)", strategy.getMacdFast(), strategy.getMacdSlow(), strategy.getMacdSignal()));
+            activeIndicators.add(String.format("MACD Hist (%+.2f)", currentMacdHist));
             if (macdBullish) {
                 longScore++;
-                reasons.add(String.format("MACD Histogram is positive (+%.2f) [Upward Acceleration]", currentMacdHist));
-            } else {
+                reasons.add(String.format("MACD Histogram is positive (+%.2f) [Bullish]", currentMacdHist));
+            } else if (macdBearish) {
                 shortScore++;
-                reasons.add(String.format("MACD Histogram is negative (%.2f) [Downward Acceleration]", currentMacdHist));
+                reasons.add(String.format("MACD Histogram is negative (%.2f) [Bearish]", currentMacdHist));
+            } else {
+                reasons.add("MACD Histogram is neutral (0.00) [Neutral]");
             }
         }
 
         if (strategy.isUseBbFilter()) {
             longTotal++;
             shortTotal++;
-            activeIndicators.add(String.format("BB(%d,%.1f)", strategy.getBbPeriod(), strategy.getBbStdDev().doubleValue()));
+            activeIndicators.add(String.format("BB (%.2f / %.2f)", bbLower, bbUpper));
             if (bbBullish) {
                 longScore++;
-                reasons.add(String.format("Price (%.2f) testing Lower Bollinger Band (%.2f)", currentPrice, bbLower));
+                reasons.add(String.format("Price (%.2f) testing Lower Bollinger Band (%.2f) [Bullish]", currentPrice, bbLower));
             } else if (bbBearish) {
                 shortScore++;
-                reasons.add(String.format("Price (%.2f) testing Upper Bollinger Band (%.2f)", currentPrice, bbUpper));
+                reasons.add(String.format("Price (%.2f) testing Upper Bollinger Band (%.2f) [Bearish]", currentPrice, bbUpper));
+            } else {
+                reasons.add(String.format("Price (%.2f) within Bollinger Bands (%.2f - %.2f) [Neutral]", currentPrice, bbLower, bbUpper));
             }
         }
 
@@ -388,9 +396,15 @@ public class AlgoTradingService {
             confidenceVal = Math.min(95.0, 75.0 + (emaFreshCrossDown ? 15.0 : 5.0) + (macdBearish ? 5.0 : 0.0));
         } else {
             signal = AlgoSignal.WAIT;
-            confidenceVal = Math.max(35.0, 50.0 - Math.abs(longScore - shortScore) * 5.0);
+            if (longTotal > 0) {
+                int dominant = Math.max(longScore, shortScore);
+                confidenceVal = Math.max(35.0, 50.0 + (dominant - Math.min(longScore, shortScore)) * 10.0 - (longTotal - dominant) * 5.0);
+                confidenceVal = Math.min(74.0, Math.max(35.0, confidenceVal));
+            } else {
+                confidenceVal = 50.0;
+            }
             if (reasons.isEmpty()) {
-                reasons.add("Market in consolidation / No clear signal confluence");
+                reasons.add("Market in consolidation / No active indicators configured");
             }
         }
 

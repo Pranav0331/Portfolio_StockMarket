@@ -408,7 +408,7 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
     if (!strat.symbol) return;
     this.isEvaluating.set(true);
 
-    if (strat.id) {
+    if (strat.id && (strat.status === 'RUNNING' || strat.status === 'PAUSED')) {
       this.algoService.evaluateStrategy(strat.id, false).subscribe({
         next: (res) => {
           this.aiEvaluation.set(res);
@@ -423,7 +423,7 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
         }
       });
     } else {
-      this.algoService.evaluateMarket(strat.symbol, strat.timeframe).subscribe({
+      this.algoService.evaluateAdHoc(strat).subscribe({
         next: (res) => {
           this.aiEvaluation.set(res);
           this.isEvaluating.set(false);
