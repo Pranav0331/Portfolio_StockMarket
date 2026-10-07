@@ -172,12 +172,13 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
   private candleSeries: ISeriesApi<'Candlestick'> | null = null;
   private currentPriceLine: IPriceLine | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private themeObserver: MutationObserver | null = null;
 
   private subscriptions: Subscription[] = [];
   private liveEvalTimer: Subscription | null = null;
 
   constructor() {
-    // Reactively recreate or resize chart on theme change
+    // Reactively recreate or resize chart on container ready
     effect(() => {
       const container = this.chartContainerRef();
       if (container && !this.chart) {
@@ -190,17 +191,38 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
     this.loadInitialData();
     this.subscribeWebSocket();
     this.startEvaluationLoop();
+    this.observeThemeChanges();
   }
 
   ngOnDestroy(): void {
     this.subscriptions.forEach((s) => s.unsubscribe());
     if (this.liveEvalTimer) this.liveEvalTimer.unsubscribe();
     if (this.resizeObserver) this.resizeObserver.disconnect();
+    if (this.themeObserver) {
+      this.themeObserver.disconnect();
+      this.themeObserver = null;
+    }
     if (this.chart) {
       this.chart.remove();
       this.chart = null;
     }
     this.marketWebSocketService.unsubscribe(this.formStrategy().symbol);
+  }
+
+  private observeThemeChanges(): void {
+    if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+      this.themeObserver = new MutationObserver(() => {
+        this.applyChartTheme();
+      });
+      this.themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme', 'class']
+      });
+      this.themeObserver.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class']
+      });
+    }
   }
 
   private loadInitialData(): void {
@@ -471,23 +493,27 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
 
   // Lightweight Charts Initialization
   private initChart(container: HTMLDivElement): void {
-    const isDark = !document.body.classList.contains('light-theme');
+    const isLight = typeof document !== 'undefined' && (
+      document.documentElement.getAttribute('data-theme') === 'light' ||
+      document.body.classList.contains('light-theme')
+    );
+
     this.chart = createChart(container, {
       width: container.clientWidth || 600,
-      height: 380,
+      height: 400,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: isDark ? '#94a3b8' : '#64748b'
+        textColor: isLight ? '#475569' : '#94a3b8'
       },
       grid: {
-        vertLines: { color: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)' },
-        horzLines: { color: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)' }
+        vertLines: { color: isLight ? 'rgba(15, 23, 42, 0.06)' : 'rgba(255, 255, 255, 0.04)' },
+        horzLines: { color: isLight ? 'rgba(15, 23, 42, 0.06)' : 'rgba(255, 255, 255, 0.04)' }
       },
       crosshair: {
         mode: CrosshairMode.Normal
       },
       timeScale: {
-        borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+        borderColor: isLight ? 'rgba(15, 23, 42, 0.12)' : 'rgba(255, 255, 255, 0.1)',
         timeVisible: true,
         secondsVisible: false
       }
@@ -506,11 +532,32 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
       if (entries.length > 0 && this.chart && container) {
         this.chart.applyOptions({
           width: container.clientWidth,
-          height: container.clientHeight || 380
+          height: container.clientHeight || 400
         });
       }
     });
     this.resizeObserver.observe(container);
+  }
+
+  private applyChartTheme(): void {
+    if (!this.chart) return;
+    const isLight = typeof document !== 'undefined' && (
+      document.documentElement.getAttribute('data-theme') === 'light' ||
+      document.body.classList.contains('light-theme')
+    );
+
+    this.chart.applyOptions({
+      layout: {
+        textColor: isLight ? '#475569' : '#94a3b8'
+      },
+      grid: {
+        vertLines: { color: isLight ? 'rgba(15, 23, 42, 0.06)' : 'rgba(255, 255, 255, 0.04)' },
+        horzLines: { color: isLight ? 'rgba(15, 23, 42, 0.06)' : 'rgba(255, 255, 255, 0.04)' }
+      },
+      timeScale: {
+        borderColor: isLight ? 'rgba(15, 23, 42, 0.12)' : 'rgba(255, 255, 255, 0.1)'
+      }
+    });
   }
 
   private renderCandles(candles: Candle[]): void {

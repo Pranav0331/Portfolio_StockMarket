@@ -85,7 +85,6 @@
   --glow-radial: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.08), transparent 70%);
 }
 
-/* Explicit Global Light Theme Overrides for Risk, Watchlist, Alerts, and Fundamental Pages */
 [data-theme="light"] app-risk .glass-card,
 [data-theme="light"] app-watchlist .glass-card,
 [data-theme="light"] app-watchlist .toolbar-card,
@@ -99,7 +98,10 @@
 [data-theme="light"] app-fundamental .profile-card,
 [data-theme="light"] app-fundamental .metric-card,
 [data-theme="light"] app-fundamental .fundamental-header,
-[data-theme="light"] app-fundamental .loading-state {
+[data-theme="light"] app-fundamental .loading-state,
+[data-theme="light"] app-algo-trading .algo-topbar,
+[data-theme="light"] app-algo-trading .algo-panel,
+[data-theme="light"] app-algo-trading .algo-bottom-tabs {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
   box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04) !important;
@@ -136,7 +138,15 @@
 [data-theme="light"] app-fundamental .metrics-section-heading h2,
 [data-theme="light"] app-fundamental .metric-main-val,
 [data-theme="light"] app-fundamental .desc-heading,
-[data-theme="light"] app-fundamental .profile-value {
+[data-theme="light"] app-fundamental .profile-value,
+[data-theme="light"] app-algo-trading .algo-title,
+[data-theme="light"] app-algo-trading .panel-header-title,
+[data-theme="light"] app-algo-trading .condition-desc strong,
+[data-theme="light"] app-algo-trading .indicator-title,
+[data-theme="light"] app-algo-trading .m-value,
+[data-theme="light"] app-algo-trading .calc-val,
+[data-theme="light"] app-algo-trading .live-price-val,
+[data-theme="light"] app-algo-trading .algo-table td {
   color: #0f172a !important;
 }
 
