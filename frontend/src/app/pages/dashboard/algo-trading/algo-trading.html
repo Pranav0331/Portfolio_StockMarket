@@ -345,12 +345,12 @@
     <!-- CENTER PANEL: LIVE CHART + REAL-TIME AI SIGNAL ANALYSIS -->
     <main class="algo-panel panel-chart-analysis">
       <!-- AI SIGNAL ANALYSIS BAR -->
-      <section class="ai-signal-banner" [class.bullish]="aiEvaluation()?.marketTrend === 'BULLISH'" [class.bearish]="aiEvaluation()?.marketTrend === 'BEARISH'" [class.neutral]="aiEvaluation()?.marketTrend === 'NEUTRAL'">
+      <section class="ai-signal-banner" [class.bullish]="(aiEvaluation()?.trend || aiEvaluation()?.marketTrend) === 'BULLISH'" [class.bearish]="(aiEvaluation()?.trend || aiEvaluation()?.marketTrend) === 'BEARISH'" [class.neutral]="(aiEvaluation()?.trend || aiEvaluation()?.marketTrend) === 'NEUTRAL'">
         <div class="ai-signal-header">
           <div class="ai-title-wrap">
             <span class="ai-badge">AI REAL MARKET EVALUATION</span>
-            <span class="trend-tag" [class.up]="aiEvaluation()?.marketTrend === 'BULLISH'" [class.down]="aiEvaluation()?.marketTrend === 'BEARISH'">
-              TREND: {{ aiEvaluation()?.marketTrend || 'ANALYZING...' }}
+            <span class="trend-tag" [class.up]="(aiEvaluation()?.trend || aiEvaluation()?.marketTrend) === 'BULLISH'" [class.down]="(aiEvaluation()?.trend || aiEvaluation()?.marketTrend) === 'BEARISH'">
+              TREND: {{ (aiEvaluation()?.trend || aiEvaluation()?.marketTrend) || 'ANALYZING...' }}
             </span>
           </div>
 
@@ -360,12 +360,12 @@
           </div>
         </div>
 
-        @if (!marketDataError() && aiEvaluation()?.isMarketDataAvailable) {
+        @if (!marketDataError() && aiEvaluation()) {
           <div class="ai-reasons-grid">
             <div class="reason-points">
               <span class="reasons-label">Strategy Confluence Factors:</span>
               <ul class="reasons-list">
-                @for (reason of aiEvaluation()?.reasons; track reason) {
+                @for (reason of (aiEvaluation()?.reasons || []); track reason) {
                   <li>{{ reason }}</li>
                 }
               </ul>
@@ -374,10 +374,9 @@
             <div class="active-levels">
               <span class="levels-label">Active Indicators ({{ providerName() }}):</span>
               <div class="indicator-chips">
-                @for (key of objectKeys(aiEvaluation()?.activeIndicators || {}); track key) {
+                @for (ind of (aiEvaluation()?.activeIndicators || []); track ind) {
                   <div class="ind-chip">
-                    <span class="k">{{ key }}:</span>
-                    <span class="v">{{ aiEvaluation()?.activeIndicators?.[key] }}</span>
+                    <span class="v">{{ ind }}</span>
                   </div>
                 }
               </div>
@@ -390,7 +389,7 @@
               <line x1="12" y1="8" x2="12" y2="12"></line>
               <line x1="12" y1="16" x2="12.01" y2="16"></line>
             </svg>
-            <span>AI analysis unavailable — market data unavailable.</span>
+            <span>Live market data unavailable</span>
           </div>
         }
       </section>
@@ -624,7 +623,7 @@
         [class.active]="activeBottomTab() === 'positions'"
         (click)="activeBottomTab.set('positions')"
       >
-        Open Positions ({{ tradingService.openPositions().length }})
+        Open Positions ({{ liveOpenPositions().length }})
       </button>
 
       <button
@@ -667,7 +666,7 @@
             @for (log of algoService.tradeLogs(); track log.id) {
               <tr>
                 <td class="font-bold">{{ log.symbol }}</td>
-                <td class="text-muted">{{ log.executedAt | date:'HH:mm:ss dd MMM' }}</td>
+                <td class="text-muted">{{ (log.createdAt || log.executedAt) | date:'HH:mm:ss dd MMM' }}</td>
                 <td>{{ log.price | currency:'USD':'symbol':'1.2-4' }}</td>
                 <td>
                   <span class="signal-tag" [class.buy]="log.signal === 'BUY'" [class.sell]="log.signal === 'SELL'" [class.wait]="log.signal === 'WAIT'">
@@ -686,7 +685,7 @@
                 <td>
                   <span class="status-chip">{{ log.status }}</span>
                 </td>
-                <td class="text-rationale" [title]="log.reason">{{ log.reason }}</td>
+                <td class="text-rationale" [title]="log.reasons || log.reason">{{ log.reasons || log.reason }}</td>
               </tr>
             } @empty {
               <tr>
@@ -726,7 +725,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (pos of tradingService.openPositions(); track pos.id) {
+            @for (pos of liveOpenPositions(); track pos.id) {
               <tr>
                 <td class="font-bold">{{ pos.symbol }}</td>
                 <td>

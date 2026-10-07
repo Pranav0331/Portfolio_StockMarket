@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, map, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   AlgoStrategy,
@@ -8,6 +8,90 @@ import {
   AlgoPerformanceSummary,
   AlgoTradeLog
 } from '../models/algo-trading.model';
+
+function mapBackendToStrategy(raw: any): AlgoStrategy {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    userId: raw.userId,
+    name: raw.name || '',
+    symbol: raw.symbol || '',
+    marketType: raw.market || raw.marketType || 'CRYPTO',
+    tradingMode: raw.tradingMode || 'INTRADAY',
+    timeframe: raw.timeframe || '15m',
+    direction: raw.direction || 'BOTH',
+    useEma9: raw.useEmaCross ?? raw.useEma9 ?? true,
+    ema9Period: raw.emaFastPeriod ?? raw.ema9Period ?? 9,
+    useEma21: raw.useEmaCross ?? raw.useEma21 ?? true,
+    ema21Period: raw.emaSlowPeriod ?? raw.ema21Period ?? 21,
+    useRsi: raw.useRsiFilter ?? raw.useRsi ?? true,
+    rsiPeriod: raw.rsiPeriod ?? 14,
+    rsiLongThreshold: raw.rsiOverbought ?? raw.rsiLongThreshold ?? 55,
+    rsiShortThreshold: raw.rsiOversold ?? raw.rsiShortThreshold ?? 45,
+    useMacd: raw.useMacdFilter ?? raw.useMacd ?? true,
+    macdFast: raw.macdFast ?? 12,
+    macdSlow: raw.macdSlow ?? 26,
+    macdSignal: raw.macdSignal ?? 9,
+    useBollinger: raw.useBbFilter ?? raw.useBollinger ?? false,
+    bollingerPeriod: raw.bbPeriod ?? raw.bollingerPeriod ?? 20,
+    bollingerStdDev: raw.bbStdDev ?? raw.bollingerStdDev ?? 2.0,
+    condEmaCross: raw.useEmaCross ?? raw.condEmaCross ?? true,
+    condRsiThreshold: raw.useRsiFilter ?? raw.condRsiThreshold ?? true,
+    condMacdDirection: raw.useMacdFilter ?? raw.condMacdDirection ?? true,
+    condBollingerBounce: raw.useBbFilter ?? raw.condBollingerBounce ?? false,
+    isPaperTrading: true,
+    virtualCapital: 100000,
+    riskPerTradePercent: raw.riskPerTradePct ?? raw.riskPerTradePercent ?? 2.0,
+    leverage: raw.leverage ?? 10,
+    quantity: raw.quantity ?? 0.1,
+    stopLossPercent: raw.stopLossPct ?? raw.stopLossPercent ?? 1.5,
+    takeProfitPercent: raw.takeProfitPct ?? raw.takeProfitPercent ?? 3.0,
+    maxOpenPositions: raw.maxOpenPositions ?? 3,
+    dailyLossLimit: raw.dailyLossLimit ?? 500,
+    status: raw.status || 'STOPPED',
+    totalTrades: raw.totalTrades ?? 0,
+    winningTrades: raw.winningTrades ?? 0,
+    losingTrades: raw.losingTrades ?? 0,
+    totalPnl: raw.totalPnl ?? 0,
+    lastSignal: raw.lastSignal,
+    lastSignalReason: raw.lastSignalReasons || raw.lastSignalReason,
+    lastEvaluatedAt: raw.lastRunAt || raw.lastEvaluatedAt,
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt
+  };
+}
+
+function mapStrategyToRequest(s: Partial<AlgoStrategy>): any {
+  return {
+    name: s.name,
+    symbol: s.symbol,
+    market: s.marketType,
+    tradingMode: s.tradingMode,
+    timeframe: s.timeframe,
+    direction: s.direction,
+    emaFastPeriod: s.ema9Period ?? 9,
+    emaSlowPeriod: s.ema21Period ?? 21,
+    rsiPeriod: s.rsiPeriod ?? 14,
+    rsiOverbought: s.rsiLongThreshold ?? 55,
+    rsiOversold: s.rsiShortThreshold ?? 45,
+    macdFast: s.macdFast ?? 12,
+    macdSlow: s.macdSlow ?? 26,
+    macdSignal: s.macdSignal ?? 9,
+    bbPeriod: s.bollingerPeriod ?? 20,
+    bbStdDev: s.bollingerStdDev ?? 2.0,
+    useEmaCross: s.condEmaCross ?? s.useEma9 ?? true,
+    useRsiFilter: s.condRsiThreshold ?? s.useRsi ?? true,
+    useMacdFilter: s.condMacdDirection ?? s.useMacd ?? true,
+    useBbFilter: s.condBollingerBounce ?? s.useBollinger ?? false,
+    riskPerTradePct: s.riskPerTradePercent ?? 2.0,
+    leverage: s.leverage ?? 10,
+    quantity: s.quantity ?? 0.1,
+    stopLossPct: s.stopLossPercent ?? 1.5,
+    takeProfitPct: s.takeProfitPercent ?? 3.0,
+    maxOpenPositions: s.maxOpenPositions ?? 3,
+    dailyLossLimit: s.dailyLossLimit ?? 500
+  };
+}
 
 @Injectable({
   providedIn: 'root'
@@ -25,19 +109,23 @@ export class AlgoTradingService {
 
   // Strategy CRUD
   getStrategies(): Observable<AlgoStrategy[]> {
-    return this.http.get<AlgoStrategy[]>(`${this.baseUrl}/strategies`).pipe(
-      tap((data) => this.strategies.set(data || []))
+    return this.http.get<any[]>(`${this.baseUrl}/strategies`).pipe(
+      map((list) => (list || []).map(mapBackendToStrategy)),
+      tap((data) => this.strategies.set(data))
     );
   }
 
   getStrategyById(id: number): Observable<AlgoStrategy> {
-    return this.http.get<AlgoStrategy>(`${this.baseUrl}/strategies/${id}`).pipe(
+    return this.http.get<any>(`${this.baseUrl}/strategies/${id}`).pipe(
+      map(mapBackendToStrategy),
       tap((data) => this.activeStrategy.set(data))
     );
   }
 
   createStrategy(strategy: Partial<AlgoStrategy>): Observable<AlgoStrategy> {
-    return this.http.post<AlgoStrategy>(`${this.baseUrl}/strategies`, strategy).pipe(
+    const payload = mapStrategyToRequest(strategy);
+    return this.http.post<any>(`${this.baseUrl}/strategies`, payload).pipe(
+      map(mapBackendToStrategy),
       tap((saved) => {
         this.strategies.update((list) => [saved, ...list]);
         this.activeStrategy.set(saved);
@@ -46,7 +134,9 @@ export class AlgoTradingService {
   }
 
   updateStrategy(id: number, strategy: Partial<AlgoStrategy>): Observable<AlgoStrategy> {
-    return this.http.put<AlgoStrategy>(`${this.baseUrl}/strategies/${id}`, strategy).pipe(
+    const payload = mapStrategyToRequest(strategy);
+    return this.http.put<any>(`${this.baseUrl}/strategies/${id}`, payload).pipe(
+      map(mapBackendToStrategy),
       tap((updated) => {
         this.strategies.update((list) =>
           list.map((s) => (s.id === id ? updated : s))
@@ -70,19 +160,23 @@ export class AlgoTradingService {
   }
 
   // Execution controls
-  startStrategy(id: number): Observable<AlgoEvaluationResult> {
-    return this.http.post<AlgoEvaluationResult>(`${this.baseUrl}/strategies/${id}/start`, {}).pipe(
-      tap((evalResult) => {
-        this.evaluationResult.set(evalResult);
-        this.getStrategies().subscribe();
-        this.getStrategyTradeLogs(id).subscribe();
-        this.getStrategyPerformance(id).subscribe();
+  startStrategy(id: number): Observable<AlgoStrategy> {
+    return this.http.post<any>(`${this.baseUrl}/strategies/${id}/start`, {}).pipe(
+      map(mapBackendToStrategy),
+      tap((updated) => {
+        this.strategies.update((list) =>
+          list.map((s) => (s.id === id ? updated : s))
+        );
+        if (this.activeStrategy()?.id === id) {
+          this.activeStrategy.set(updated);
+        }
       })
     );
   }
 
   pauseStrategy(id: number): Observable<AlgoStrategy> {
-    return this.http.post<AlgoStrategy>(`${this.baseUrl}/strategies/${id}/pause`, {}).pipe(
+    return this.http.post<any>(`${this.baseUrl}/strategies/${id}/pause`, {}).pipe(
+      map(mapBackendToStrategy),
       tap((updated) => {
         this.strategies.update((list) =>
           list.map((s) => (s.id === id ? updated : s))
@@ -95,7 +189,8 @@ export class AlgoTradingService {
   }
 
   stopStrategy(id: number): Observable<AlgoStrategy> {
-    return this.http.post<AlgoStrategy>(`${this.baseUrl}/strategies/${id}/stop`, {}).pipe(
+    return this.http.post<any>(`${this.baseUrl}/strategies/${id}/stop`, {}).pipe(
+      map(mapBackendToStrategy),
       tap((updated) => {
         this.strategies.update((list) =>
           list.map((s) => (s.id === id ? updated : s))
@@ -108,8 +203,9 @@ export class AlgoTradingService {
   }
 
   // Real-time AI Evaluation
-  evaluateStrategy(id: number): Observable<AlgoEvaluationResult> {
-    return this.http.get<AlgoEvaluationResult>(`${this.baseUrl}/strategies/${id}/evaluate`).pipe(
+  evaluateStrategy(id: number, execute: boolean = false): Observable<AlgoEvaluationResult> {
+    const params = new HttpParams().set('execute', execute.toString());
+    return this.http.get<AlgoEvaluationResult>(`${this.baseUrl}/strategies/${id}/evaluate`, { params }).pipe(
       tap((res) => this.evaluationResult.set(res))
     );
   }

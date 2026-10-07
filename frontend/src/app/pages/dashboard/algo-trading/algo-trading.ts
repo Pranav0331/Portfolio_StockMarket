@@ -337,17 +337,64 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
     this.subscriptions.push(sub);
   }
 
+  // Live computed open positions with real-time price & P&L calculation
+  readonly liveOpenPositions = computed(() => {
+    const curSym = this.formStrategy().symbol.trim().toUpperCase();
+    const curP = this.currentPrice();
+
+    return this.tradingService.openPositions().map((pos) => {
+      if (pos.symbol && pos.symbol.trim().toUpperCase() === curSym && curP > 0) {
+        let floatingPnl = 0;
+        if (pos.side === 'LONG') {
+          floatingPnl = (curP - pos.entryPrice) * pos.quantity;
+        } else {
+          floatingPnl = (pos.entryPrice - curP) * pos.quantity;
+        }
+        const margin = pos.marginUsed > 0 ? pos.marginUsed : (pos.entryPrice * pos.quantity);
+        const floatingPnlPercent = margin > 0 ? (floatingPnl / margin) * 100 : 0;
+
+        return {
+          ...pos,
+          currentPrice: curP,
+          unrealizedPnl: floatingPnl,
+          unrealizedPnlPercent: floatingPnlPercent
+        };
+      }
+      return pos;
+    });
+  });
+
   private startEvaluationLoop(): void {
-    // Poll/Evaluate live strategy every 8 seconds if active
-    this.liveEvalTimer = interval(8000).subscribe(() => {
+    // Poll/Evaluate live strategy every 5 seconds
+    this.liveEvalTimer = interval(5000).subscribe(() => {
       const strat = this.formStrategy();
       if (strat.id && strat.status === 'RUNNING') {
-        this.algoService.evaluateStrategy(strat.id).subscribe({
+        this.algoService.evaluateStrategy(strat.id, true).subscribe({
           next: (res) => {
             this.aiEvaluation.set(res);
+            this.marketDataError.set(null);
             this.tradingService.getPositions(undefined, 'OPEN').subscribe({ error: () => {} });
+            this.tradingService.getWallet().subscribe({ error: () => {} });
             this.algoService.getStrategyTradeLogs(strat.id!).subscribe({ error: () => {} });
             this.algoService.getStrategyPerformance(strat.id!).subscribe({ error: () => {} });
+          },
+          error: (err) => {
+            if (err?.status === 503 || err?.status === 404 || err?.status === 500) {
+              this.marketDataError.set('Live market data unavailable');
+            }
+          }
+        });
+      } else if (strat.id && strat.status === 'PAUSED') {
+        // Paused: Evaluate in monitor-only mode (execute=false)
+        this.algoService.evaluateStrategy(strat.id, false).subscribe({
+          next: (res) => {
+            this.aiEvaluation.set(res);
+            this.marketDataError.set(null);
+          },
+          error: (err) => {
+            if (err?.status === 503 || err?.status === 404 || err?.status === 500) {
+              this.marketDataError.set('Live market data unavailable');
+            }
           }
         });
       } else {
@@ -362,14 +409,17 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
     this.isEvaluating.set(true);
 
     if (strat.id) {
-      this.algoService.evaluateStrategy(strat.id).subscribe({
+      this.algoService.evaluateStrategy(strat.id, false).subscribe({
         next: (res) => {
           this.aiEvaluation.set(res);
           this.isEvaluating.set(false);
+          this.marketDataError.set(null);
         },
-        error: () => {
-          this.aiEvaluation.set(null);
+        error: (err) => {
           this.isEvaluating.set(false);
+          if (err?.status === 503 || err?.status === 404 || err?.status === 500) {
+            this.marketDataError.set('Live market data unavailable');
+          }
         }
       });
     } else {
@@ -377,10 +427,13 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
         next: (res) => {
           this.aiEvaluation.set(res);
           this.isEvaluating.set(false);
+          this.marketDataError.set(null);
         },
-        error: () => {
-          this.aiEvaluation.set(null);
+        error: (err) => {
           this.isEvaluating.set(false);
+          if (err?.status === 503 || err?.status === 404 || err?.status === 500) {
+            this.marketDataError.set('Live market data unavailable');
+          }
         }
       });
     }
@@ -397,18 +450,34 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
         }
       });
     } else {
-      this.triggerStart(strat.id);
+      this.saveStrategy(() => {
+        if (this.formStrategy().id) {
+          this.triggerStart(this.formStrategy().id!);
+        }
+      });
     }
   }
 
   private triggerStart(id: number): void {
     this.algoService.startStrategy(id).subscribe({
-      next: (evalResult) => {
-        this.aiEvaluation.set(evalResult);
+      next: () => {
         this.formStrategy.update((s) => ({ ...s, status: 'RUNNING' }));
-        this.tradingService.getPositions(undefined, 'OPEN').subscribe({ error: () => {} });
-        this.tradingService.getWallet().subscribe({ error: () => {} });
-        this.algoService.getStrategyTradeLogs(id).subscribe({ error: () => {} });
+        // Immediate live evaluation with trade execution enabled
+        this.algoService.evaluateStrategy(id, true).subscribe({
+          next: (evalResult) => {
+            this.aiEvaluation.set(evalResult);
+            this.marketDataError.set(null);
+            this.tradingService.getPositions(undefined, 'OPEN').subscribe({ error: () => {} });
+            this.tradingService.getWallet().subscribe({ error: () => {} });
+            this.algoService.getStrategyTradeLogs(id).subscribe({ error: () => {} });
+            this.algoService.getStrategyPerformance(id).subscribe({ error: () => {} });
+          },
+          error: (err) => {
+            if (err?.status === 503 || err?.status === 404) {
+              this.marketDataError.set('Live market data unavailable');
+            }
+          }
+        });
       },
       error: (err) => {
         alert(err?.error?.message || 'Failed to start algorithm.');
@@ -420,7 +489,7 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
     const strat = this.formStrategy();
     if (!strat.id) return;
     this.algoService.pauseStrategy(strat.id).subscribe({
-      next: (res) => {
+      next: () => {
         this.formStrategy.update((s) => ({ ...s, status: 'PAUSED' }));
       }
     });
@@ -430,7 +499,7 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
     const strat = this.formStrategy();
     if (!strat.id) return;
     this.algoService.stopStrategy(strat.id).subscribe({
-      next: (res) => {
+      next: () => {
         this.formStrategy.update((s) => ({ ...s, status: 'STOPPED' }));
       }
     });
@@ -487,6 +556,9 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
           this.algoService.getStrategyTradeLogs(this.formStrategy().id!).subscribe({ error: () => {} });
           this.algoService.getStrategyPerformance(this.formStrategy().id!).subscribe({ error: () => {} });
         }
+      },
+      error: (err) => {
+        alert(err?.error?.message || 'Failed to close position.');
       }
     });
   }

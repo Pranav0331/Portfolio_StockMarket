@@ -62,22 +62,32 @@ export interface AlgoStrategy {
 }
 
 export interface AlgoEvaluationResult {
+  strategyId?: number;
   symbol: string;
   currentPrice: number;
-  timestamp: string;
-  marketTrend: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  trend?: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  marketTrend?: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
   signal: AlgoSignal;
   confidence: number;
-  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  riskLevel?: 'LOW' | 'MODERATE' | 'HIGH' | 'MEDIUM';
   reasons: string[];
-  activeIndicators: { [key: string]: number | string };
-  isMarketDataAvailable: boolean;
+  activeIndicators: string[];
+  tradeExecuted?: boolean;
+  executionMessage?: string;
+  orderId?: number;
+  positionId?: number;
+  requiredMargin?: number;
+  positionSize?: number;
+  maxRiskAmount?: number;
+  evaluatedAt?: string;
+  timestamp?: string;
+  isMarketDataAvailable?: boolean;
   statusMessage?: string;
 }
 
 export interface AlgoPerformanceSummary {
   strategyId: number;
-  strategyName: string;
+  strategyName?: string;
   totalTrades: number;
   winningTrades: number;
   losingTrades: number;
@@ -87,22 +97,27 @@ export interface AlgoPerformanceSummary {
   averageLoss: number;
   profitFactor: number;
   maxDrawdown: number;
-  currency: string;
+  currency?: string;
 }
 
 export interface AlgoTradeLog {
   id: number;
   strategyId: number;
-  strategyName: string;
+  strategyName?: string;
   symbol: string;
-  action: 'BUY' | 'SELL' | 'CLOSE' | 'WAIT';
+  action: 'BUY' | 'SELL' | 'CLOSE' | 'WAIT' | 'SKIPPED';
   signal: AlgoSignal;
   price: number;
   quantity: number;
-  leverage: number;
+  leverage?: number;
   pnl?: number;
   confidence: number;
-  reason: string;
+  trend?: string;
+  reason?: string;
+  reasons?: string;
+  orderId?: number;
+  positionId?: number;
   status: string;
-  executedAt: string;
+  executedAt?: string;
+  createdAt?: string;
 }

@@ -10,6 +10,7 @@ import com.portfolio.entity.AlgoStrategy;
 import com.portfolio.entity.AlgoTradeLog;
 import com.portfolio.entity.User;
 import com.portfolio.entity.enums.*;
+import com.portfolio.repository.PositionRepository;
 import com.portfolio.repository.AlgoStrategyRepository;
 import com.portfolio.repository.AlgoTradeLogRepository;
 import com.portfolio.repository.UserRepository;
@@ -36,17 +37,20 @@ public class AlgoTradingService {
     private final UserRepository userRepository;
     private final MarketDataService marketDataService;
     private final TradingService tradingService;
+    private final PositionRepository positionRepository;
 
     public AlgoTradingService(AlgoStrategyRepository strategyRepository,
                               AlgoTradeLogRepository tradeLogRepository,
                               UserRepository userRepository,
                               MarketDataService marketDataService,
-                              TradingService tradingService) {
+                              TradingService tradingService,
+                              PositionRepository positionRepository) {
         this.strategyRepository = strategyRepository;
         this.tradeLogRepository = tradeLogRepository;
         this.userRepository = userRepository;
         this.marketDataService = marketDataService;
         this.tradingService = tradingService;
+        this.positionRepository = positionRepository;
     }
 
     @Transactional
@@ -125,53 +129,63 @@ public class AlgoTradingService {
         return AlgoStrategyResponseDto.fromEntity(saved);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<AlgoTradeLogDto> getStrategyTrades(Long userId, Long strategyId) {
         strategyRepository.findByIdAndUserId(strategyId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Strategy not found"));
 
-        return tradeLogRepository.findByStrategyIdOrderByCreatedAtDesc(strategyId)
-                .stream()
-                .map(AlgoTradeLogDto::fromEntity)
-                .toList();
+        List<AlgoTradeLog> logs = tradeLogRepository.findByStrategyIdOrderByCreatedAtDesc(strategyId);
+        syncClosedPositionsPnl(logs);
+        return logs.stream().map(AlgoTradeLogDto::fromEntity).toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<AlgoTradeLogDto> getUserTrades(Long userId) {
-        return tradeLogRepository.findTop50ByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(AlgoTradeLogDto::fromEntity)
-                .toList();
+        List<AlgoTradeLog> logs = tradeLogRepository.findTop50ByUserIdOrderByCreatedAtDesc(userId);
+        syncClosedPositionsPnl(logs);
+        return logs.stream().map(AlgoTradeLogDto::fromEntity).toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AlgoPerformanceDto getStrategyPerformance(Long userId, Long strategyId) {
         AlgoStrategy strategy = strategyRepository.findByIdAndUserId(strategyId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Strategy not found"));
 
         List<AlgoTradeLog> trades = tradeLogRepository.findByStrategyIdOrderByCreatedAtDesc(strategyId);
+        syncClosedPositionsPnl(trades);
 
-        int total = strategy.getTotalTrades();
-        int wins = strategy.getWinningTrades();
-        int losses = strategy.getLosingTrades();
-
-        BigDecimal winRate = total > 0
-                ? BigDecimal.valueOf((double) wins / total * 100).setScale(2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-
-        BigDecimal totalPnl = strategy.getTotalPnl();
+        int total = 0;
+        int wins = 0;
+        int losses = 0;
+        BigDecimal totalPnl = BigDecimal.ZERO;
 
         BigDecimal totalWinAmt = BigDecimal.ZERO;
         BigDecimal totalLossAmt = BigDecimal.ZERO;
         for (AlgoTradeLog t : trades) {
+            if ("EXECUTED".equalsIgnoreCase(t.getStatus())) {
+                total++;
+            }
             if (t.getPnl() != null) {
+                totalPnl = totalPnl.add(t.getPnl());
                 if (t.getPnl().compareTo(BigDecimal.ZERO) > 0) {
+                    wins++;
                     totalWinAmt = totalWinAmt.add(t.getPnl());
                 } else if (t.getPnl().compareTo(BigDecimal.ZERO) < 0) {
+                    losses++;
                     totalLossAmt = totalLossAmt.add(t.getPnl().abs());
                 }
             }
         }
+
+        strategy.setTotalTrades(total);
+        strategy.setWinningTrades(wins);
+        strategy.setLosingTrades(losses);
+        strategy.setTotalPnl(totalPnl);
+        strategyRepository.save(strategy);
+
+        BigDecimal winRate = (wins + losses) > 0
+                ? BigDecimal.valueOf((double) wins / (wins + losses) * 100).setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
 
         BigDecimal avgProfit = wins > 0 ? totalWinAmt.divide(BigDecimal.valueOf(wins), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
         BigDecimal avgLoss = losses > 0 ? totalLossAmt.divide(BigDecimal.valueOf(losses), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
@@ -191,6 +205,19 @@ public class AlgoTradingService {
                 profitFactor,
                 strategy.getMaxDrawdown()
         );
+    }
+
+    private void syncClosedPositionsPnl(List<AlgoTradeLog> logs) {
+        for (AlgoTradeLog tLog : logs) {
+            if (tLog.getPositionId() != null && tLog.getPnl() == null) {
+                positionRepository.findById(tLog.getPositionId()).ifPresent(pos -> {
+                    if (pos.getStatus() == PositionStatus.CLOSED && pos.getRealizedPnl() != null) {
+                        tLog.setPnl(pos.getRealizedPnl());
+                        tradeLogRepository.save(tLog);
+                    }
+                });
+            }
+        }
     }
 
     /**
@@ -222,7 +249,7 @@ public class AlgoTradingService {
         // 1. Fetch real market candles from existing Spring Boot provider routing
         CandleSeriesDto candleSeries = marketDataService.getCandles(symbol, timeframe, 80);
         if (candleSeries == null || candleSeries.getCandles() == null || candleSeries.getCandles().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "AI analysis unavailable — market data unavailable.");
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Live market data unavailable");
         }
 
         List<CandleDto> candles = candleSeries.getCandles();
@@ -341,9 +368,9 @@ public class AlgoTradingService {
         AlgoSignal signal = AlgoSignal.WAIT;
         double confidenceVal = 50.0;
 
-        if (longScore > shortScore && longScore >= 2) {
+        if (longScore > shortScore && longScore >= 1) {
             trend = "BULLISH";
-        } else if (shortScore > longScore && shortScore >= 2) {
+        } else if (shortScore > longScore && shortScore >= 1) {
             trend = "BEARISH";
         } else {
             trend = "NEUTRAL";
