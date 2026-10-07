@@ -172,11 +172,11 @@
 }
 
 /* ==========================================================================
-   2. MAIN TRADING AREA (LEFT 42px, CENTER 1fr, RIGHT 300px)
+   2. MAIN TRADING AREA (LEFT 44px, CENTER 1fr, RIGHT 300px)
    ========================================================================== */
 .main-trading-area {
   display: grid;
-  grid-template-columns: 42px 1fr 300px;
+  grid-template-columns: 44px 1fr 300px;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -189,17 +189,38 @@
 }
 
 /* ==========================================================================
-   LEFT: NARROW 42px VERTICAL CHART TOOLBAR
+   LEFT: NARROW 44px VERTICAL CHART TOOLBAR (BRIGHT THEME)
    ========================================================================== */
 .left-vertical-toolbar {
+  width: 44px;
   background: #ffffff;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 6px 0;
-  z-index: 25;
+  gap: 2px;
+  padding: 4px 0;
+  z-index: 40;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.toolbar-scroll-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex: 1;
+  padding: 0 4px;
+}
+
+.toolbar-scroll-wrap::-webkit-scrollbar {
+  display: none;
 }
 
 .tool-btn-wrap {
@@ -210,184 +231,272 @@
 }
 
 .v-tool-btn {
-  width: 30px;
-  height: 30px;
-  background: transparent;
+  width: 34px;
+  height: 34px;
+  background: #ffffff;
   border: 1px solid transparent;
-  color: #64748b;
-  border-radius: 4px;
+  color: #374151;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
   cursor: pointer;
   transition: all 0.15s ease;
+  padding: 0;
+}
+
+.v-tool-btn svg {
+  stroke: #374151;
+  transition: stroke 0.15s ease;
 }
 
 .v-tool-btn:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.v-tool-btn:hover svg {
+  stroke: #2563eb;
 }
 
 .v-tool-btn.active {
   background: #eff6ff;
   border-color: #3b82f6;
   color: #2563eb;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.15);
 }
 
-.v-tool-tf-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  font-weight: 700;
-  color: #2563eb;
+.v-tool-btn.active svg {
+  stroke: #2563eb;
 }
 
-.v-tool-fx {
-  font-family: Georgia, serif;
-  font-style: italic;
-  font-size: 13px;
-  font-weight: bold;
+.v-tool-btn.has-active-tool {
+  background: #dbeafe;
+  border-color: #2563eb;
+}
+
+.v-tool-btn.has-active-tool svg {
+  stroke: #1d4ed8;
+}
+
+.v-tool-arrow {
+  position: absolute;
+  bottom: 0px;
+  right: 2px;
+  font-size: 9px;
+  color: #94a3b8;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.v-util-btn {
+  width: 32px;
+  height: 32px;
+}
+
+.btn-trash-util:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.btn-trash-util:hover svg {
+  stroke: #dc2626;
 }
 
 .v-toolbar-divider {
-  width: 20px;
+  width: 26px;
   height: 1px;
-  background: #e2e8f0;
+  background: #e5e7eb;
   margin: 3px 0;
+  flex-shrink: 0;
 }
 
-/* Tool Popover Flyouts */
+/* ==========================================================================
+   FLOATING CATEGORIZED SUBMENUS
+   ========================================================================== */
 .tool-popover {
   position: absolute;
-  left: 44px;
-  top: 0;
+  left: 42px;
+  top: -4px;
   background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  padding: 8px;
-  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
-  z-index: 100;
-  min-width: 160px;
-  animation: popoverFadeIn 0.15s ease-out;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.06);
+  z-index: 1000;
+  min-width: 210px;
+  max-width: 280px;
+  max-height: 400px;
+  overflow-y: auto;
+  animation: popoverFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 @keyframes popoverFadeIn {
-  from { opacity: 0; transform: translateX(-4px); }
+  from { opacity: 0; transform: translateX(-6px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
-.popover-title {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: #64748b;
-  margin-bottom: 6px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.tf-options-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-}
-
-.tf-pop-btn {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #334155;
-  padding: 4px;
-  border-radius: 3px;
-  font-size: 11px;
-  font-weight: 600;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.tf-pop-btn:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-}
-
-.tf-pop-btn.active {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #ffffff;
-}
-
-.pop-item-btn {
+.popover-category-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: 100%;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #334155;
-  padding: 5px 8px;
-  border-radius: 4px;
-  font-size: 11px;
+  justify-content: space-between;
+  padding: 4px 6px 6px 6px;
+  border-bottom: 1px solid #f1f5f9;
   margin-bottom: 4px;
-  cursor: pointer;
-  transition: all 0.15s;
-  text-align: left;
 }
 
-.pop-item-btn:hover {
-  background: #f1f5f9;
+.cat-title {
+  font-size: 11px;
+  font-weight: 700;
   color: #0f172a;
+  letter-spacing: -0.01em;
 }
 
-.pop-item-btn.active {
-  background: #eff6ff;
-  border-color: #3b82f6;
-  color: #1d4ed8;
+.cat-count {
+  font-size: 9px;
+  font-weight: 600;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
 }
 
-.pop-indicator-toggle {
+.popover-tools-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.category-tool-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #334155;
-  padding: 5px 8px;
-  border-radius: 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #374151;
+  padding: 6px 8px;
+  border-radius: 5px;
   font-size: 11px;
-  margin-bottom: 4px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.12s ease;
+  text-align: left;
 }
 
-.pop-indicator-toggle:hover {
+.category-tool-item:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #dbeafe;
+}
+
+.category-tool-item.active {
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  border-color: #2563eb;
+}
+
+.tool-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tool-shortcut, .tool-pts-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', monospace;
+  margin-left: 6px;
+}
+
+.tool-shortcut {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.category-tool-item.active .tool-shortcut {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.tool-pts-badge {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.category-tool-item.active .tool-pts-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* Header chart actions and type picker */
+.header-chart-type-picker, .header-indicators-toggles, .header-chart-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.header-action-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  width: 26px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.header-action-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.header-action-btn.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #2563eb;
+}
+
+.ind-chip {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ind-chip:hover {
   background: #f1f5f9;
   color: #0f172a;
 }
 
-.ind-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-right: 6px;
-}
-
-.ind-name {
-  flex: 1;
-  text-align: left;
-}
-
-.ind-badge {
-  font-size: 9px;
+.ind-chip.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
   font-weight: 700;
-  padding: 1px 4px;
-  border-radius: 2px;
-  background: #e2e8f0;
-  color: #64748b;
-}
-
-.pop-indicator-toggle.active .ind-badge {
-  background: #dcfce7;
-  color: #166534;
 }
 
 /* ==========================================================================
@@ -661,11 +770,211 @@
   min-height: 0;
   width: 100%;
   background: #ffffff;
+  overflow: hidden;
 }
 
 .chart-viewport {
   width: 100%;
   height: 100%;
+}
+
+/* ==========================================================================
+   SVG INTERACTIVE DRAWING LAYER
+   ========================================================================== */
+.drawing-layer-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 12;
+  overflow: visible;
+}
+
+.drawing-layer-svg.drawing-mode-active {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+.drawing-layer-svg.magnet-mode {
+  cursor: crosshair;
+}
+
+.drawing-item-group {
+  pointer-events: stroke;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.drawing-item-group:hover line,
+.drawing-item-group:hover rect,
+.drawing-item-group:hover circle,
+.drawing-item-group:hover polyline {
+  filter: drop-shadow(0 0 3px rgba(37, 99, 235, 0.4));
+}
+
+.drawing-item-group.selected-drawing line,
+.drawing-item-group.selected-drawing rect,
+.drawing-item-group.selected-drawing circle,
+.drawing-item-group.selected-drawing polyline {
+  filter: drop-shadow(0 0 4px rgba(37, 99, 235, 0.6));
+}
+
+.drawing-item-group.locked-drawing {
+  pointer-events: none;
+}
+
+.selection-handle {
+  cursor: move;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.2));
+  transition: transform 0.15s ease;
+}
+
+.selection-handle:hover {
+  transform: scale(1.2);
+}
+
+.svg-drawing-label {
+  font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
+  user-select: none;
+}
+
+.svg-drawing-label.center {
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.svg-drawing-label.font-bold {
+  font-weight: 800;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+
+.svg-text-note {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+  user-select: none;
+}
+
+.in-progress-preview polyline,
+.in-progress-preview line {
+  stroke-dasharray: 4 4;
+  animation: strokeDashAnim 0.8s linear infinite;
+}
+
+@keyframes strokeDashAnim {
+  to { stroke-dashoffset: -8; }
+}
+
+/* ==========================================================================
+   FLOATING DRAWING PROPERTIES TOOLBAR
+   ========================================================================== */
+.floating-drawing-props-bar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+  z-index: 50;
+  animation: popoverFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.prop-colors-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.color-swatch-btn {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  padding: 0;
+}
+
+.color-swatch-btn:hover {
+  transform: scale(1.2);
+}
+
+.color-swatch-btn.active {
+  border-color: #0f172a;
+  transform: scale(1.15);
+  box-shadow: 0 0 0 1px #ffffff;
+}
+
+.prop-divider {
+  width: 1px;
+  height: 16px;
+  background: #e2e8f0;
+}
+
+.prop-width-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.btn-width-select {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-width-select:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.btn-width-select.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.btn-prop-icon {
+  width: 24px;
+  height: 24px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-delete-drawing:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.btn-delete-drawing:hover svg {
+  stroke: #dc2626;
 }
 
 /* Floating Position Overlay on Chart */

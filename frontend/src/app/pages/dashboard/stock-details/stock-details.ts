@@ -75,6 +75,44 @@ export interface TopInstrumentItem {
   marketType: string;
 }
 
+export interface DrawingPoint {
+  x: number;
+  y: number;
+  time?: any;
+  price?: number;
+}
+
+export interface DrawingItem {
+  id: string;
+  toolId: string;
+  category: string;
+  name: string;
+  points: DrawingPoint[];
+  color: string;
+  fillColor?: string;
+  lineWidth: number;
+  lineStyle?: 'solid' | 'dashed' | 'dotted';
+  text?: string;
+  locked?: boolean;
+  extraStats?: string;
+}
+
+export interface DrawingToolOption {
+  id: string;
+  name: string;
+  pointsRequired: number; // 0, 1, 2, 3, 5, 7, -1
+  icon?: string;
+  shortcut?: string;
+}
+
+export interface DrawingToolGroup {
+  id: string;
+  name: string;
+  iconName: string;
+  activeToolId: string;
+  tools: DrawingToolOption[];
+}
+
 @Component({
   selector: 'app-stock-details',
   standalone: true,
@@ -93,6 +131,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
   // Chart Container DOM Reference
   readonly chartContainerRef = viewChild<ElementRef<HTMLDivElement>>('chartContainer');
+  readonly drawingSvgRef = viewChild<ElementRef<SVGSVGElement>>('drawingSvg');
 
   // Active Symbol & State
   readonly symbol = signal<string>('BTC/USD');
@@ -100,6 +139,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly exchange = signal<string>('Crypto');
   readonly instrumentType = signal<string>('Crypto');
   readonly currentQuote = signal<StockQuote | null>(null);
+  readonly Math = Math;
 
   // Top Symbol Bar Instruments List
   readonly topInstruments = signal<TopInstrumentItem[]>([
@@ -113,6 +153,244 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     { symbol: 'SENSEX', name: 'BSE Sensex', marketType: 'Index' },
     { symbol: 'EUR/USD', name: 'Euro / USD', marketType: 'Forex' }
   ]);
+
+  // =========================================================================
+  // 16 GROUPED DRAWING TOOLS CATALOG
+  // =========================================================================
+  readonly drawingToolGroups = signal<DrawingToolGroup[]>([
+    {
+      id: 'cursor',
+      name: 'Cursor',
+      iconName: 'cursor',
+      activeToolId: 'crosshair',
+      tools: [
+        { id: 'crosshair', name: 'Crosshair', pointsRequired: 0 },
+        { id: 'cursor', name: 'Cursor / Pointer', pointsRequired: 0 }
+      ]
+    },
+    {
+      id: 'lines',
+      name: 'Trend Lines',
+      iconName: 'trendline',
+      activeToolId: 'trend_line',
+      tools: [
+        { id: 'trend_line', name: 'Trend Line', pointsRequired: 2, shortcut: 'Alt+T' },
+        { id: 'ray', name: 'Ray', pointsRequired: 2 },
+        { id: 'info_line', name: 'Info Line', pointsRequired: 2 },
+        { id: 'extended_line', name: 'Extended Line', pointsRequired: 2 },
+        { id: 'trend_angle', name: 'Trend Angle', pointsRequired: 2 },
+        { id: 'horizontal_line', name: 'Horizontal Line', pointsRequired: 1, shortcut: 'Alt+H' },
+        { id: 'horizontal_ray', name: 'Horizontal Ray', pointsRequired: 1 },
+        { id: 'vertical_line', name: 'Vertical Line', pointsRequired: 1, shortcut: 'Alt+V' },
+        { id: 'cross_line', name: 'Cross Line', pointsRequired: 1 }
+      ]
+    },
+    {
+      id: 'channels',
+      name: 'Channels',
+      iconName: 'channel',
+      activeToolId: 'parallel_channel',
+      tools: [
+        { id: 'parallel_channel', name: 'Parallel Channel', pointsRequired: 3 },
+        { id: 'regression_trend', name: 'Regression Trend', pointsRequired: 2 },
+        { id: 'flat_top_bottom', name: 'Flat Top/Bottom', pointsRequired: 3 },
+        { id: 'disjoint_channel', name: 'Disjoint Channel', pointsRequired: 3 }
+      ]
+    },
+    {
+      id: 'pitchforks',
+      name: 'Pitchforks',
+      iconName: 'pitchfork',
+      activeToolId: 'pitchfork',
+      tools: [
+        { id: 'pitchfork', name: 'Pitchfork', pointsRequired: 3 },
+        { id: 'schiff_pitchfork', name: 'Schiff Pitchfork', pointsRequired: 3 },
+        { id: 'mod_schiff_pitchfork', name: 'Modified Schiff Pitchfork', pointsRequired: 3 }
+      ]
+    },
+    {
+      id: 'fibonacci',
+      name: 'Gann and Fibonacci',
+      iconName: 'fibonacci',
+      activeToolId: 'fib_retracement',
+      tools: [
+        { id: 'fib_retracement', name: 'Fib Retracement', pointsRequired: 2, shortcut: 'Alt+F' },
+        { id: 'trend_fib_extension', name: 'Trend-Based Fib Extension', pointsRequired: 3 },
+        { id: 'fib_channel', name: 'Fib Channel', pointsRequired: 3 },
+        { id: 'fib_time_zone', name: 'Fib Time Zone', pointsRequired: 2 },
+        { id: 'fib_speed_fan', name: 'Fib Speed Resistance Fan', pointsRequired: 2 },
+        { id: 'trend_fib_time', name: 'Trend-Based Fib Time', pointsRequired: 2 },
+        { id: 'fib_circles', name: 'Fib Circles', pointsRequired: 2 },
+        { id: 'fib_spiral', name: 'Fib Spiral', pointsRequired: 2 },
+        { id: 'fib_speed_arcs', name: 'Fib Speed Resistance Arcs', pointsRequired: 2 },
+        { id: 'fib_wedge', name: 'Fib Wedge', pointsRequired: 2 },
+        { id: 'pitchfan', name: 'Pitchfan', pointsRequired: 3 }
+      ]
+    },
+    {
+      id: 'gann',
+      name: 'Gann Tools',
+      iconName: 'gann',
+      activeToolId: 'gann_box',
+      tools: [
+        { id: 'gann_box', name: 'Gann Box', pointsRequired: 2 },
+        { id: 'gann_square_fixed', name: 'Gann Square Fixed', pointsRequired: 2 },
+        { id: 'gann_square', name: 'Gann Square', pointsRequired: 2 },
+        { id: 'gann_fan', name: 'Gann Fan', pointsRequired: 2 }
+      ]
+    },
+    {
+      id: 'patterns',
+      name: 'Patterns',
+      iconName: 'patterns',
+      activeToolId: 'xabcd_pattern',
+      tools: [
+        { id: 'xabcd_pattern', name: 'XABCD Pattern', pointsRequired: 5 },
+        { id: 'cypher_pattern', name: 'Cypher Pattern', pointsRequired: 5 },
+        { id: 'head_and_shoulders', name: 'Head and Shoulders', pointsRequired: 7 },
+        { id: 'abcd_pattern', name: 'ABCD Pattern', pointsRequired: 4 },
+        { id: 'triangle_pattern', name: 'Triangle Pattern', pointsRequired: 4 },
+        { id: 'three_drives', name: 'Three Drives Pattern', pointsRequired: 6 }
+      ]
+    },
+    {
+      id: 'elliott',
+      name: 'Elliott Waves',
+      iconName: 'elliott',
+      activeToolId: 'elliott_impulse',
+      tools: [
+        { id: 'elliott_impulse', name: 'Elliott Impulse Wave (12345)', pointsRequired: 5 },
+        { id: 'elliott_correction', name: 'Elliott Correction Wave (ABC)', pointsRequired: 3 },
+        { id: 'elliott_triangle', name: 'Elliott Triangle Wave (ABCDE)', pointsRequired: 5 },
+        { id: 'elliott_double_combo', name: 'Elliott Double Combo Wave (WXY)', pointsRequired: 3 },
+        { id: 'elliott_triple_combo', name: 'Elliott Triple Combo Wave (WXYZ)', pointsRequired: 5 }
+      ]
+    },
+    {
+      id: 'cycles',
+      name: 'Cycles',
+      iconName: 'cycles',
+      activeToolId: 'cyclic_lines',
+      tools: [
+        { id: 'cyclic_lines', name: 'Cyclic Lines', pointsRequired: 2 },
+        { id: 'time_cycles', name: 'Time Cycles', pointsRequired: 2 },
+        { id: 'sine_line', name: 'Sine Line', pointsRequired: 2 }
+      ]
+    },
+    {
+      id: 'projection',
+      name: 'Prediction and Measurement',
+      iconName: 'projection',
+      activeToolId: 'long_position',
+      tools: [
+        { id: 'long_position', name: 'Long Position', pointsRequired: 2 },
+        { id: 'short_position', name: 'Short Position', pointsRequired: 2 },
+        { id: 'forecast', name: 'Forecast', pointsRequired: 2 },
+        { id: 'bars_pattern', name: 'Bars Pattern', pointsRequired: 2 },
+        { id: 'ghost_feed', name: 'Ghost Feed', pointsRequired: 2 },
+        { id: 'projection', name: 'Projection', pointsRequired: 2 }
+      ]
+    },
+    {
+      id: 'volume_based',
+      name: 'Volume Based',
+      iconName: 'volumebased',
+      activeToolId: 'anchored_vwap',
+      tools: [
+        { id: 'anchored_vwap', name: 'Anchored VWAP', pointsRequired: 1 },
+        { id: 'fixed_volume_profile', name: 'Fixed Range Volume Profile', pointsRequired: 2 }
+      ]
+    },
+    {
+      id: 'measure',
+      name: 'Measure',
+      iconName: 'measure',
+      activeToolId: 'price_range',
+      tools: [
+        { id: 'price_range', name: 'Price Range', pointsRequired: 2 },
+        { id: 'date_range', name: 'Date Range', pointsRequired: 2 },
+        { id: 'date_price_range', name: 'Date & Price Range', pointsRequired: 2 }
+      ]
+    },
+    {
+      id: 'brushes',
+      name: 'Brushes',
+      iconName: 'brush',
+      activeToolId: 'brush',
+      tools: [
+        { id: 'brush', name: 'Brush', pointsRequired: -1 },
+        { id: 'highlighter', name: 'Highlighter', pointsRequired: -1 }
+      ]
+    },
+    {
+      id: 'arrows',
+      name: 'Arrows',
+      iconName: 'arrow',
+      activeToolId: 'arrow',
+      tools: [
+        { id: 'arrow_marker', name: 'Arrow Marker', pointsRequired: 1 },
+        { id: 'arrow', name: 'Arrow', pointsRequired: 2 },
+        { id: 'arrow_up', name: 'Arrow Up', pointsRequired: 1 },
+        { id: 'arrow_down', name: 'Arrow Down', pointsRequired: 1 },
+        { id: 'arrow_left', name: 'Arrow Left', pointsRequired: 1 },
+        { id: 'arrow_right', name: 'Arrow Right', pointsRequired: 1 }
+      ]
+    },
+    {
+      id: 'shapes',
+      name: 'Geometric Shapes',
+      iconName: 'shapes',
+      activeToolId: 'rectangle',
+      tools: [
+        { id: 'rectangle', name: 'Rectangle', pointsRequired: 2 },
+        { id: 'rotated_rectangle', name: 'Rotated Rectangle', pointsRequired: 3 },
+        { id: 'path', name: 'Path', pointsRequired: -1 },
+        { id: 'circle', name: 'Circle', pointsRequired: 2 },
+        { id: 'ellipse', name: 'Ellipse', pointsRequired: 2 },
+        { id: 'polyline', name: 'Polyline', pointsRequired: -1 },
+        { id: 'triangle', name: 'Triangle', pointsRequired: 3 },
+        { id: 'arc', name: 'Arc', pointsRequired: 3 },
+        { id: 'curve', name: 'Curve', pointsRequired: 3 }
+      ]
+    },
+    {
+      id: 'utility',
+      name: 'Annotations and Utility',
+      iconName: 'utility',
+      activeToolId: 'text',
+      tools: [
+        { id: 'text', name: 'Text', pointsRequired: 1 },
+        { id: 'emoji_marker', name: 'Emoji / Marker', pointsRequired: 1 },
+        { id: 'ruler', name: 'Ruler', pointsRequired: 2 },
+        { id: 'zoom', name: 'Zoom In / Out', pointsRequired: 2 },
+        { id: 'magnet', name: 'Magnet Mode', pointsRequired: 0 },
+        { id: 'lock_drawings', name: 'Lock All Drawings', pointsRequired: 0 },
+        { id: 'hide_drawings', name: 'Hide All Drawings', pointsRequired: 0 },
+        { id: 'delete_drawings', name: 'Delete All Drawings', pointsRequired: 0 },
+        { id: 'layers', name: 'Drawing Layers', pointsRequired: 0 }
+      ]
+    }
+  ]);
+
+  // =========================================================================
+  // DRAWING ENGINE STATE SIGNALS
+  // =========================================================================
+  readonly activeDrawingTool = signal<DrawingToolOption | null>(null);
+  readonly activeToolGroupId = signal<string>('cursor');
+  readonly openToolGroupId = signal<string | null>(null);
+
+  readonly drawings = signal<DrawingItem[]>([]);
+  readonly selectedDrawingId = signal<string | null>(null);
+  readonly inProgressPoints = signal<DrawingPoint[]>([]);
+  readonly isDrawingActive = signal<boolean>(false);
+
+  readonly isMagnetEnabled = signal<boolean>(false);
+  readonly areDrawingsLocked = signal<boolean>(false);
+  readonly areDrawingsHidden = signal<boolean>(false);
+
+  readonly activeColor = signal<string>('#2563eb');
+  readonly activeLineWidth = signal<number>(2);
+  readonly availableColors = ['#2563eb', '#10b981', '#ef4444', '#f59e0b', '#8b5cf6', '#0f172a', '#64748b'];
 
   // Symbol Search Modal State
   readonly isSearchModalOpen = signal<boolean>(false);
@@ -1910,6 +2188,314 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     this.isIndicatorMenuOpen.set(false);
     this.isChartTypeMenuOpen.set(false);
     this.isTimeframeMenuOpen.set(false);
+  }
+
+  // =========================================================================
+  // DRAWING TOOL INTERACTIONS & SVG OVERLAY ENGINE
+  // =========================================================================
+
+  selectToolGroup(groupId: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    if (this.openToolGroupId() === groupId) {
+      this.openToolGroupId.set(null);
+    } else {
+      this.openToolGroupId.set(groupId);
+      this.isIndicatorMenuOpen.set(false);
+      this.isChartTypeMenuOpen.set(false);
+      this.isTimeframeMenuOpen.set(false);
+    }
+  }
+
+  selectDrawingTool(group: DrawingToolGroup, tool: DrawingToolOption, event?: Event): void {
+    if (event) event.stopPropagation();
+    group.activeToolId = tool.id;
+    this.activeToolGroupId.set(group.id);
+    this.openToolGroupId.set(null);
+
+    if (tool.id === 'crosshair' || tool.id === 'cursor') {
+      this.activeDrawingTool.set(null);
+      this.inProgressPoints.set([]);
+      this.isDrawingActive.set(false);
+      return;
+    }
+
+    if (tool.id === 'delete_drawings') {
+      this.clearAllDrawings();
+      this.activeDrawingTool.set(null);
+      return;
+    }
+
+    if (tool.id === 'lock_drawings') {
+      this.toggleLockDrawings();
+      return;
+    }
+
+    if (tool.id === 'hide_drawings') {
+      this.toggleHideDrawings();
+      return;
+    }
+
+    if (tool.id === 'magnet') {
+      this.toggleMagnet();
+      return;
+    }
+
+    this.activeDrawingTool.set(tool);
+    this.inProgressPoints.set([]);
+    this.isDrawingActive.set(false);
+    this.selectedDrawingId.set(null);
+  }
+
+  onDrawingSvgMouseDown(event: MouseEvent): void {
+    if (this.areDrawingsLocked()) return;
+    const tool = this.activeDrawingTool();
+    if (!tool) {
+      if ((event.target as HTMLElement).tagName === 'svg') {
+        this.selectedDrawingId.set(null);
+      }
+      return;
+    }
+
+    const svg = this.drawingSvgRef()?.nativeElement;
+    if (!svg) return;
+
+    const rect = svg.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    const newPt: DrawingPoint = { x, y };
+
+    if (tool.pointsRequired === 1) {
+      const newItem: DrawingItem = {
+        id: 'draw_' + Date.now(),
+        toolId: tool.id,
+        category: this.activeToolGroupId(),
+        name: tool.name,
+        points: [newPt],
+        color: this.activeColor(),
+        fillColor: this.activeColor() + '22',
+        lineWidth: this.activeLineWidth(),
+        lineStyle: 'solid',
+        text: tool.id === 'text' ? 'Note Text' : undefined
+      };
+      this.drawings.update(list => [...list, newItem]);
+      this.selectedDrawingId.set(newItem.id);
+      this.activeDrawingTool.set(null);
+      this.isDrawingActive.set(false);
+      this.inProgressPoints.set([]);
+      return;
+    }
+
+    if (!this.isDrawingActive()) {
+      this.isDrawingActive.set(true);
+      this.inProgressPoints.set([newPt, { ...newPt }]);
+    } else {
+      const currentPts = this.inProgressPoints();
+      if (tool.pointsRequired > 0 && currentPts.length >= tool.pointsRequired) {
+        const finalPts = [...currentPts.slice(0, -1), newPt];
+        const newItem: DrawingItem = {
+          id: 'draw_' + Date.now(),
+          toolId: tool.id,
+          category: this.activeToolGroupId(),
+          name: tool.name,
+          points: finalPts,
+          color: this.activeColor(),
+          fillColor: this.activeColor() + '22',
+          lineWidth: this.activeLineWidth(),
+          lineStyle: 'solid'
+        };
+        this.drawings.update(list => [...list, newItem]);
+        this.selectedDrawingId.set(newItem.id);
+        this.activeDrawingTool.set(null);
+        this.isDrawingActive.set(false);
+        this.inProgressPoints.set([]);
+      } else {
+        this.inProgressPoints.update(pts => [...pts, { ...newPt }]);
+      }
+    }
+  }
+
+  onDrawingSvgMouseMove(event: MouseEvent): void {
+    if (!this.isDrawingActive()) return;
+    const svg = this.drawingSvgRef()?.nativeElement;
+    if (!svg) return;
+
+    const rect = svg.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    const tool = this.activeDrawingTool();
+    if (tool && tool.pointsRequired === -1) {
+      this.inProgressPoints.update(pts => [...pts, { x, y }]);
+    } else {
+      this.inProgressPoints.update(pts => {
+        if (pts.length === 0) return pts;
+        const copy = [...pts];
+        copy[copy.length - 1] = { x, y };
+        return copy;
+      });
+    }
+  }
+
+  onDrawingSvgMouseUp(event: MouseEvent): void {
+    const tool = this.activeDrawingTool();
+    if (!tool || !this.isDrawingActive()) return;
+
+    const svg = this.drawingSvgRef()?.nativeElement;
+    if (!svg) return;
+
+    const rect = svg.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    if (tool.pointsRequired === -1) {
+      const pts = this.inProgressPoints();
+      if (pts.length > 2) {
+        const newItem: DrawingItem = {
+          id: 'draw_' + Date.now(),
+          toolId: tool.id,
+          category: this.activeToolGroupId(),
+          name: tool.name,
+          points: pts,
+          color: tool.id === 'highlighter' ? this.activeColor() + '66' : this.activeColor(),
+          fillColor: 'transparent',
+          lineWidth: tool.id === 'highlighter' ? 12 : this.activeLineWidth(),
+          lineStyle: 'solid'
+        };
+        this.drawings.update(list => [...list, newItem]);
+        this.selectedDrawingId.set(newItem.id);
+      }
+      this.activeDrawingTool.set(null);
+      this.isDrawingActive.set(false);
+      this.inProgressPoints.set([]);
+      return;
+    }
+
+    if (tool.pointsRequired === 2) {
+      const pts = this.inProgressPoints();
+      if (pts.length >= 2) {
+        const p1 = pts[0];
+        const p2 = { x, y };
+        const newItem: DrawingItem = {
+          id: 'draw_' + Date.now(),
+          toolId: tool.id,
+          category: this.activeToolGroupId(),
+          name: tool.name,
+          points: [p1, p2],
+          color: this.activeColor(),
+          fillColor: this.activeColor() + '22',
+          lineWidth: this.activeLineWidth(),
+          lineStyle: 'solid'
+        };
+        this.drawings.update(list => [...list, newItem]);
+        this.selectedDrawingId.set(newItem.id);
+        this.activeDrawingTool.set(null);
+        this.isDrawingActive.set(false);
+        this.inProgressPoints.set([]);
+      }
+    }
+  }
+
+  selectDrawing(item: DrawingItem, event?: MouseEvent): void {
+    if (event) event.stopPropagation();
+    if (this.areDrawingsLocked()) return;
+    this.selectedDrawingId.set(item.id);
+  }
+
+  deleteSelectedDrawing(): void {
+    const selId = this.selectedDrawingId();
+    if (!selId) return;
+    this.drawings.update(list => list.filter(d => d.id !== selId));
+    this.selectedDrawingId.set(null);
+  }
+
+  clearAllDrawings(): void {
+    this.drawings.set([]);
+    this.selectedDrawingId.set(null);
+    this.inProgressPoints.set([]);
+    this.isDrawingActive.set(false);
+  }
+
+  toggleLockDrawings(): void {
+    this.areDrawingsLocked.update(v => !v);
+  }
+
+  toggleHideDrawings(): void {
+    this.areDrawingsHidden.update(v => !v);
+  }
+
+  toggleMagnet(): void {
+    this.isMagnetEnabled.update(v => !v);
+  }
+
+  setDrawingColor(color: string): void {
+    this.activeColor.set(color);
+    const selId = this.selectedDrawingId();
+    if (selId) {
+      this.drawings.update(list => list.map(d => d.id === selId ? { ...d, color: color, fillColor: color + '22' } : d));
+    }
+  }
+
+  setDrawingLineWidth(width: number): void {
+    this.activeLineWidth.set(width);
+    const selId = this.selectedDrawingId();
+    if (selId) {
+      this.drawings.update(list => list.map(d => d.id === selId ? { ...d, lineWidth: width } : d));
+    }
+  }
+
+  getPointsPolyline(points: DrawingPoint[]): string {
+    if (!points || points.length === 0) return '';
+    return points.map(p => `${p.x},${p.y}`).join(' ');
+  }
+
+  getFibLevels(d: DrawingItem): { y: number; pct: string; color: string }[] {
+    if (!d.points || d.points.length < 2) return [];
+    const y1 = d.points[0].y;
+    const y2 = d.points[1].y;
+    const dy = y2 - y1;
+    const ratios = [
+      { r: 0, pct: '0.0%', color: '#64748b' },
+      { r: 0.236, pct: '23.6%', color: '#ef4444' },
+      { r: 0.382, pct: '38.2%', color: '#f59e0b' },
+      { r: 0.5, pct: '50.0%', color: '#10b981' },
+      { r: 0.618, pct: '61.8%', color: '#06b6d4' },
+      { r: 0.786, pct: '78.6%', color: '#3b82f6' },
+      { r: 1.0, pct: '100.0%', color: '#8b5cf6' }
+    ];
+    return ratios.map(item => ({
+      y: y1 + dy * item.r,
+      pct: item.pct,
+      color: item.color
+    }));
+  }
+
+  getMeasureBox(d: DrawingItem): { x: number; y: number; w: number; h: number; p1: DrawingPoint; p2: DrawingPoint } {
+    if (!d.points || d.points.length < 2) return { x: 0, y: 0, w: 0, h: 0, p1: { x: 0, y: 0 }, p2: { x: 0, y: 0 } };
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    return {
+      x: Math.min(p1.x, p2.x),
+      y: Math.min(p1.y, p2.y),
+      w: Math.abs(p2.x - p1.x),
+      h: Math.abs(p2.y - p1.y),
+      p1,
+      p2
+    };
+  }
+
+  getPositionBox(d: DrawingItem): { entryY: number; targetY: number; slY: number; x: number; w: number } {
+    if (!d.points || d.points.length < 2) return { entryY: 0, targetY: 0, slY: 0, x: 0, w: 0 };
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const dy = Math.abs(p2.y - p1.y);
+    return {
+      entryY: p1.y,
+      targetY: d.toolId === 'short_position' ? p1.y + dy : p1.y - dy,
+      slY: d.toolId === 'short_position' ? p1.y - (dy * 0.5) : p1.y + (dy * 0.5),
+      x: Math.min(p1.x, p2.x),
+      w: Math.max(120, Math.abs(p2.x - p1.x))
+    };
   }
 
   navigateToStock(sym: string): void {

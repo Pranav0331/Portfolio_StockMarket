@@ -48,191 +48,270 @@
   <!-- ======================================================================= -->
   <main class="main-trading-area" [class.terminal-dock-expanded]="isTerminalExpanded()">
 
-    <!-- LEFT: NARROW 44px VERTICAL CHART-TOOLS TOOLBAR -->
+    <!-- LEFT: NARROW 44px VERTICAL CHART-TOOLS TOOLBAR WITH 16 GROUPED CATEGORIES -->
     <aside class="left-vertical-toolbar" (click)="$event.stopPropagation()">
-      <!-- Timeframe Tool Button & Popover -->
-      <div class="tool-btn-wrap">
-        <button
-          type="button"
-          class="v-tool-btn"
-          [class.active]="isTimeframeMenuOpen()"
-          (click)="toggleTimeframeMenu()"
-          title="Select Timeframe">
-          <span class="v-tool-tf-label">{{ currentInterval().replace('min', 'm').replace('day', 'D').replace('week', 'W') }}</span>
-        </button>
-
-        @if (isTimeframeMenuOpen()) {
-          <div class="tool-popover timeframe-popover">
-            <div class="popover-title">Timeframe</div>
-            <div class="tf-options-grid">
-              @for (iv of intervals; track iv.value) {
-                <button
-                  type="button"
-                  class="tf-pop-btn"
-                  [class.active]="currentInterval() === iv.value"
-                  (click)="setInterval(iv.value); closeAllToolMenus()">
-                  {{ iv.label }}
-                </button>
+      <div class="toolbar-scroll-wrap">
+        @for (group of drawingToolGroups(); track group.id) {
+          <div class="tool-btn-wrap">
+            <button
+              type="button"
+              class="v-tool-btn"
+              [class.active]="activeToolGroupId() === group.id || openToolGroupId() === group.id"
+              [class.has-active-tool]="activeDrawingTool() !== null && activeToolGroupId() === group.id"
+              (click)="selectToolGroup(group.id, $event)"
+              [title]="group.name">
+              
+              <!-- Group 1: Cursor -->
+              @if (group.id === 'cursor') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="2" x2="12" y2="22"></line>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
+                </svg>
               }
-            </div>
-          </div>
-        }
-      </div>
 
-      <!-- Chart Type Tool Button & Popover -->
-      <div class="tool-btn-wrap">
-        <button
-          type="button"
-          class="v-tool-btn"
-          [class.active]="isChartTypeMenuOpen()"
-          (click)="toggleChartTypeMenu()"
-          title="Chart Type">
-          @if (currentChartType() === 'candles') {
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="5" y="6" width="4" height="12" rx="1"></rect>
-              <line x1="7" y1="2" x2="7" y2="6"></line>
-              <line x1="7" y1="18" x2="7" y2="22"></line>
-              <rect x="15" y="4" width="4" height="10" rx="1"></rect>
-              <line x1="17" y1="1" x2="17" y2="4"></line>
-              <line x1="17" y1="14" x2="17" y2="20"></line>
-            </svg>
-          } @else if (currentChartType() === 'line') {
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-            </svg>
-          } @else {
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 20h18L17 9l-5 7-4-4z"></path>
-            </svg>
-          }
-        </button>
+              <!-- Group 2: Lines -->
+              @else if (group.id === 'lines') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="4" y1="20" x2="20" y2="4"></line>
+                  <circle cx="4" cy="20" r="2" fill="currentColor"></circle>
+                  <circle cx="20" cy="4" r="2" fill="currentColor"></circle>
+                </svg>
+              }
 
-        @if (isChartTypeMenuOpen()) {
-          <div class="tool-popover chart-type-popover">
-            <div class="popover-title">Chart Type</div>
-            <button
-              type="button"
-              class="pop-item-btn"
-              [class.active]="currentChartType() === 'candles'"
-              (click)="setChartType('candles'); closeAllToolMenus()">
-              <span>🕯️ Candlesticks</span>
-            </button>
-            <button
-              type="button"
-              class="pop-item-btn"
-              [class.active]="currentChartType() === 'line'"
-              (click)="setChartType('line'); closeAllToolMenus()">
-              <span>📈 Line</span>
-            </button>
-            <button
-              type="button"
-              class="pop-item-btn"
-              [class.active]="currentChartType() === 'area'"
-              (click)="setChartType('area'); closeAllToolMenus()">
-              <span>🏔️ Area (Mountain)</span>
-            </button>
-          </div>
-        }
-      </div>
+              <!-- Group 3: Channels -->
+              @else if (group.id === 'channels') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="3" y1="17" x2="19" y2="5"></line>
+                  <line x1="5" y1="21" x2="21" y2="9"></line>
+                  <line x1="3" y1="17" x2="5" y2="21" stroke-dasharray="2 2"></line>
+                  <line x1="19" y1="5" x2="21" y2="9" stroke-dasharray="2 2"></line>
+                </svg>
+              }
 
-      <!-- Indicators Tool Button & Popover -->
-      <div class="tool-btn-wrap">
-        <button
-          type="button"
-          class="v-tool-btn"
-          [class.active]="isIndicatorMenuOpen()"
-          (click)="toggleIndicatorMenu()"
-          title="Indicators">
-          <span class="v-tool-fx">ƒx</span>
-        </button>
+              <!-- Group 4: Pitchforks -->
+              @else if (group.id === 'pitchforks') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="3" y1="12" x2="13" y2="12"></line>
+                  <line x1="13" y1="6" x2="13" y2="18"></line>
+                  <line x1="13" y1="6" x2="21" y2="4"></line>
+                  <line x1="13" y1="12" x2="21" y2="12"></line>
+                  <line x1="13" y1="18" x2="21" y2="20"></line>
+                </svg>
+              }
 
-        @if (isIndicatorMenuOpen()) {
-          <div class="tool-popover indicators-popover">
-            <div class="popover-title">Indicators Overlay</div>
-            <button
-              type="button"
-              class="pop-indicator-toggle"
-              [class.active]="activeIndicators().ema9"
-              (click)="toggleIndicator('ema9')">
-              <span class="ind-dot" style="background: #3b82f6;"></span>
-              <span class="ind-name">EMA 9</span>
-              <span class="ind-badge">{{ activeIndicators().ema9 ? 'ON' : 'OFF' }}</span>
+              <!-- Group 5: Fibonacci -->
+              @else if (group.id === 'fibonacci') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="3" y1="5" x2="21" y2="5"></line>
+                  <line x1="3" y1="9" x2="21" y2="9"></line>
+                  <line x1="3" y1="14" x2="21" y2="14"></line>
+                  <line x1="3" y1="19" x2="21" y2="19"></line>
+                  <line x1="4" y1="19" x2="20" y2="5" stroke-dasharray="2 2"></line>
+                </svg>
+              }
+
+              <!-- Group 6: Gann -->
+              @else if (group.id === 'gann') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="4" y="4" width="16" height="16" rx="1"></rect>
+                  <line x1="4" y1="4" x2="20" y2="20"></line>
+                  <line x1="4" y1="20" x2="20" y2="4"></line>
+                  <line x1="4" y1="12" x2="20" y2="12" stroke-dasharray="2 2"></line>
+                </svg>
+              }
+
+              <!-- Group 7: Patterns -->
+              @else if (group.id === 'patterns') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 17 8 7 13 15 18 5 22 17"></polyline>
+                  <circle cx="3" cy="17" r="1.5" fill="currentColor"></circle>
+                  <circle cx="8" cy="7" r="1.5" fill="currentColor"></circle>
+                  <circle cx="13" cy="15" r="1.5" fill="currentColor"></circle>
+                  <circle cx="18" cy="5" r="1.5" fill="currentColor"></circle>
+                  <circle cx="22" cy="17" r="1.5" fill="currentColor"></circle>
+                </svg>
+              }
+
+              <!-- Group 8: Elliott Waves -->
+              @else if (group.id === 'elliott') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 19 7 9 11 15 16 5 21 19"></polyline>
+                  <text x="7" y="7" font-size="7" font-weight="bold" fill="currentColor">1</text>
+                  <text x="16" y="4" font-size="7" font-weight="bold" fill="currentColor">3</text>
+                </svg>
+              }
+
+              <!-- Group 9: Cycles -->
+              @else if (group.id === 'cycles') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 12c3-8 6-8 9 0s6 8 9 0"></path>
+                </svg>
+              }
+
+              <!-- Group 10: Projection -->
+              @else if (group.id === 'projection') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="4" y="4" width="16" height="7" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981"></rect>
+                  <rect x="4" y="11" width="16" height="7" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444"></rect>
+                  <line x1="2" y1="11" x2="22" y2="11" stroke-width="2"></line>
+                </svg>
+              }
+
+              <!-- Group 11: Volume Based -->
+              @else if (group.id === 'volume_based') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="14" width="3" height="7"></rect>
+                  <rect x="8" y="10" width="3" height="11"></rect>
+                  <rect x="13" y="6" width="3" height="15"></rect>
+                  <rect x="18" y="12" width="3" height="9"></rect>
+                </svg>
+              }
+
+              <!-- Group 12: Measure -->
+              @else if (group.id === 'measure') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="4" y="5" width="16" height="14" rx="1" stroke-dasharray="3 3"></rect>
+                  <polyline points="4 12 20 12"></polyline>
+                  <polyline points="12 5 12 19"></polyline>
+                </svg>
+              }
+
+              <!-- Group 13: Brushes -->
+              @else if (group.id === 'brushes') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18.37 2.63c.98.98.98 2.56 0 3.54l-1.42 1.42-3.54-3.54 1.42-1.42c.98-.98 2.56-.98 3.54 0z"></path>
+                  <path d="M12.71 4.75L3.5 13.96V18h4.04l9.21-9.21-4.04-4.04z"></path>
+                  <path d="M3 21h18"></path>
+                </svg>
+              }
+
+              <!-- Group 14: Arrows -->
+              @else if (group.id === 'arrows') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="5" y1="19" x2="19" y2="5"></line>
+                  <polyline points="9 5 19 5 19 15"></polyline>
+                </svg>
+              }
+
+              <!-- Group 15: Shapes -->
+              @else if (group.id === 'shapes') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              }
+
+              <!-- Group 16: Utility -->
+              @else if (group.id === 'utility') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+              }
+
+              <!-- Submenu indicator arrow -->
+              <span class="v-tool-arrow">›</span>
             </button>
 
-            <button
-              type="button"
-              class="pop-indicator-toggle"
-              [class.active]="activeIndicators().ema21"
-              (click)="toggleIndicator('ema21')">
-              <span class="ind-dot" style="background: #f59e0b;"></span>
-              <span class="ind-name">EMA 21</span>
-              <span class="ind-badge">{{ activeIndicators().ema21 ? 'ON' : 'OFF' }}</span>
-            </button>
-
-            <button
-              type="button"
-              class="pop-indicator-toggle"
-              [class.active]="activeIndicators().sma50"
-              (click)="toggleIndicator('sma50')">
-              <span class="ind-dot" style="background: #a855f7;"></span>
-              <span class="ind-name">SMA 50</span>
-              <span class="ind-badge">{{ activeIndicators().sma50 ? 'ON' : 'OFF' }}</span>
-            </button>
-
-            <button
-              type="button"
-              class="pop-indicator-toggle"
-              [class.active]="activeIndicators().volume"
-              (click)="toggleIndicator('volume')">
-              <span class="ind-dot" style="background: #64748b;"></span>
-              <span class="ind-name">Volume Histogram</span>
-              <span class="ind-badge">{{ activeIndicators().volume ? 'ON' : 'OFF' }}</span>
-            </button>
+            <!-- FLOATING CATEGORIZED SUBMENU -->
+            @if (openToolGroupId() === group.id) {
+              <div class="tool-popover drawing-category-popover" (click)="$event.stopPropagation()">
+                <div class="popover-category-header">
+                  <span class="cat-title">{{ group.name }}</span>
+                  <span class="cat-count">{{ group.tools.length }} tools</span>
+                </div>
+                <div class="popover-tools-list">
+                  @for (tool of group.tools; track tool.id) {
+                    <button
+                      type="button"
+                      class="category-tool-item"
+                      [class.active]="activeDrawingTool()?.id === tool.id"
+                      (click)="selectDrawingTool(group, tool, $event)">
+                      <span class="tool-name">{{ tool.name }}</span>
+                      @if (tool.shortcut) {
+                        <span class="tool-shortcut">{{ tool.shortcut }}</span>
+                      } @else if (tool.pointsRequired > 0) {
+                        <span class="tool-pts-badge">{{ tool.pointsRequired }} pt</span>
+                      }
+                    </button>
+                  }
+                </div>
+              </div>
+            }
           </div>
         }
       </div>
 
       <div class="v-toolbar-divider"></div>
 
-      <!-- Fit / Reset Zoom -->
-      <button type="button" class="v-tool-btn" (click)="fitChart()" title="Fit & Reset Chart Zoom">
+      <!-- Magnet Mode Toggle -->
+      <button
+        type="button"
+        class="v-tool-btn v-util-btn"
+        [class.active]="isMagnetEnabled()"
+        (click)="toggleMagnet()"
+        title="Magnet Mode (Snap to OHLC)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="15 3 21 3 21 9"></polyline>
-          <polyline points="9 21 3 21 3 15"></polyline>
-          <line x1="21" y1="3" x2="14" y2="10"></line>
-          <line x1="3" y1="21" x2="10" y2="14"></line>
+          <path d="M4 10V6a8 8 0 0 1 16 0v4"></path>
+          <path d="M4 10h4v6H4z"></path>
+          <path d="M16 10h4v6h-4z"></path>
         </svg>
       </button>
 
-      <!-- Set Price Alert -->
-      <button type="button" class="v-tool-btn" (click)="openAlertModal()" title="Create Price Alert">
+      <!-- Lock All Drawings Toggle -->
+      <button
+        type="button"
+        class="v-tool-btn v-util-btn"
+        [class.active]="areDrawingsLocked()"
+        (click)="toggleLockDrawings()"
+        title="Lock / Unlock All Drawings">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          @if (areDrawingsLocked()) {
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          } @else {
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+          }
         </svg>
       </button>
 
-      <!-- Fullscreen Toggle -->
-      <button type="button" class="v-tool-btn" (click)="toggleFullscreen()" title="Toggle Fullscreen">
+      <!-- Hide / Show All Drawings Toggle -->
+      <button
+        type="button"
+        class="v-tool-btn v-util-btn"
+        [class.active]="areDrawingsHidden()"
+        (click)="toggleHideDrawings()"
+        title="Hide / Show All Drawings">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+          @if (areDrawingsHidden()) {
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+          } @else {
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          }
         </svg>
       </button>
 
-      <!-- Refresh Market Data -->
-      <button type="button" class="v-tool-btn" (click)="refreshData()" title="Reload Market Data">
+      <!-- Clear / Delete All Drawings -->
+      <button
+        type="button"
+        class="v-tool-btn v-util-btn btn-trash-util"
+        (click)="clearAllDrawings()"
+        title="Delete All Chart Drawings">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="23 4 23 10 17 10"></polyline>
-          <polyline points="1 20 1 14 7 14"></polyline>
-          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
         </svg>
       </button>
     </aside>
 
-    <!-- CENTER: MAXIMUM SCREEN AREA CHART -->
+    <!-- CENTER: MAXIMUM SCREEN AREA CHART WITH DRAWING OVERLAY -->
     <section class="center-chart-area">
 
-      <!-- Chart Header Bar: Telemetry, Timeframes & Live Status -->
+      <!-- Chart Header Bar: Telemetry, Timeframes, Indicators & Fullscreen -->
       <div class="chart-header-bar">
         <div class="instrument-meta">
           <div class="symbol-title-row">
@@ -254,6 +333,66 @@
               {{ iv.label }}
             </button>
           }
+        </div>
+
+        <!-- Chart Type Switcher -->
+        <div class="header-chart-type-picker">
+          <button
+            type="button"
+            class="header-action-btn"
+            [class.active]="currentChartType() === 'candles'"
+            (click)="setChartType('candles')"
+            title="Candlestick Chart">
+            🕯️
+          </button>
+          <button
+            type="button"
+            class="header-action-btn"
+            [class.active]="currentChartType() === 'line'"
+            (click)="setChartType('line')"
+            title="Line Chart">
+            📈
+          </button>
+          <button
+            type="button"
+            class="header-action-btn"
+            [class.active]="currentChartType() === 'area'"
+            (click)="setChartType('area')"
+            title="Mountain / Area Chart">
+            🏔️
+          </button>
+        </div>
+
+        <!-- Technical Indicators Quick Toggles -->
+        <div class="header-indicators-toggles">
+          <button
+            type="button"
+            class="ind-chip"
+            [class.active]="activeIndicators().ema9"
+            (click)="toggleIndicator('ema9')">
+            EMA 9
+          </button>
+          <button
+            type="button"
+            class="ind-chip"
+            [class.active]="activeIndicators().ema21"
+            (click)="toggleIndicator('ema21')">
+            EMA 21
+          </button>
+          <button
+            type="button"
+            class="ind-chip"
+            [class.active]="activeIndicators().sma50"
+            (click)="toggleIndicator('sma50')">
+            SMA 50
+          </button>
+          <button
+            type="button"
+            class="ind-chip"
+            [class.active]="activeIndicators().volume"
+            (click)="toggleIndicator('volume')">
+            VOL
+          </button>
         </div>
 
         <!-- Live Price & Change -->
@@ -290,6 +429,39 @@
               <div class="shimmer-bar"></div>
             </div>
           }
+        </div>
+
+        <!-- Quick Utility Action Buttons -->
+        <div class="header-chart-actions">
+          <button type="button" class="header-action-btn" (click)="fitChart()" title="Fit & Reset Chart Zoom">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <polyline points="9 21 3 21 3 15"></polyline>
+              <line x1="21" y1="3" x2="14" y2="10"></line>
+              <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+          </button>
+
+          <button type="button" class="header-action-btn" (click)="openAlertModal()" title="Create Price Alert">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+          </button>
+
+          <button type="button" class="header-action-btn" (click)="toggleFullscreen()" title="Toggle Fullscreen">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            </svg>
+          </button>
+
+          <button type="button" class="header-action-btn" (click)="refreshData()" title="Reload Market Data">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+          </button>
         </div>
 
         <!-- Real-time Stream Status Badge -->
@@ -334,9 +506,239 @@
         }
       </div>
 
-      <!-- Chart Viewport Container -->
+      <!-- Chart Viewport Container + Interactive SVG Drawing Layer -->
       <div class="chart-canvas-wrapper">
         <div #chartContainer class="chart-viewport"></div>
+
+        <!-- =================================================================== -->
+        <!-- SVG DRAWING OVERLAY LAYER -->
+        <!-- =================================================================== -->
+        <svg
+          #drawingSvg
+          class="drawing-layer-svg"
+          [class.drawing-mode-active]="activeDrawingTool() !== null || selectedDrawingId() !== null"
+          [class.magnet-mode]="isMagnetEnabled()"
+          (mousedown)="onDrawingSvgMouseDown($event)"
+          (mousemove)="onDrawingSvgMouseMove($event)"
+          (mouseup)="onDrawingSvgMouseUp($event)">
+          
+          <defs>
+            <marker id="arrowHead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+              <polygon points="0 0, 8 4, 0 8" [attr.fill]="activeColor()" />
+            </marker>
+          </defs>
+
+          <!-- RENDER PERSISTED DRAWINGS -->
+          @if (!areDrawingsHidden()) {
+            @for (d of drawings(); track d.id) {
+              <g
+                class="drawing-item-group"
+                [class.selected-drawing]="selectedDrawingId() === d.id"
+                [class.locked-drawing]="d.locked || areDrawingsLocked()"
+                (click)="selectDrawing(d, $event)">
+                
+                <!-- 1. Two-Point Lines (Trend line, info line, ray, etc.) -->
+                @if (d.points.length >= 2 && (d.toolId === 'trend_line' || d.toolId === 'ray' || d.toolId === 'info_line' || d.toolId === 'extended_line' || d.toolId === 'trend_angle')) {
+                  <line
+                    [attr.x1]="d.points[0].x"
+                    [attr.y1]="d.points[0].y"
+                    [attr.x2]="d.points[1].x"
+                    [attr.y2]="d.points[1].y"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                  
+                  @if (d.toolId === 'info_line') {
+                    <text [attr.x]="(d.points[0].x + d.points[1].x) / 2" [attr.y]="(d.points[0].y + d.points[1].y) / 2 - 8" class="svg-drawing-label" [attr.fill]="d.color">
+                      Δ {{ (d.points[1].x - d.points[0].x) | number:'1.0-0' }}px
+                    </text>
+                  }
+                }
+
+                <!-- 2. Horizontal Line / Ray -->
+                @else if (d.toolId === 'horizontal_line' || d.toolId === 'horizontal_ray') {
+                  <line
+                    [attr.x1]="d.toolId === 'horizontal_ray' ? d.points[0].x : 0"
+                    [attr.y1]="d.points[0].y"
+                    x2="3000"
+                    [attr.y2]="d.points[0].y"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                }
+
+                <!-- 3. Vertical Line -->
+                @else if (d.toolId === 'vertical_line') {
+                  <line
+                    [attr.x1]="d.points[0].x"
+                    y1="0"
+                    [attr.x2]="d.points[0].x"
+                    y2="3000"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                }
+
+                <!-- 4. Cross Line -->
+                @else if (d.toolId === 'cross_line') {
+                  <line x1="0" [attr.y1]="d.points[0].y" x2="3000" [attr.y2]="d.points[0].y" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-dasharray="4 4" />
+                  <line [attr.x1]="d.points[0].x" y1="0" [attr.x2]="d.points[0].x" y2="3000" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-dasharray="4 4" />
+                }
+
+                <!-- 5. Fibonacci Retracement Levels -->
+                @else if (d.toolId === 'fib_retracement' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                  @for (fib of getFibLevels(d); track fib.pct) {
+                    <g class="fib-level-group">
+                      <line [attr.x1]="d.points[0].x" [attr.y1]="fib.y" [attr.x2]="d.points[1].x + 300" [attr.y2]="fib.y" [attr.stroke]="fib.color" stroke-width="1.5" />
+                      <text [attr.x]="d.points[0].x + 4" [attr.y]="fib.y - 3" [attr.fill]="fib.color" class="svg-drawing-label">{{ fib.pct }}</text>
+                    </g>
+                  }
+                }
+
+                <!-- 6. Geometric Rectangle & Measure Box -->
+                @else if (d.toolId === 'rectangle' || d.toolId === 'price_range' || d.toolId === 'date_range' || d.toolId === 'date_price_range' || d.toolId === 'gann_box') {
+                  @if (getMeasureBox(d); as mb) {
+                    <rect
+                      [attr.x]="mb.x"
+                      [attr.y]="mb.y"
+                      [attr.width]="mb.w"
+                      [attr.height]="mb.h"
+                      [attr.fill]="d.fillColor || (d.color + '22')"
+                      [attr.stroke]="d.color"
+                      [attr.stroke-width]="d.lineWidth" />
+                    
+                    @if (d.toolId.includes('range') || d.toolId === 'price_range') {
+                      <text [attr.x]="mb.x + mb.w / 2" [attr.y]="mb.y + mb.h / 2" class="svg-drawing-label center" [attr.fill]="d.color">
+                        Δ {{ mb.h | number:'1.0-0' }}px | {{ mb.w | number:'1.0-0' }}bars
+                      </text>
+                    }
+                  }
+                }
+
+                <!-- 7. Position Projection Overlay (Long / Short Risk-Reward) -->
+                @else if (d.toolId === 'long_position' || d.toolId === 'short_position') {
+                  @if (getPositionBox(d); as pb) {
+                    <g class="projection-box-group">
+                      <!-- Profit Target Zone (Green) -->
+                      <rect [attr.x]="pb.x" [attr.y]="d.toolId === 'long_position' ? pb.targetY : pb.entryY" [attr.width]="pb.w" [attr.height]="Math.abs(pb.targetY - pb.entryY)" fill="rgba(16, 185, 129, 0.25)" stroke="#10b981" stroke-width="1.5" />
+                      <!-- Stop Loss Zone (Red) -->
+                      <rect [attr.x]="pb.x" [attr.y]="d.toolId === 'long_position' ? pb.entryY : pb.slY" [attr.width]="pb.w" [attr.height]="Math.abs(pb.slY - pb.entryY)" fill="rgba(239, 68, 68, 0.25)" stroke="#ef4444" stroke-width="1.5" />
+                      <!-- Center Entry Line -->
+                      <line [attr.x1]="pb.x" [attr.y1]="pb.entryY" [attr.x2]="pb.x + pb.w" [attr.y2]="pb.entryY" stroke="#3b82f6" stroke-width="2" />
+                      <text [attr.x]="pb.x + 8" [attr.y]="pb.entryY - 4" fill="#1d4ed8" class="svg-drawing-label font-bold">ENTRY</text>
+                      <text [attr.x]="pb.x + 8" [attr.y]="pb.targetY - 4" fill="#047857" class="svg-drawing-label font-bold">TARGET (2.0 R:R)</text>
+                      <text [attr.x]="pb.x + 8" [attr.y]="pb.slY - 4" fill="#b91c1c" class="svg-drawing-label font-bold">STOP LOSS</text>
+                    </g>
+                  }
+                }
+
+                <!-- 8. Circles & Ellipses -->
+                @else if (d.toolId === 'circle' && d.points.length >= 2) {
+                  <circle
+                    [attr.cx]="d.points[0].x"
+                    [attr.cy]="d.points[0].y"
+                    [attr.r]="Math.hypot(d.points[1].x - d.points[0].x, d.points[1].y - d.points[0].y)"
+                    [attr.fill]="d.fillColor || (d.color + '22')"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                }
+
+                <!-- 9. Arrow Line -->
+                @else if (d.toolId === 'arrow' && d.points.length >= 2) {
+                  <line
+                    [attr.x1]="d.points[0].x"
+                    [attr.y1]="d.points[0].y"
+                    [attr.x2]="d.points[1].x"
+                    [attr.y2]="d.points[1].y"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth"
+                    marker-end="url(#arrowHead)" />
+                }
+
+                <!-- 10. Polyline, Patterns, Elliott Waves & Freehand Brush -->
+                @else if (d.points.length >= 2) {
+                  <polyline
+                    [attr.points]="getPointsPolyline(d.points)"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth"
+                    fill="none"
+                    stroke-linecap="round"
+                    stroke-linejoin="round" />
+                  
+                  <!-- Label vertex markers for harmonic patterns / waves -->
+                  @for (pt of d.points; track $index) {
+                    <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="4" [attr.fill]="d.color" />
+                    <text [attr.x]="pt.x + 6" [attr.y]="pt.y - 6" class="svg-drawing-label" [attr.fill]="d.color">
+                      {{ $index === 0 ? 'X' : $index === 1 ? 'A' : $index === 2 ? 'B' : $index === 3 ? 'C' : $index === 4 ? 'D' : $index }}
+                    </text>
+                  }
+                }
+
+                <!-- 11. Text Annotation / Utility -->
+                @else if (d.toolId === 'text' && d.points.length >= 1) {
+                  <rect [attr.x]="d.points[0].x - 4" [attr.y]="d.points[0].y - 18" width="80" height="24" rx="4" fill="#ffffff" stroke="#cbd5e1" />
+                  <text [attr.x]="d.points[0].x + 4" [attr.y]="d.points[0].y - 2" class="svg-text-note" [attr.fill]="d.color">
+                    {{ d.text || 'Annotation Note' }}
+                  </text>
+                }
+
+                <!-- Selection Handles (When Drawing Item is Selected) -->
+                @if (selectedDrawingId() === d.id) {
+                  @for (pt of d.points; track $index) {
+                    <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="5" fill="#ffffff" stroke="#2563eb" stroke-width="2" class="selection-handle" />
+                  }
+                }
+              </g>
+            }
+          }
+
+          <!-- RENDER IN-PROGRESS DRAWING PREVIEW -->
+          @if (isDrawingActive() && inProgressPoints().length >= 2) {
+            <g class="in-progress-preview">
+              <polyline
+                [attr.points]="getPointsPolyline(inProgressPoints())"
+                [attr.stroke]="activeColor()"
+                [attr.stroke-width]="activeLineWidth()"
+                stroke-dasharray="4 4"
+                fill="none" />
+              @for (pt of inProgressPoints(); track $index) {
+                <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="4" [attr.fill]="activeColor()" opacity="0.7" />
+              }
+            </g>
+          }
+        </svg>
+
+        <!-- FLOATING DRAWING PROPERTIES TOOLBAR (WHEN DRAWING IS SELECTED) -->
+        @if (selectedDrawingId()) {
+          <div class="floating-drawing-props-bar" (click)="$event.stopPropagation()">
+            <div class="prop-colors-row">
+              @for (c of availableColors; track c) {
+                <button
+                  type="button"
+                  class="color-swatch-btn"
+                  [style.background]="c"
+                  [class.active]="activeColor() === c"
+                  (click)="setDrawingColor(c)">
+                </button>
+              }
+            </div>
+
+            <div class="prop-divider"></div>
+
+            <div class="prop-width-row">
+              <button type="button" class="btn-width-select" [class.active]="activeLineWidth() === 1" (click)="setDrawingLineWidth(1)">1px</button>
+              <button type="button" class="btn-width-select" [class.active]="activeLineWidth() === 2" (click)="setDrawingLineWidth(2)">2px</button>
+              <button type="button" class="btn-width-select" [class.active]="activeLineWidth() === 4" (click)="setDrawingLineWidth(4)">4px</button>
+            </div>
+
+            <div class="prop-divider"></div>
+
+            <button type="button" class="btn-prop-icon btn-delete-drawing" (click)="deleteSelectedDrawing()" title="Delete Selected Drawing">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </div>
+        }
 
         <!-- Floating Active Position Overlay on Chart -->
         @if (activeSymbolPositions().length > 0) {
