@@ -1071,11 +1071,10 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
     try {
       if (!this.chart) {
-        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-        const bgColor = isDark ? '#0b0e14' : '#ffffff';
-        const textColor = isDark ? '#94a3b8' : '#475569';
-        const gridColor = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(226, 232, 240, 0.6)';
-        const borderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.8)';
+        const bgColor = '#ffffff';
+        const textColor = '#334155';
+        const gridColor = '#f1f5f9';
+        const borderColor = '#e2e8f0';
 
         this.chart = createChart(container, {
           width: container.clientWidth || 800,
@@ -1094,15 +1093,15 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
             mode: CrosshairMode.Normal,
             vertLine: {
               width: 1,
-              color: '#38bdf8',
+              color: '#0284c7',
               style: LineStyle.Dashed,
-              labelBackgroundColor: '#0284c7'
+              labelBackgroundColor: '#0f172a'
             },
             horzLine: {
               width: 1,
-              color: '#38bdf8',
+              color: '#0284c7',
               style: LineStyle.Dashed,
-              labelBackgroundColor: '#0284c7'
+              labelBackgroundColor: '#0f172a'
             }
           },
           rightPriceScale: {

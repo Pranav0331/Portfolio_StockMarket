@@ -742,11 +742,20 @@
   overflow-x: hidden;
 }
 
-.dashboard-content-area:has(app-market),
-.dashboard-content-area:has(app-stock-details) {
+.dashboard-content-area:has(app-market) {
   padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
+}
+
+.dashboard-content-area:has(app-stock-details) {
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 68px);
+  max-height: calc(100vh - 68px);
+  overflow: hidden !important;
 }
 
 /* ==========================================================================
