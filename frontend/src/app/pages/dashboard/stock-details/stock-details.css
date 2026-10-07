@@ -172,11 +172,11 @@
 }
 
 /* ==========================================================================
-   2. MAIN TRADING AREA (LEFT 44px, CENTER 1fr, RIGHT 300px)
+   2. MAIN TRADING AREA (LEFT 45px, CENTER 1fr, RIGHT 300px)
    ========================================================================== */
 .main-trading-area {
   display: grid;
-  grid-template-columns: 44px 1fr 300px;
+  grid-template-columns: 45px 1fr 300px;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -189,17 +189,17 @@
 }
 
 /* ==========================================================================
-   LEFT: NARROW 44px VERTICAL CHART TOOLBAR (BRIGHT THEME)
+   LEFT: NARROW 45px VERTICAL CHART TOOLBAR (BRIGHT MODE)
    ========================================================================== */
 .left-vertical-toolbar {
-  width: 44px;
+  width: 45px;
   background: #ffffff;
   border-right: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 4px 0;
+  padding: 6px 0;
   z-index: 40;
   position: relative;
   box-sizing: border-box;
@@ -231,8 +231,8 @@
 }
 
 .v-tool-btn {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   background: #ffffff;
   border: 1px solid transparent;
   color: #374151;
@@ -252,9 +252,9 @@
 }
 
 .v-tool-btn:hover {
-  background: #eff6ff;
+  background: #f3f6fa;
   color: #2563eb;
-  border-color: #bfdbfe;
+  border-color: #e5e7eb;
 }
 
 .v-tool-btn:hover svg {
@@ -273,7 +273,7 @@
 }
 
 .v-tool-btn.has-active-tool {
-  background: #dbeafe;
+  background: #eff6ff;
   border-color: #2563eb;
 }
 
@@ -283,7 +283,7 @@
 
 .v-tool-arrow {
   position: absolute;
-  bottom: 0px;
+  bottom: 1px;
   right: 2px;
   font-size: 9px;
   color: #94a3b8;
@@ -291,53 +291,31 @@
   pointer-events: none;
 }
 
-.v-util-btn {
-  width: 32px;
-  height: 32px;
-}
-
-.btn-trash-util:hover {
-  background: #fee2e2;
-  border-color: #fca5a5;
-  color: #dc2626;
-}
-
-.btn-trash-util:hover svg {
-  stroke: #dc2626;
-}
-
-.v-toolbar-divider {
-  width: 26px;
-  height: 1px;
-  background: #e5e7eb;
-  margin: 3px 0;
-  flex-shrink: 0;
-}
-
 /* ==========================================================================
-   FLOATING CATEGORIZED SUBMENUS
+   FLOATING CATEGORIZED SUBMENUS (EXNESS FLYOUT STYLE)
    ========================================================================== */
 .tool-popover {
   position: absolute;
-  left: 42px;
-  top: -4px;
+  left: 45px;
+  top: 0;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  padding: 6px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.06);
+  padding: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.04);
   z-index: 1000;
-  min-width: 210px;
-  max-width: 280px;
-  max-height: 400px;
+  width: 270px;
+  max-width: 290px;
+  max-height: calc(100vh - 140px);
   overflow-y: auto;
-  animation: popoverFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: popoverFlyout 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  box-sizing: border-box;
 }
 
-@keyframes popoverFadeIn {
+@keyframes popoverFlyout {
   from { opacity: 0; transform: translateX(-6px); }
   to { opacity: 1; transform: translateX(0); }
 }
@@ -346,25 +324,48 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 6px 6px 6px;
+  padding: 2px 4px 6px 4px;
   border-bottom: 1px solid #f1f5f9;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
+}
+
+.cat-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .cat-title {
   font-size: 11px;
   font-weight: 700;
-  color: #0f172a;
-  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: #1e293b;
+  letter-spacing: 0.5px;
 }
 
-.cat-count {
+.cat-subtitle {
   font-size: 9px;
   font-weight: 600;
   color: #64748b;
   background: #f1f5f9;
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: 3px;
+}
+
+.btn-close-popover {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: all 0.12s ease;
+}
+
+.btn-close-popover:hover {
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 .popover-tools-list {
@@ -376,31 +377,48 @@
 .category-tool-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   width: 100%;
   background: transparent;
   border: 1px solid transparent;
   color: #374151;
   padding: 6px 8px;
-  border-radius: 5px;
-  font-size: 11px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.12s ease;
   text-align: left;
 }
 
+.tool-item-icon {
+  width: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
 .category-tool-item:hover {
-  background: #eff6ff;
+  background: #f3f6fa;
   color: #1d4ed8;
-  border-color: #dbeafe;
+  border-color: #e2e8f0;
+}
+
+.category-tool-item:hover .tool-item-icon {
+  color: #2563eb;
 }
 
 .category-tool-item.active {
-  background: #2563eb;
-  color: #ffffff;
+  background: #eff6ff;
+  color: #2563eb;
   font-weight: 600;
-  border-color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.category-tool-item.active .tool-item-icon {
+  color: #2563eb;
 }
 
 .tool-name {
@@ -426,9 +444,9 @@
 }
 
 .category-tool-item.active .tool-shortcut {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-  border-color: transparent;
+  background: #dbeafe;
+  color: #1e40af;
+  border-color: #bfdbfe;
 }
 
 .tool-pts-badge {
@@ -437,7 +455,7 @@
 }
 
 .category-tool-item.active .tool-pts-badge {
-  background: rgba(255, 255, 255, 0.2);
+  background: #2563eb;
   color: #ffffff;
 }
 

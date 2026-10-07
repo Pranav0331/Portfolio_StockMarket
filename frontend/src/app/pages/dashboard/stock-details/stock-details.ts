@@ -155,7 +155,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   ]);
 
   // =========================================================================
-  // 16 GROUPED DRAWING TOOLS CATALOG
+  // 14 MAIN TOOLBAR TOOL GROUPS (EXNESS-STYLE GROUPED SYSTEM)
   // =========================================================================
   readonly drawingToolGroups = signal<DrawingToolGroup[]>([
     {
@@ -164,79 +164,79 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       iconName: 'cursor',
       activeToolId: 'crosshair',
       tools: [
-        { id: 'crosshair', name: 'Crosshair', pointsRequired: 0 },
-        { id: 'cursor', name: 'Cursor / Pointer', pointsRequired: 0 }
+        { id: 'crosshair', name: 'Crosshair', pointsRequired: 0, icon: '┼' },
+        { id: 'cursor', name: 'Cursor / Arrow', pointsRequired: 0, icon: '↖' }
       ]
     },
     {
       id: 'lines',
       name: 'Trend Lines',
-      iconName: 'trendline',
+      iconName: 'lines',
       activeToolId: 'trend_line',
       tools: [
-        { id: 'trend_line', name: 'Trend Line', pointsRequired: 2, shortcut: 'Alt+T' },
-        { id: 'ray', name: 'Ray', pointsRequired: 2 },
-        { id: 'info_line', name: 'Info Line', pointsRequired: 2 },
-        { id: 'extended_line', name: 'Extended Line', pointsRequired: 2 },
-        { id: 'trend_angle', name: 'Trend Angle', pointsRequired: 2 },
-        { id: 'horizontal_line', name: 'Horizontal Line', pointsRequired: 1, shortcut: 'Alt+H' },
-        { id: 'horizontal_ray', name: 'Horizontal Ray', pointsRequired: 1 },
-        { id: 'vertical_line', name: 'Vertical Line', pointsRequired: 1, shortcut: 'Alt+V' },
-        { id: 'cross_line', name: 'Cross Line', pointsRequired: 1 }
+        { id: 'trend_line', name: 'Trend Line', pointsRequired: 2, shortcut: 'Alt+T', icon: '╱' },
+        { id: 'ray', name: 'Ray', pointsRequired: 2, icon: '↗' },
+        { id: 'info_line', name: 'Info Line', pointsRequired: 2, icon: 'ℹ' },
+        { id: 'extended_line', name: 'Extended Line', pointsRequired: 2, icon: '↔' },
+        { id: 'trend_angle', name: 'Trend Angle', pointsRequired: 2, icon: '∠' },
+        { id: 'horizontal_line', name: 'Horizontal Line', pointsRequired: 1, shortcut: 'Alt+H', icon: '―' },
+        { id: 'horizontal_ray', name: 'Horizontal Ray', pointsRequired: 1, icon: '→' },
+        { id: 'vertical_line', name: 'Vertical Line', pointsRequired: 1, shortcut: 'Alt+V', icon: '│' },
+        { id: 'cross_line', name: 'Cross Line', pointsRequired: 1, icon: '✛' }
       ]
     },
     {
       id: 'channels',
       name: 'Channels',
-      iconName: 'channel',
+      iconName: 'channels',
       activeToolId: 'parallel_channel',
       tools: [
-        { id: 'parallel_channel', name: 'Parallel Channel', pointsRequired: 3 },
-        { id: 'regression_trend', name: 'Regression Trend', pointsRequired: 2 },
-        { id: 'flat_top_bottom', name: 'Flat Top/Bottom', pointsRequired: 3 },
-        { id: 'disjoint_channel', name: 'Disjoint Channel', pointsRequired: 3 }
+        { id: 'parallel_channel', name: 'Parallel Channel', pointsRequired: 3, icon: '⫽' },
+        { id: 'regression_trend', name: 'Regression Trend', pointsRequired: 2, icon: '☷' },
+        { id: 'flat_top_bottom', name: 'Flat Top/Bottom', pointsRequired: 3, icon: '⨅' },
+        { id: 'disjoint_channel', name: 'Disjoint Channel', pointsRequired: 3, icon: '⋕' }
       ]
     },
     {
       id: 'pitchforks',
       name: 'Pitchforks',
-      iconName: 'pitchfork',
+      iconName: 'pitchforks',
       activeToolId: 'pitchfork',
       tools: [
-        { id: 'pitchfork', name: 'Pitchfork', pointsRequired: 3 },
-        { id: 'schiff_pitchfork', name: 'Schiff Pitchfork', pointsRequired: 3 },
-        { id: 'mod_schiff_pitchfork', name: 'Modified Schiff Pitchfork', pointsRequired: 3 }
+        { id: 'pitchfork', name: 'Pitchfork', pointsRequired: 3, icon: 'Ψ' },
+        { id: 'schiff_pitchfork', name: 'Schiff Pitchfork', pointsRequired: 3, icon: '⋔' },
+        { id: 'mod_schiff_pitchfork', name: 'Modified Schiff Pitchfork', pointsRequired: 3, icon: '⋕' }
       ]
     },
     {
       id: 'fibonacci',
-      name: 'Gann and Fibonacci',
+      name: 'Fibonacci',
       iconName: 'fibonacci',
       activeToolId: 'fib_retracement',
       tools: [
-        { id: 'fib_retracement', name: 'Fib Retracement', pointsRequired: 2, shortcut: 'Alt+F' },
-        { id: 'trend_fib_extension', name: 'Trend-Based Fib Extension', pointsRequired: 3 },
-        { id: 'fib_channel', name: 'Fib Channel', pointsRequired: 3 },
-        { id: 'fib_time_zone', name: 'Fib Time Zone', pointsRequired: 2 },
-        { id: 'fib_speed_fan', name: 'Fib Speed Resistance Fan', pointsRequired: 2 },
-        { id: 'trend_fib_time', name: 'Trend-Based Fib Time', pointsRequired: 2 },
-        { id: 'fib_circles', name: 'Fib Circles', pointsRequired: 2 },
-        { id: 'fib_spiral', name: 'Fib Spiral', pointsRequired: 2 },
-        { id: 'fib_speed_arcs', name: 'Fib Speed Resistance Arcs', pointsRequired: 2 },
-        { id: 'fib_wedge', name: 'Fib Wedge', pointsRequired: 2 },
-        { id: 'pitchfan', name: 'Pitchfan', pointsRequired: 3 }
+        { id: 'fib_retracement', name: 'Fib Retracement', pointsRequired: 2, shortcut: 'Alt+F', icon: '≡' },
+        { id: 'trend_fib_extension', name: 'Trend-Based Fib Extension', pointsRequired: 3, icon: '≚' },
+        { id: 'fib_channel', name: 'Fib Channel', pointsRequired: 3, icon: '⫽' },
+        { id: 'fib_time_zone', name: 'Fib Time Zone', pointsRequired: 2, icon: '⧉' },
+        { id: 'fib_speed_fan', name: 'Fib Speed Resistance Fan', pointsRequired: 2, icon: '⌔' },
+        { id: 'trend_fib_time', name: 'Trend-Based Fib Time', pointsRequired: 2, icon: '⏱' },
+        { id: 'fib_circles', name: 'Fib Circles', pointsRequired: 2, icon: '◎' },
+        { id: 'fib_spiral', name: 'Fib Spiral', pointsRequired: 2, icon: '🌀' },
+        { id: 'fib_speed_arcs', name: 'Fib Speed Resistance Arcs', pointsRequired: 2, icon: '⌒' },
+        { id: 'fib_wedge', name: 'Fib Wedge', pointsRequired: 2, icon: '◬' },
+        { id: 'pitchfan', name: 'Pitchfan', pointsRequired: 3, icon: '⋒' }
       ]
     },
     {
       id: 'gann',
-      name: 'Gann Tools',
+      name: 'Gann',
       iconName: 'gann',
       activeToolId: 'gann_box',
       tools: [
-        { id: 'gann_box', name: 'Gann Box', pointsRequired: 2 },
-        { id: 'gann_square_fixed', name: 'Gann Square Fixed', pointsRequired: 2 },
-        { id: 'gann_square', name: 'Gann Square', pointsRequired: 2 },
-        { id: 'gann_fan', name: 'Gann Fan', pointsRequired: 2 }
+        { id: 'gann_box', name: 'Gann Box', pointsRequired: 2, icon: '⧈' },
+        { id: 'gann_square_fixed', name: 'Gann Square Fixed', pointsRequired: 2, icon: '▦' },
+        { id: 'gann_square', name: 'Gann Square', pointsRequired: 2, icon: '▨' },
+        { id: 'gann_fan', name: 'Gann Fan', pointsRequired: 2, icon: '⋕' }
       ]
     },
     {
@@ -245,12 +245,12 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       iconName: 'patterns',
       activeToolId: 'xabcd_pattern',
       tools: [
-        { id: 'xabcd_pattern', name: 'XABCD Pattern', pointsRequired: 5 },
-        { id: 'cypher_pattern', name: 'Cypher Pattern', pointsRequired: 5 },
-        { id: 'head_and_shoulders', name: 'Head and Shoulders', pointsRequired: 7 },
-        { id: 'abcd_pattern', name: 'ABCD Pattern', pointsRequired: 4 },
-        { id: 'triangle_pattern', name: 'Triangle Pattern', pointsRequired: 4 },
-        { id: 'three_drives', name: 'Three Drives Pattern', pointsRequired: 6 }
+        { id: 'xabcd_pattern', name: 'XABCD Pattern', pointsRequired: 5, icon: 'W' },
+        { id: 'cypher_pattern', name: 'Cypher Pattern', pointsRequired: 5, icon: 'M' },
+        { id: 'head_and_shoulders', name: 'Head and Shoulders', pointsRequired: 7, icon: '⋏' },
+        { id: 'abcd_pattern', name: 'ABCD Pattern', pointsRequired: 4, icon: 'N' },
+        { id: 'triangle_pattern', name: 'Triangle Pattern', pointsRequired: 4, icon: '▲' },
+        { id: 'three_drives', name: 'Three Drives Pattern', pointsRequired: 6, icon: '∿' }
       ]
     },
     {
@@ -259,11 +259,11 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       iconName: 'elliott',
       activeToolId: 'elliott_impulse',
       tools: [
-        { id: 'elliott_impulse', name: 'Elliott Impulse Wave (12345)', pointsRequired: 5 },
-        { id: 'elliott_correction', name: 'Elliott Correction Wave (ABC)', pointsRequired: 3 },
-        { id: 'elliott_triangle', name: 'Elliott Triangle Wave (ABCDE)', pointsRequired: 5 },
-        { id: 'elliott_double_combo', name: 'Elliott Double Combo Wave (WXY)', pointsRequired: 3 },
-        { id: 'elliott_triple_combo', name: 'Elliott Triple Combo Wave (WXYZ)', pointsRequired: 5 }
+        { id: 'elliott_impulse', name: 'Elliott Impulse Wave (12345)', pointsRequired: 5, icon: '123' },
+        { id: 'elliott_correction', name: 'Elliott Correction Wave (ABC)', pointsRequired: 3, icon: 'ABC' },
+        { id: 'elliott_triangle', name: 'Elliott Triangle Wave (ABCDE)', pointsRequired: 5, icon: '▲' },
+        { id: 'elliott_double_combo', name: 'Elliott Double Combo Wave (WXY)', pointsRequired: 3, icon: 'WXY' },
+        { id: 'elliott_triple_combo', name: 'Elliott Triple Combo Wave (WXYZ)', pointsRequired: 5, icon: 'WXYZ' }
       ]
     },
     {
@@ -272,33 +272,33 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       iconName: 'cycles',
       activeToolId: 'cyclic_lines',
       tools: [
-        { id: 'cyclic_lines', name: 'Cyclic Lines', pointsRequired: 2 },
-        { id: 'time_cycles', name: 'Time Cycles', pointsRequired: 2 },
-        { id: 'sine_line', name: 'Sine Line', pointsRequired: 2 }
+        { id: 'cyclic_lines', name: 'Cyclic Lines', pointsRequired: 2, icon: '∿' },
+        { id: 'time_cycles', name: 'Time Cycles', pointsRequired: 2, icon: '⧖' },
+        { id: 'sine_line', name: 'Sine Line', pointsRequired: 2, icon: '∿' }
       ]
     },
     {
       id: 'projection',
-      name: 'Prediction and Measurement',
+      name: 'Projection',
       iconName: 'projection',
       activeToolId: 'long_position',
       tools: [
-        { id: 'long_position', name: 'Long Position', pointsRequired: 2 },
-        { id: 'short_position', name: 'Short Position', pointsRequired: 2 },
-        { id: 'forecast', name: 'Forecast', pointsRequired: 2 },
-        { id: 'bars_pattern', name: 'Bars Pattern', pointsRequired: 2 },
-        { id: 'ghost_feed', name: 'Ghost Feed', pointsRequired: 2 },
-        { id: 'projection', name: 'Projection', pointsRequired: 2 }
+        { id: 'long_position', name: 'Long Position (Risk/Reward)', pointsRequired: 2, icon: '📈' },
+        { id: 'short_position', name: 'Short Position (Risk/Reward)', pointsRequired: 2, icon: '📉' },
+        { id: 'forecast', name: 'Forecast', pointsRequired: 2, icon: '🎯' },
+        { id: 'bars_pattern', name: 'Bars Pattern', pointsRequired: 2, icon: '📊' },
+        { id: 'ghost_feed', name: 'Ghost Feed', pointsRequired: 2, icon: '👻' },
+        { id: 'projection', name: 'Projection', pointsRequired: 2, icon: '🔮' }
       ]
     },
     {
-      id: 'volume_based',
-      name: 'Volume Based',
-      iconName: 'volumebased',
+      id: 'volume',
+      name: 'Volume',
+      iconName: 'volume',
       activeToolId: 'anchored_vwap',
       tools: [
-        { id: 'anchored_vwap', name: 'Anchored VWAP', pointsRequired: 1 },
-        { id: 'fixed_volume_profile', name: 'Fixed Range Volume Profile', pointsRequired: 2 }
+        { id: 'anchored_vwap', name: 'Anchored VWAP', pointsRequired: 1, icon: '📊' },
+        { id: 'fixed_volume_profile', name: 'Fixed Range Volume Profile', pointsRequired: 2, icon: '📶' }
       ]
     },
     {
@@ -307,67 +307,46 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       iconName: 'measure',
       activeToolId: 'price_range',
       tools: [
-        { id: 'price_range', name: 'Price Range', pointsRequired: 2 },
-        { id: 'date_range', name: 'Date Range', pointsRequired: 2 },
-        { id: 'date_price_range', name: 'Date & Price Range', pointsRequired: 2 }
-      ]
-    },
-    {
-      id: 'brushes',
-      name: 'Brushes',
-      iconName: 'brush',
-      activeToolId: 'brush',
-      tools: [
-        { id: 'brush', name: 'Brush', pointsRequired: -1 },
-        { id: 'highlighter', name: 'Highlighter', pointsRequired: -1 }
-      ]
-    },
-    {
-      id: 'arrows',
-      name: 'Arrows',
-      iconName: 'arrow',
-      activeToolId: 'arrow',
-      tools: [
-        { id: 'arrow_marker', name: 'Arrow Marker', pointsRequired: 1 },
-        { id: 'arrow', name: 'Arrow', pointsRequired: 2 },
-        { id: 'arrow_up', name: 'Arrow Up', pointsRequired: 1 },
-        { id: 'arrow_down', name: 'Arrow Down', pointsRequired: 1 },
-        { id: 'arrow_left', name: 'Arrow Left', pointsRequired: 1 },
-        { id: 'arrow_right', name: 'Arrow Right', pointsRequired: 1 }
+        { id: 'price_range', name: 'Price Range', pointsRequired: 2, icon: '↕' },
+        { id: 'date_range', name: 'Date Range', pointsRequired: 2, icon: '↔' },
+        { id: 'date_price_range', name: 'Date & Price Range', pointsRequired: 2, icon: '⤧' }
       ]
     },
     {
       id: 'shapes',
-      name: 'Geometric Shapes',
+      name: 'Brushes & Shapes',
       iconName: 'shapes',
       activeToolId: 'rectangle',
       tools: [
-        { id: 'rectangle', name: 'Rectangle', pointsRequired: 2 },
-        { id: 'rotated_rectangle', name: 'Rotated Rectangle', pointsRequired: 3 },
-        { id: 'path', name: 'Path', pointsRequired: -1 },
-        { id: 'circle', name: 'Circle', pointsRequired: 2 },
-        { id: 'ellipse', name: 'Ellipse', pointsRequired: 2 },
-        { id: 'polyline', name: 'Polyline', pointsRequired: -1 },
-        { id: 'triangle', name: 'Triangle', pointsRequired: 3 },
-        { id: 'arc', name: 'Arc', pointsRequired: 3 },
-        { id: 'curve', name: 'Curve', pointsRequired: 3 }
+        { id: 'brush', name: 'Brush', pointsRequired: -1, icon: '🖌️' },
+        { id: 'highlighter', name: 'Highlighter', pointsRequired: -1, icon: '🖍️' },
+        { id: 'rectangle', name: 'Rectangle', pointsRequired: 2, icon: '▭' },
+        { id: 'rotated_rectangle', name: 'Rotated Rectangle', pointsRequired: 3, icon: '▱' },
+        { id: 'circle', name: 'Circle', pointsRequired: 2, icon: '○' },
+        { id: 'ellipse', name: 'Ellipse', pointsRequired: 2, icon: '⬭' },
+        { id: 'triangle', name: 'Triangle', pointsRequired: 3, icon: '△' },
+        { id: 'polyline', name: 'Polyline', pointsRequired: -1, icon: '⤹' },
+        { id: 'path', name: 'Path', pointsRequired: -1, icon: '〰' },
+        { id: 'arrow', name: 'Arrow', pointsRequired: 2, icon: '➔' },
+        { id: 'arrow_marker', name: 'Arrow Marker', pointsRequired: 1, icon: '➤' },
+        { id: 'arrow_up', name: 'Arrow Up', pointsRequired: 1, icon: '▲' },
+        { id: 'arrow_down', name: 'Arrow Down', pointsRequired: 1, icon: '▼' }
       ]
     },
     {
       id: 'utility',
-      name: 'Annotations and Utility',
+      name: 'Utility',
       iconName: 'utility',
       activeToolId: 'text',
       tools: [
-        { id: 'text', name: 'Text', pointsRequired: 1 },
-        { id: 'emoji_marker', name: 'Emoji / Marker', pointsRequired: 1 },
-        { id: 'ruler', name: 'Ruler', pointsRequired: 2 },
-        { id: 'zoom', name: 'Zoom In / Out', pointsRequired: 2 },
-        { id: 'magnet', name: 'Magnet Mode', pointsRequired: 0 },
-        { id: 'lock_drawings', name: 'Lock All Drawings', pointsRequired: 0 },
-        { id: 'hide_drawings', name: 'Hide All Drawings', pointsRequired: 0 },
-        { id: 'delete_drawings', name: 'Delete All Drawings', pointsRequired: 0 },
-        { id: 'layers', name: 'Drawing Layers', pointsRequired: 0 }
+        { id: 'text', name: 'Text Note', pointsRequired: 1, icon: 'T' },
+        { id: 'emoji_marker', name: 'Emoji / Marker', pointsRequired: 1, icon: '🏷️' },
+        { id: 'ruler', name: 'Ruler', pointsRequired: 2, icon: '📏' },
+        { id: 'zoom', name: 'Zoom In / Out', pointsRequired: 2, icon: '🔍' },
+        { id: 'magnet', name: 'Magnet Mode', pointsRequired: 0, icon: '🧲' },
+        { id: 'lock_drawings', name: 'Lock Drawings', pointsRequired: 0, icon: '🔒' },
+        { id: 'hide_drawings', name: 'Hide Drawings', pointsRequired: 0, icon: '👁️' },
+        { id: 'delete_drawings', name: 'Delete All Drawings', pointsRequired: 0, icon: '🗑️' }
       ]
     }
   ]);

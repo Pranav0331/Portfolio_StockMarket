@@ -48,7 +48,7 @@
   <!-- ======================================================================= -->
   <main class="main-trading-area" [class.terminal-dock-expanded]="isTerminalExpanded()">
 
-    <!-- LEFT: NARROW 44px VERTICAL CHART-TOOLS TOOLBAR WITH 16 GROUPED CATEGORIES -->
+    <!-- LEFT: NARROW 45px VERTICAL CHART-TOOLS TOOLBAR (14 GROUPED CATEGORIES) -->
     <aside class="left-vertical-toolbar" (click)="$event.stopPropagation()">
       <div class="toolbar-scroll-wrap">
         @for (group of drawingToolGroups(); track group.id) {
@@ -61,7 +61,7 @@
               (click)="selectToolGroup(group.id, $event)"
               [title]="group.name">
               
-              <!-- Group 1: Cursor -->
+              <!-- 1. Cursor -->
               @if (group.id === 'cursor') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="12" y1="2" x2="12" y2="22"></line>
@@ -70,7 +70,7 @@
                 </svg>
               }
 
-              <!-- Group 2: Lines -->
+              <!-- 2. Lines -->
               @else if (group.id === 'lines') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="4" y1="20" x2="20" y2="4"></line>
@@ -79,7 +79,7 @@
                 </svg>
               }
 
-              <!-- Group 3: Channels -->
+              <!-- 3. Channels -->
               @else if (group.id === 'channels') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="3" y1="17" x2="19" y2="5"></line>
@@ -89,7 +89,7 @@
                 </svg>
               }
 
-              <!-- Group 4: Pitchforks -->
+              <!-- 4. Pitchforks -->
               @else if (group.id === 'pitchforks') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="3" y1="12" x2="13" y2="12"></line>
@@ -100,7 +100,7 @@
                 </svg>
               }
 
-              <!-- Group 5: Fibonacci -->
+              <!-- 5. Fibonacci -->
               @else if (group.id === 'fibonacci') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="3" y1="5" x2="21" y2="5"></line>
@@ -111,7 +111,7 @@
                 </svg>
               }
 
-              <!-- Group 6: Gann -->
+              <!-- 6. Gann -->
               @else if (group.id === 'gann') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="4" y="4" width="16" height="16" rx="1"></rect>
@@ -121,7 +121,7 @@
                 </svg>
               }
 
-              <!-- Group 7: Patterns -->
+              <!-- 7. Patterns -->
               @else if (group.id === 'patterns') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3 17 8 7 13 15 18 5 22 17"></polyline>
@@ -133,7 +133,7 @@
                 </svg>
               }
 
-              <!-- Group 8: Elliott Waves -->
+              <!-- 8. Elliott Waves -->
               @else if (group.id === 'elliott') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3 19 7 9 11 15 16 5 21 19"></polyline>
@@ -142,14 +142,14 @@
                 </svg>
               }
 
-              <!-- Group 9: Cycles -->
+              <!-- 9. Cycles -->
               @else if (group.id === 'cycles') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M3 12c3-8 6-8 9 0s6 8 9 0"></path>
                 </svg>
               }
 
-              <!-- Group 10: Projection -->
+              <!-- 10. Projection -->
               @else if (group.id === 'projection') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="4" y="4" width="16" height="7" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981"></rect>
@@ -158,8 +158,8 @@
                 </svg>
               }
 
-              <!-- Group 11: Volume Based -->
-              @else if (group.id === 'volume_based') {
+              <!-- 11. Volume -->
+              @else if (group.id === 'volume') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="3" y="14" width="3" height="7"></rect>
                   <rect x="8" y="10" width="3" height="11"></rect>
@@ -168,7 +168,7 @@
                 </svg>
               }
 
-              <!-- Group 12: Measure -->
+              <!-- 12. Measure -->
               @else if (group.id === 'measure') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="4" y="5" width="16" height="14" rx="1" stroke-dasharray="3 3"></rect>
@@ -177,32 +177,15 @@
                 </svg>
               }
 
-              <!-- Group 13: Brushes -->
-              @else if (group.id === 'brushes') {
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18.37 2.63c.98.98.98 2.56 0 3.54l-1.42 1.42-3.54-3.54 1.42-1.42c.98-.98 2.56-.98 3.54 0z"></path>
-                  <path d="M12.71 4.75L3.5 13.96V18h4.04l9.21-9.21-4.04-4.04z"></path>
-                  <path d="M3 21h18"></path>
-                </svg>
-              }
-
-              <!-- Group 14: Arrows -->
-              @else if (group.id === 'arrows') {
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="5" y1="19" x2="19" y2="5"></line>
-                  <polyline points="9 5 19 5 19 15"></polyline>
-                </svg>
-              }
-
-              <!-- Group 15: Shapes -->
+              <!-- 13. Brushes & Shapes -->
               @else if (group.id === 'shapes') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="4" y="4" width="16" height="16" rx="2"></rect>
-                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M12.71 4.75L3.5 13.96V18h4.04l9.21-9.21-4.04-4.04z" fill="currentColor" opacity="0.4"></path>
                 </svg>
               }
 
-              <!-- Group 16: Utility -->
+              <!-- 14. Utility -->
               @else if (group.id === 'utility') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="3"></circle>
@@ -214,12 +197,15 @@
               <span class="v-tool-arrow">›</span>
             </button>
 
-            <!-- FLOATING CATEGORIZED SUBMENU -->
+            <!-- FLOATING FLYOUT SUBMENU (OPENS TO RIGHT OF TOOLBAR) -->
             @if (openToolGroupId() === group.id) {
               <div class="tool-popover drawing-category-popover" (click)="$event.stopPropagation()">
                 <div class="popover-category-header">
-                  <span class="cat-title">{{ group.name }}</span>
-                  <span class="cat-count">{{ group.tools.length }} tools</span>
+                  <div class="cat-title-wrap">
+                    <span class="cat-title">{{ group.name }}</span>
+                    <span class="cat-subtitle">{{ group.tools.length }} tools</span>
+                  </div>
+                  <button type="button" class="btn-close-popover" (click)="selectToolGroup(group.id, $event)">✕</button>
                 </div>
                 <div class="popover-tools-list">
                   @for (tool of group.tools; track tool.id) {
@@ -228,6 +214,7 @@
                       class="category-tool-item"
                       [class.active]="activeDrawingTool()?.id === tool.id"
                       (click)="selectDrawingTool(group, tool, $event)">
+                      <span class="tool-item-icon">{{ tool.icon || '•' }}</span>
                       <span class="tool-name">{{ tool.name }}</span>
                       @if (tool.shortcut) {
                         <span class="tool-shortcut">{{ tool.shortcut }}</span>
@@ -242,70 +229,6 @@
           </div>
         }
       </div>
-
-      <div class="v-toolbar-divider"></div>
-
-      <!-- Magnet Mode Toggle -->
-      <button
-        type="button"
-        class="v-tool-btn v-util-btn"
-        [class.active]="isMagnetEnabled()"
-        (click)="toggleMagnet()"
-        title="Magnet Mode (Snap to OHLC)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 10V6a8 8 0 0 1 16 0v4"></path>
-          <path d="M4 10h4v6H4z"></path>
-          <path d="M16 10h4v6h-4z"></path>
-        </svg>
-      </button>
-
-      <!-- Lock All Drawings Toggle -->
-      <button
-        type="button"
-        class="v-tool-btn v-util-btn"
-        [class.active]="areDrawingsLocked()"
-        (click)="toggleLockDrawings()"
-        title="Lock / Unlock All Drawings">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          @if (areDrawingsLocked()) {
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-          } @else {
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
-          }
-        </svg>
-      </button>
-
-      <!-- Hide / Show All Drawings Toggle -->
-      <button
-        type="button"
-        class="v-tool-btn v-util-btn"
-        [class.active]="areDrawingsHidden()"
-        (click)="toggleHideDrawings()"
-        title="Hide / Show All Drawings">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          @if (areDrawingsHidden()) {
-            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-            <line x1="1" y1="1" x2="23" y2="23"></line>
-          } @else {
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
-          }
-        </svg>
-      </button>
-
-      <!-- Clear / Delete All Drawings -->
-      <button
-        type="button"
-        class="v-tool-btn v-util-btn btn-trash-util"
-        (click)="clearAllDrawings()"
-        title="Delete All Chart Drawings">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="3 6 5 6 21 6"></polyline>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-        </svg>
-      </button>
     </aside>
 
     <!-- CENTER: MAXIMUM SCREEN AREA CHART WITH DRAWING OVERLAY -->
