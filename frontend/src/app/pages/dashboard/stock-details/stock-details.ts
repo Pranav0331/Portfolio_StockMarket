@@ -187,29 +187,6 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       ]
     },
     {
-      id: 'channels',
-      name: 'Channels',
-      iconName: 'channels',
-      activeToolId: 'parallel_channel',
-      tools: [
-        { id: 'parallel_channel', name: 'Parallel Channel', pointsRequired: 3, icon: '⫽' },
-        { id: 'regression_trend', name: 'Regression Trend', pointsRequired: 2, icon: '☷' },
-        { id: 'flat_top_bottom', name: 'Flat Top/Bottom', pointsRequired: 3, icon: '⨅' },
-        { id: 'disjoint_channel', name: 'Disjoint Channel', pointsRequired: 3, icon: '⋕' }
-      ]
-    },
-    {
-      id: 'pitchforks',
-      name: 'Pitchforks',
-      iconName: 'pitchforks',
-      activeToolId: 'pitchfork',
-      tools: [
-        { id: 'pitchfork', name: 'Pitchfork', pointsRequired: 3, icon: 'Ψ' },
-        { id: 'schiff_pitchfork', name: 'Schiff Pitchfork', pointsRequired: 3, icon: '⋔' },
-        { id: 'mod_schiff_pitchfork', name: 'Modified Schiff Pitchfork', pointsRequired: 3, icon: '⋕' }
-      ]
-    },
-    {
       id: 'fibonacci',
       name: 'Fibonacci',
       iconName: 'fibonacci',
@@ -226,128 +203,6 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         { id: 'fib_speed_arcs', name: 'Fib Speed Resistance Arcs', pointsRequired: 2, icon: '⌒' },
         { id: 'fib_wedge', name: 'Fib Wedge', pointsRequired: 2, icon: '◬' },
         { id: 'pitchfan', name: 'Pitchfan', pointsRequired: 3, icon: '⋒' }
-      ]
-    },
-    {
-      id: 'gann',
-      name: 'Gann',
-      iconName: 'gann',
-      activeToolId: 'gann_box',
-      tools: [
-        { id: 'gann_box', name: 'Gann Box', pointsRequired: 2, icon: '⧈' },
-        { id: 'gann_square_fixed', name: 'Gann Square Fixed', pointsRequired: 2, icon: '▦' },
-        { id: 'gann_square', name: 'Gann Square', pointsRequired: 2, icon: '▨' },
-        { id: 'gann_fan', name: 'Gann Fan', pointsRequired: 2, icon: '⋕' }
-      ]
-    },
-    {
-      id: 'patterns',
-      name: 'Patterns',
-      iconName: 'patterns',
-      activeToolId: 'xabcd_pattern',
-      tools: [
-        { id: 'xabcd_pattern', name: 'XABCD Pattern', pointsRequired: 5, icon: 'W' },
-        { id: 'cypher_pattern', name: 'Cypher Pattern', pointsRequired: 5, icon: 'M' },
-        { id: 'head_and_shoulders', name: 'Head and Shoulders', pointsRequired: 7, icon: '⋏' },
-        { id: 'abcd_pattern', name: 'ABCD Pattern', pointsRequired: 4, icon: 'N' },
-        { id: 'triangle_pattern', name: 'Triangle Pattern', pointsRequired: 4, icon: '▲' },
-        { id: 'three_drives', name: 'Three Drives Pattern', pointsRequired: 6, icon: '∿' }
-      ]
-    },
-    {
-      id: 'elliott',
-      name: 'Elliott Waves',
-      iconName: 'elliott',
-      activeToolId: 'elliott_impulse',
-      tools: [
-        { id: 'elliott_impulse', name: 'Elliott Impulse Wave (12345)', pointsRequired: 5, icon: '123' },
-        { id: 'elliott_correction', name: 'Elliott Correction Wave (ABC)', pointsRequired: 3, icon: 'ABC' },
-        { id: 'elliott_triangle', name: 'Elliott Triangle Wave (ABCDE)', pointsRequired: 5, icon: '▲' },
-        { id: 'elliott_double_combo', name: 'Elliott Double Combo Wave (WXY)', pointsRequired: 3, icon: 'WXY' },
-        { id: 'elliott_triple_combo', name: 'Elliott Triple Combo Wave (WXYZ)', pointsRequired: 5, icon: 'WXYZ' }
-      ]
-    },
-    {
-      id: 'cycles',
-      name: 'Cycles',
-      iconName: 'cycles',
-      activeToolId: 'cyclic_lines',
-      tools: [
-        { id: 'cyclic_lines', name: 'Cyclic Lines', pointsRequired: 2, icon: '∿' },
-        { id: 'time_cycles', name: 'Time Cycles', pointsRequired: 2, icon: '⧖' },
-        { id: 'sine_line', name: 'Sine Line', pointsRequired: 2, icon: '∿' }
-      ]
-    },
-    {
-      id: 'projection',
-      name: 'Projection',
-      iconName: 'projection',
-      activeToolId: 'long_position',
-      tools: [
-        { id: 'long_position', name: 'Long Position (Risk/Reward)', pointsRequired: 2, icon: '📈' },
-        { id: 'short_position', name: 'Short Position (Risk/Reward)', pointsRequired: 2, icon: '📉' },
-        { id: 'forecast', name: 'Forecast', pointsRequired: 2, icon: '🎯' },
-        { id: 'bars_pattern', name: 'Bars Pattern', pointsRequired: 2, icon: '📊' },
-        { id: 'ghost_feed', name: 'Ghost Feed', pointsRequired: 2, icon: '👻' },
-        { id: 'projection', name: 'Projection', pointsRequired: 2, icon: '🔮' }
-      ]
-    },
-    {
-      id: 'volume',
-      name: 'Volume',
-      iconName: 'volume',
-      activeToolId: 'anchored_vwap',
-      tools: [
-        { id: 'anchored_vwap', name: 'Anchored VWAP', pointsRequired: 1, icon: '📊' },
-        { id: 'fixed_volume_profile', name: 'Fixed Range Volume Profile', pointsRequired: 2, icon: '📶' }
-      ]
-    },
-    {
-      id: 'measure',
-      name: 'Measure',
-      iconName: 'measure',
-      activeToolId: 'price_range',
-      tools: [
-        { id: 'price_range', name: 'Price Range', pointsRequired: 2, icon: '↕' },
-        { id: 'date_range', name: 'Date Range', pointsRequired: 2, icon: '↔' },
-        { id: 'date_price_range', name: 'Date & Price Range', pointsRequired: 2, icon: '⤧' }
-      ]
-    },
-    {
-      id: 'shapes',
-      name: 'Brushes & Shapes',
-      iconName: 'shapes',
-      activeToolId: 'rectangle',
-      tools: [
-        { id: 'brush', name: 'Brush', pointsRequired: -1, icon: '🖌️' },
-        { id: 'highlighter', name: 'Highlighter', pointsRequired: -1, icon: '🖍️' },
-        { id: 'rectangle', name: 'Rectangle', pointsRequired: 2, icon: '▭' },
-        { id: 'rotated_rectangle', name: 'Rotated Rectangle', pointsRequired: 3, icon: '▱' },
-        { id: 'circle', name: 'Circle', pointsRequired: 2, icon: '○' },
-        { id: 'ellipse', name: 'Ellipse', pointsRequired: 2, icon: '⬭' },
-        { id: 'triangle', name: 'Triangle', pointsRequired: 3, icon: '△' },
-        { id: 'polyline', name: 'Polyline', pointsRequired: -1, icon: '⤹' },
-        { id: 'path', name: 'Path', pointsRequired: -1, icon: '〰' },
-        { id: 'arrow', name: 'Arrow', pointsRequired: 2, icon: '➔' },
-        { id: 'arrow_marker', name: 'Arrow Marker', pointsRequired: 1, icon: '➤' },
-        { id: 'arrow_up', name: 'Arrow Up', pointsRequired: 1, icon: '▲' },
-        { id: 'arrow_down', name: 'Arrow Down', pointsRequired: 1, icon: '▼' }
-      ]
-    },
-    {
-      id: 'utility',
-      name: 'Utility',
-      iconName: 'utility',
-      activeToolId: 'text',
-      tools: [
-        { id: 'text', name: 'Text Note', pointsRequired: 1, icon: 'T' },
-        { id: 'emoji_marker', name: 'Emoji / Marker', pointsRequired: 1, icon: '🏷️' },
-        { id: 'ruler', name: 'Ruler', pointsRequired: 2, icon: '📏' },
-        { id: 'zoom', name: 'Zoom In / Out', pointsRequired: 2, icon: '🔍' },
-        { id: 'magnet', name: 'Magnet Mode', pointsRequired: 0, icon: '🧲' },
-        { id: 'lock_drawings', name: 'Lock Drawings', pointsRequired: 0, icon: '🔒' },
-        { id: 'hide_drawings', name: 'Hide Drawings', pointsRequired: 0, icon: '👁️' },
-        { id: 'delete_drawings', name: 'Delete All Drawings', pointsRequired: 0, icon: '🗑️' }
       ]
     }
   ]);
@@ -2498,6 +2353,179 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       pct: item.pct,
       color: item.color
     }));
+  }
+
+  getFibExtensionLevels(d: DrawingItem): { y: number; pct: string; color: string }[] {
+    if (!d.points || d.points.length < 2) return [];
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const p3 = d.points[2] || p2;
+    const swing = p2.y - p1.y;
+    const ratios = [
+      { r: 0.382, pct: '38.2%', color: '#f59e0b' },
+      { r: 0.618, pct: '61.8%', color: '#06b6d4' },
+      { r: 1.0, pct: '100.0%', color: '#10b981' },
+      { r: 1.618, pct: '161.8%', color: '#3b82f6' },
+      { r: 2.618, pct: '261.8%', color: '#8b5cf6' }
+    ];
+    return ratios.map(item => ({
+      y: p3.y + swing * item.r,
+      pct: item.pct,
+      color: item.color
+    }));
+  }
+
+  getFibChannelLines(d: DrawingItem): { p1: DrawingPoint; p2: DrawingPoint; color: string; label: string }[] {
+    if (!d.points || d.points.length < 2) return [];
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const p3 = d.points[2] || { x: p1.x + 40, y: p1.y + 40 };
+    const ox = p3.x - p1.x;
+    const oy = p3.y - p1.y;
+    const ratios = [
+      { r: 0, label: '0.0', color: '#64748b' },
+      { r: 0.5, label: '0.5', color: '#10b981' },
+      { r: 0.618, label: '0.618', color: '#06b6d4' },
+      { r: 1.0, label: '1.0', color: '#3b82f6' },
+      { r: 1.618, label: '1.618', color: '#8b5cf6' }
+    ];
+    return ratios.map(item => ({
+      p1: { x: p1.x + ox * item.r, y: p1.y + oy * item.r },
+      p2: { x: p2.x + ox * item.r, y: p2.y + oy * item.r },
+      color: item.color,
+      label: item.label
+    }));
+  }
+
+  getFibTimeZones(d: DrawingItem): { x: number; label: string; color: string }[] {
+    if (!d.points || d.points.length < 2) return [];
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const dx = Math.max(15, Math.abs(p2.x - p1.x));
+    const fibs = [0, 1, 2, 3, 5, 8, 13, 21, 34];
+    return fibs.map(f => ({
+      x: p1.x + dx * f,
+      label: String(f),
+      color: f === 0 ? '#64748b' : f % 2 === 0 ? '#3b82f6' : '#10b981'
+    }));
+  }
+
+  getFibSpeedFans(d: DrawingItem): { x2: number; y2: number; label: string; color: string }[] {
+    if (!d.points || d.points.length < 2) return [];
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const ratios = [
+      { r: 0.382, label: '0.382', color: '#f59e0b' },
+      { r: 0.5, label: '0.5', color: '#10b981' },
+      { r: 0.618, label: '0.618', color: '#06b6d4' },
+      { r: 0.786, label: '0.786', color: '#3b82f6' }
+    ];
+    return ratios.map(item => ({
+      x2: p1.x + dx * 2,
+      y2: p1.y + dy * item.r * 2,
+      label: item.label,
+      color: item.color
+    }));
+  }
+
+  getFibTrendTimes(d: DrawingItem): { x: number; label: string; color: string }[] {
+    if (!d.points || d.points.length < 2) return [];
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const dx = p2.x - p1.x;
+    const ratios = [
+      { r: 0.382, label: '38.2%', color: '#f59e0b' },
+      { r: 0.5, label: '50.0%', color: '#10b981' },
+      { r: 0.618, label: '61.8%', color: '#06b6d4' },
+      { r: 1.0, label: '100.0%', color: '#3b82f6' },
+      { r: 1.618, label: '161.8%', color: '#8b5cf6' }
+    ];
+    return ratios.map(item => ({
+      x: p1.x + dx * item.r,
+      label: item.label,
+      color: item.color
+    }));
+  }
+
+  getFibCircles(d: DrawingItem): { r: number; label: string; color: string }[] {
+    if (!d.points || d.points.length < 2) return [];
+    const baseR = Math.hypot(d.points[1].x - d.points[0].x, d.points[1].y - d.points[0].y);
+    const ratios = [
+      { r: 0.382, label: '0.382', color: '#f59e0b' },
+      { r: 0.618, label: '0.618', color: '#06b6d4' },
+      { r: 1.0, label: '1.0', color: '#10b981' },
+      { r: 1.618, label: '1.618', color: '#3b82f6' },
+      { r: 2.618, label: '2.618', color: '#8b5cf6' }
+    ];
+    return ratios.map(item => ({
+      r: baseR * item.r,
+      label: item.label,
+      color: item.color
+    }));
+  }
+
+  getFibSpiralPath(d: DrawingItem): string {
+    if (!d.points || d.points.length < 2) return '';
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const baseR = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    const points: string[] = [];
+    const turns = 4;
+    const steps = 60;
+    const b = 0.3063489;
+    const baseAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+    for (let i = 0; i <= steps; i++) {
+      const theta = (i / steps) * (turns * Math.PI);
+      const r = (baseR / 10) * Math.exp(b * theta);
+      const x = p1.x + r * Math.cos(theta + baseAngle);
+      const y = p1.y + r * Math.sin(theta + baseAngle);
+      points.push(`${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`);
+    }
+    return points.join(' ');
+  }
+
+  getFibArcs(d: DrawingItem): { r: number; label: string; color: string }[] {
+    if (!d.points || d.points.length < 2) return [];
+    const baseR = Math.hypot(d.points[1].x - d.points[0].x, d.points[1].y - d.points[0].y);
+    const ratios = [
+      { r: 0.382, label: '38.2%', color: '#f59e0b' },
+      { r: 0.5, label: '50.0%', color: '#10b981' },
+      { r: 0.618, label: '61.8%', color: '#06b6d4' },
+      { r: 0.786, label: '78.6%', color: '#3b82f6' }
+    ];
+    return ratios.map(item => ({
+      r: baseR * item.r,
+      label: item.label,
+      color: item.color
+    }));
+  }
+
+  getFibWedgeLines(d: DrawingItem): { x2: number; y2: number; color: string }[] {
+    if (!d.points || d.points.length < 2) return [];
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    return [
+      { x2: p1.x + dx * 1.5, y2: p1.y + dy * 0.618 * 1.5, color: '#f59e0b' },
+      { x2: p1.x + dx * 1.5, y2: p1.y + dy * 1.5, color: '#10b981' },
+      { x2: p1.x + dx * 1.5, y2: p1.y + dy * 1.618 * 1.5, color: '#3b82f6' }
+    ];
+  }
+
+  getPitchfanLines(d: DrawingItem): { x1: number; y1: number; x2: number; y2: number; color: string }[] {
+    if (!d.points || d.points.length < 2) return [];
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const p3 = d.points[2] || { x: p2.x + 30, y: p2.y + 30 };
+    const mid = { x: (p2.x + p3.x) / 2, y: (p2.y + p3.y) / 2 };
+    return [
+      { x1: p1.x, y1: p1.y, x2: mid.x + (mid.x - p1.x), y2: mid.y + (mid.y - p1.y), color: '#10b981' },
+      { x1: p1.x, y1: p1.y, x2: p2.x + (p2.x - p1.x), y2: p2.y + (p2.y - p1.y), color: '#3b82f6' },
+      { x1: p1.x, y1: p1.y, x2: p3.x + (p3.x - p1.x), y2: p3.y + (p3.y - p1.y), color: '#ef4444' }
+    ];
   }
 
   getMeasureBox(d: DrawingItem): { x: number; y: number; w: number; h: number; p1: DrawingPoint; p2: DrawingPoint } {

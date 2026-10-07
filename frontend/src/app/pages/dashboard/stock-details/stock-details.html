@@ -591,14 +591,101 @@
                   <line [attr.x1]="d.points[0].x" y1="0" [attr.x2]="d.points[0].x" y2="3000" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-dasharray="4 4" />
                 }
 
-                <!-- 5. Fibonacci Retracement Levels -->
+                <!-- 10. Fibonacci Retracement Levels -->
                 @else if (d.toolId === 'fib_retracement' && d.points.length >= 2) {
                   <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
                   @for (fib of getFibLevels(d); track fib.pct) {
                     <g class="fib-level-group">
-                      <line [attr.x1]="d.points[0].x" [attr.y1]="fib.y" [attr.x2]="d.points[1].x + 300" [attr.y2]="fib.y" [attr.stroke]="fib.color" stroke-width="1.5" />
+                      <line [attr.x1]="d.points[0].x" [attr.y1]="fib.y" [attr.x2]="d.points[1].x + 350" [attr.y2]="fib.y" [attr.stroke]="fib.color" stroke-width="1.5" />
                       <text [attr.x]="d.points[0].x + 4" [attr.y]="fib.y - 3" [attr.fill]="fib.color" class="svg-drawing-label">{{ fib.pct }}</text>
                     </g>
+                  }
+                }
+
+                <!-- 11. Trend-Based Fib Extension -->
+                @else if (d.toolId === 'trend_fib_extension' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1.5" />
+                  @if (d.points.length >= 3) {
+                    <line [attr.x1]="d.points[1].x" [attr.y1]="d.points[1].y" [attr.x2]="d.points[2].x" [attr.y2]="d.points[2].y" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                    @for (fib of getFibExtensionLevels(d); track fib.pct) {
+                      <g class="fib-level-group">
+                        <line [attr.x1]="d.points[2].x" [attr.y1]="fib.y" [attr.x2]="d.points[2].x + 350" [attr.y2]="fib.y" [attr.stroke]="fib.color" stroke-width="1.5" />
+                        <text [attr.x]="d.points[2].x + 4" [attr.y]="fib.y - 3" [attr.fill]="fib.color" class="svg-drawing-label">{{ fib.pct }}</text>
+                      </g>
+                    }
+                  }
+                }
+
+                <!-- 12. Fib Channel -->
+                @else if (d.toolId === 'fib_channel' && d.points.length >= 2) {
+                  @for (ch of getFibChannelLines(d); track ch.label) {
+                    <line [attr.x1]="ch.p1.x" [attr.y1]="ch.p1.y" [attr.x2]="ch.p2.x" [attr.y2]="ch.p2.y" [attr.stroke]="ch.color" stroke-width="1.5" />
+                    <text [attr.x]="ch.p1.x + 4" [attr.y]="ch.p1.y - 4" [attr.fill]="ch.color" class="svg-drawing-label">{{ ch.label }}</text>
+                  }
+                }
+
+                <!-- 13. Fib Time Zone -->
+                @else if (d.toolId === 'fib_time_zone' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                  @for (tz of getFibTimeZones(d); track tz.label) {
+                    <line [attr.x1]="tz.x" y1="0" [attr.x2]="tz.x" y2="3000" [attr.stroke]="tz.color" stroke-width="1.2" stroke-dasharray="3 3" />
+                    <text [attr.x]="tz.x + 4" [attr.y]="30" [attr.fill]="tz.color" class="svg-drawing-label">{{ tz.label }}</text>
+                  }
+                }
+
+                <!-- 14. Fib Speed Resistance Fan -->
+                @else if (d.toolId === 'fib_speed_fan' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1.5" />
+                  @for (fan of getFibSpeedFans(d); track fan.label) {
+                    <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="fan.x2" [attr.y2]="fan.y2" [attr.stroke]="fan.color" stroke-width="1.2" stroke-dasharray="2 2" />
+                    <text [attr.x]="fan.x2 - 30" [attr.y]="fan.y2" [attr.fill]="fan.color" class="svg-drawing-label">{{ fan.label }}</text>
+                  }
+                }
+
+                <!-- 15. Trend-Based Fib Time -->
+                @else if (d.toolId === 'trend_fib_time' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                  @for (tt of getFibTrendTimes(d); track tt.label) {
+                    <line [attr.x1]="tt.x" y1="0" [attr.x2]="tt.x" y2="3000" [attr.stroke]="tt.color" stroke-width="1.2" stroke-dasharray="3 3" />
+                    <text [attr.x]="tt.x + 4" [attr.y]="45" [attr.fill]="tt.color" class="svg-drawing-label">{{ tt.label }}</text>
+                  }
+                }
+
+                <!-- 16. Fib Circles -->
+                @else if (d.toolId === 'fib_circles' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                  @for (fc of getFibCircles(d); track fc.label) {
+                    <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y" [attr.r]="fc.r" fill="none" [attr.stroke]="fc.color" stroke-width="1.2" />
+                    <text [attr.x]="d.points[0].x + fc.r + 4" [attr.y]="d.points[0].y - 3" [attr.fill]="fc.color" class="svg-drawing-label">{{ fc.label }}</text>
+                  }
+                }
+
+                <!-- 17. Fib Spiral -->
+                @else if (d.toolId === 'fib_spiral' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                  <path [attr.d]="getFibSpiralPath(d)" fill="none" [attr.stroke]="d.color" stroke-width="1.8" />
+                }
+
+                <!-- 18. Fib Speed Resistance Arcs -->
+                @else if (d.toolId === 'fib_speed_arcs' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                  @for (arc of getFibArcs(d); track arc.label) {
+                    <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y" [attr.r]="arc.r" fill="none" [attr.stroke]="arc.color" stroke-width="1.2" stroke-dasharray="4 2" />
+                    <text [attr.x]="d.points[0].x + arc.r * 0.7" [attr.y]="d.points[0].y - arc.r * 0.7" [attr.fill]="arc.color" class="svg-drawing-label">{{ arc.label }}</text>
+                  }
+                }
+
+                <!-- 19. Fib Wedge -->
+                @else if (d.toolId === 'fib_wedge' && d.points.length >= 2) {
+                  @for (wd of getFibWedgeLines(d); track wd.color) {
+                    <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="wd.x2" [attr.y2]="wd.y2" [attr.stroke]="wd.color" stroke-width="1.4" />
+                  }
+                }
+
+                <!-- 20. Pitchfan -->
+                @else if (d.toolId === 'pitchfan' && d.points.length >= 2) {
+                  @for (pf of getPitchfanLines(d); track pf.color) {
+                    <line [attr.x1]="pf.x1" [attr.y1]="pf.y1" [attr.x2]="pf.x2" [attr.y2]="pf.y2" [attr.stroke]="pf.color" stroke-width="1.4" />
                   }
                 }
 
