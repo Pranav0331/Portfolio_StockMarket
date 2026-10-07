@@ -2428,6 +2428,38 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     return points.map(p => `${p.x},${p.y}`).join(' ');
   }
 
+  getRayEnd(p1: DrawingPoint, p2: DrawingPoint, width = 3000): { x: number; y: number } {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const len = Math.hypot(dx, dy);
+    if (len === 0) return { x: p2.x, y: p2.y };
+    return {
+      x: p1.x + (dx / len) * width,
+      y: p1.y + (dy / len) * width
+    };
+  }
+
+  getExtendedLinePoints(p1: DrawingPoint, p2: DrawingPoint, width = 3000): { x1: number; y1: number; x2: number; y2: number } {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const len = Math.hypot(dx, dy);
+    if (len === 0) return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+    return {
+      x1: p1.x - (dx / len) * width,
+      y1: p1.y - (dy / len) * width,
+      x2: p1.x + (dx / len) * width,
+      y2: p1.y + (dy / len) * width
+    };
+  }
+
+  getTrendAngle(p1: DrawingPoint, p2: DrawingPoint): number {
+    const dx = p2.x - p1.x;
+    const dy = -(p2.y - p1.y);
+    const rad = Math.atan2(dy, dx);
+    const deg = Math.round((rad * 180) / Math.PI);
+    return deg;
+  }
+
   getFibLevels(d: DrawingItem): { y: number; pct: string; color: string }[] {
     if (!d.points || d.points.length < 2) return [];
     const y1 = d.points[0].y;

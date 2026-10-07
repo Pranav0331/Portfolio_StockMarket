@@ -460,8 +460,8 @@
                 [class.locked-drawing]="d.locked || areDrawingsLocked()"
                 (click)="selectDrawing(d, $event)">
                 
-                <!-- 1. Two-Point Lines (Trend line, info line, ray, etc.) -->
-                @if (d.points.length >= 2 && (d.toolId === 'trend_line' || d.toolId === 'ray' || d.toolId === 'info_line' || d.toolId === 'extended_line' || d.toolId === 'trend_angle')) {
+                <!-- 1. Trend Line -->
+                @if (d.toolId === 'trend_line' && d.points.length >= 2) {
                   <line
                     [attr.x1]="d.points[0].x"
                     [attr.y1]="d.points[0].y"
@@ -469,18 +469,91 @@
                     [attr.y2]="d.points[1].y"
                     [attr.stroke]="d.color"
                     [attr.stroke-width]="d.lineWidth" />
-                  
-                  @if (d.toolId === 'info_line') {
-                    <text [attr.x]="(d.points[0].x + d.points[1].x) / 2" [attr.y]="(d.points[0].y + d.points[1].y) / 2 - 8" class="svg-drawing-label" [attr.fill]="d.color">
-                      Δ {{ (d.points[1].x - d.points[0].x) | number:'1.0-0' }}px
-                    </text>
+                }
+
+                <!-- 2. Ray (Infinite in 1 direction) -->
+                @else if (d.toolId === 'ray' && d.points.length >= 2) {
+                  @if (getRayEnd(d.points[0], d.points[1]); as ray) {
+                    <line
+                      [attr.x1]="d.points[0].x"
+                      [attr.y1]="d.points[0].y"
+                      [attr.x2]="ray.x"
+                      [attr.y2]="ray.y"
+                      [attr.stroke]="d.color"
+                      [attr.stroke-width]="d.lineWidth" />
                   }
                 }
 
-                <!-- 2. Horizontal Line / Ray -->
-                @else if (d.toolId === 'horizontal_line' || d.toolId === 'horizontal_ray') {
+                <!-- 3. Info Line (Line with delta stats) -->
+                @else if (d.toolId === 'info_line' && d.points.length >= 2) {
                   <line
-                    [attr.x1]="d.toolId === 'horizontal_ray' ? d.points[0].x : 0"
+                    [attr.x1]="d.points[0].x"
+                    [attr.y1]="d.points[0].y"
+                    [attr.x2]="d.points[1].x"
+                    [attr.y2]="d.points[1].y"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                  <rect
+                    [attr.x]="(d.points[0].x + d.points[1].x) / 2 - 40"
+                    [attr.y]="(d.points[0].y + d.points[1].y) / 2 - 20"
+                    width="80"
+                    height="18"
+                    rx="3"
+                    fill="#ffffff"
+                    stroke="#cbd5e1"
+                    stroke-width="1" />
+                  <text
+                    [attr.x]="(d.points[0].x + d.points[1].x) / 2"
+                    [attr.y]="(d.points[0].y + d.points[1].y) / 2 - 8"
+                    class="svg-drawing-label center"
+                    [attr.fill]="d.color">
+                    Δ {{ Math.round(Math.hypot(d.points[1].x - d.points[0].x, d.points[1].y - d.points[0].y)) }}px
+                  </text>
+                }
+
+                <!-- 4. Extended Line (Infinite both directions) -->
+                @else if (d.toolId === 'extended_line' && d.points.length >= 2) {
+                  @if (getExtendedLinePoints(d.points[0], d.points[1]); as ext) {
+                    <line
+                      [attr.x1]="ext.x1"
+                      [attr.y1]="ext.y1"
+                      [attr.x2]="ext.x2"
+                      [attr.y2]="ext.y2"
+                      [attr.stroke]="d.color"
+                      [attr.stroke-width]="d.lineWidth" />
+                  }
+                }
+
+                <!-- 5. Trend Angle (Line with angle arc/label) -->
+                @else if (d.toolId === 'trend_angle' && d.points.length >= 2) {
+                  <line
+                    [attr.x1]="d.points[0].x"
+                    [attr.y1]="d.points[0].y"
+                    [attr.x2]="d.points[1].x"
+                    [attr.y2]="d.points[1].y"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                  <line
+                    [attr.x1]="d.points[0].x"
+                    [attr.y1]="d.points[0].y"
+                    [attr.x2]="d.points[0].x + 40"
+                    [attr.y2]="d.points[0].y"
+                    [attr.stroke]="d.color"
+                    stroke-width="1"
+                    stroke-dasharray="2 2" />
+                  <text
+                    [attr.x]="d.points[0].x + 44"
+                    [attr.y]="d.points[0].y - 2"
+                    class="svg-drawing-label"
+                    [attr.fill]="d.color">
+                    {{ getTrendAngle(d.points[0], d.points[1]) }}°
+                  </text>
+                }
+
+                <!-- 6. Horizontal Line (Full across width) -->
+                @else if (d.toolId === 'horizontal_line') {
+                  <line
+                    x1="0"
                     [attr.y1]="d.points[0].y"
                     x2="3000"
                     [attr.y2]="d.points[0].y"
@@ -488,7 +561,18 @@
                     [attr.stroke-width]="d.lineWidth" />
                 }
 
-                <!-- 3. Vertical Line -->
+                <!-- 7. Horizontal Ray (Starts at Point, goes right) -->
+                @else if (d.toolId === 'horizontal_ray') {
+                  <line
+                    [attr.x1]="d.points[0].x"
+                    [attr.y1]="d.points[0].y"
+                    x2="3000"
+                    [attr.y2]="d.points[0].y"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                }
+
+                <!-- 8. Vertical Line (Full vertical across height) -->
                 @else if (d.toolId === 'vertical_line') {
                   <line
                     [attr.x1]="d.points[0].x"
@@ -499,7 +583,7 @@
                     [attr.stroke-width]="d.lineWidth" />
                 }
 
-                <!-- 4. Cross Line -->
+                <!-- 9. Cross Line (Horizontal + Vertical cross) -->
                 @else if (d.toolId === 'cross_line') {
                   <line x1="0" [attr.y1]="d.points[0].y" x2="3000" [attr.y2]="d.points[0].y" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-dasharray="4 4" />
                   <line [attr.x1]="d.points[0].x" y1="0" [attr.x2]="d.points[0].x" y2="3000" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-dasharray="4 4" />
