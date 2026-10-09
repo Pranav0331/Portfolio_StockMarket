@@ -483,31 +483,160 @@ public class TradingService {
     @Transactional
     public PositionDto closePosition(Long userId, Long positionId, BigDecimal requestedCloseQty) {
         synchronized (getUserLock(userId)) {
-            Position position = positionRepository.findByIdAndUserId(positionId, userId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Position not found with id: " + positionId));
+            Optional<Position> positionOpt = positionRepository.findByIdAndUserId(positionId, userId);
+            if (positionOpt.isPresent()) {
+                Position position = positionOpt.get();
+                if (position.getStatus() != PositionStatus.OPEN) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Position is already closed");
+                }
 
-            if (position.getStatus() != PositionStatus.OPEN) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Position is already closed");
+                if (requestedCloseQty != null && requestedCloseQty.compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Close quantity must be greater than zero");
+                }
+
+                if (requestedCloseQty != null && requestedCloseQty.compareTo(position.getQuantity()) > 0) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            String.format("Insufficient position quantity. Open quantity is %s, requested close: %s",
+                                    position.getQuantity(), requestedCloseQty));
+                }
+
+                String symbol = position.getStock() != null ? position.getStock().getSymbol() : "UNKNOWN";
+                StockQuoteDto quote = fetchRealMarketQuote(symbol);
+                if (quote == null || quote.price() == null || quote.price().compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Real market price unavailable to close position: " + symbol);
+                }
+
+                BigDecimal closePrice = quote.price();
+                return executeClosePositionInternal(position, closePrice, requestedCloseQty, "Manual Close");
+            }
+
+            // Fallback: Check if it matches an open holding
+            Optional<Holding> holdingOpt = holdingRepository.findByIdAndUserId(positionId, userId);
+            if (holdingOpt.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Position or holding not found with id: " + positionId);
+            }
+
+            Holding holding = holdingOpt.get();
+            if (holding.getQuantity() == null || holding.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Holding has zero or negative quantity");
             }
 
             if (requestedCloseQty != null && requestedCloseQty.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Close quantity must be greater than zero");
             }
 
-            if (requestedCloseQty != null && requestedCloseQty.compareTo(position.getQuantity()) > 0) {
+            if (requestedCloseQty != null && requestedCloseQty.compareTo(holding.getQuantity()) > 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        String.format("Insufficient position quantity. Open quantity is %s, requested close: %s",
-                                position.getQuantity(), requestedCloseQty));
+                        String.format("Insufficient holding quantity. Available is %s, requested close: %s",
+                                holding.getQuantity(), requestedCloseQty));
             }
 
-            String symbol = position.getStock() != null ? position.getStock().getSymbol() : "UNKNOWN";
+            User user = holding.getUser();
+            Stock stock = holding.getStock();
+            String symbol = stock != null ? stock.getSymbol() : "UNKNOWN";
+
             StockQuoteDto quote = fetchRealMarketQuote(symbol);
             if (quote == null || quote.price() == null || quote.price().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Real market price unavailable to close position: " + symbol);
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Real market price unavailable to close holding: " + symbol);
             }
 
             BigDecimal closePrice = quote.price();
-            return executeClosePositionInternal(position, closePrice, requestedCloseQty, "Manual Close");
+            BigDecimal totalHoldingQty = holding.getQuantity();
+            BigDecimal closeQty = (requestedCloseQty != null && requestedCloseQty.compareTo(BigDecimal.ZERO) > 0 && requestedCloseQty.compareTo(totalHoldingQty) < 0)
+                    ? requestedCloseQty.setScale(4, RoundingMode.HALF_UP)
+                    : totalHoldingQty;
+
+            BigDecimal totalAmount = closePrice.multiply(closeQty).setScale(4, RoundingMode.HALF_UP);
+            BigDecimal avgBuyPrice = holding.getAverageBuyPrice() != null ? holding.getAverageBuyPrice() : closePrice;
+            BigDecimal costBasis = avgBuyPrice.multiply(closeQty).setScale(4, RoundingMode.HALF_UP);
+            BigDecimal realizedPnL = totalAmount.subtract(costBasis).setScale(4, RoundingMode.HALF_UP);
+            BigDecimal realizedPnLPercent = BigDecimal.ZERO;
+            if (costBasis.compareTo(BigDecimal.ZERO) > 0) {
+                realizedPnLPercent = realizedPnL.divide(costBasis, 4, RoundingMode.HALF_UP)
+                        .multiply(new BigDecimal("100"))
+                        .setScale(2, RoundingMode.HALF_UP);
+            }
+
+            // Update Holding
+            boolean isPartial = closeQty.compareTo(totalHoldingQty) < 0;
+            if (isPartial) {
+                BigDecimal remainingHoldingQty = totalHoldingQty.subtract(closeQty).setScale(4, RoundingMode.HALF_UP);
+                holding.setQuantity(remainingHoldingQty);
+                BigDecimal newTotalInvested = avgBuyPrice.multiply(remainingHoldingQty).setScale(4, RoundingMode.HALF_UP);
+                holding.setTotalInvested(newTotalInvested);
+                holdingRepository.save(holding);
+            } else {
+                holdingRepository.delete(holding);
+            }
+
+            // Create Order
+            Order order = new Order();
+            order.setUser(user);
+            order.setStock(stock);
+            order.setOrderType(OrderType.SELL);
+            order.setOrderStatus(OrderStatus.EXECUTED);
+            order.setTradingMode(TradingMode.INTRADAY);
+            order.setPositionSide(PositionSide.LONG);
+            order.setLeverage(1);
+            order.setMarginUsed(BigDecimal.ZERO);
+            order.setRealizedPnl(realizedPnL);
+            order.setQuantity(closeQty);
+            order.setPrice(closePrice);
+            order.setExecutedPrice(closePrice);
+            order.setExecutedAt(Instant.now());
+            orderRepository.save(order);
+
+            // Create Transaction
+            Transaction transaction = new Transaction();
+            transaction.setUser(user);
+            transaction.setStock(stock);
+            transaction.setOrder(order);
+            transaction.setTransactionType(TransactionType.SELL);
+            transaction.setStatus(TransactionStatus.SUCCESS);
+            transaction.setTradingMode(TradingMode.INTRADAY);
+            transaction.setPositionSide(PositionSide.LONG);
+            transaction.setLeverage(1);
+            transaction.setMarginUsed(BigDecimal.ZERO);
+            transaction.setQuantity(closeQty);
+            transaction.setPricePerUnit(closePrice);
+            transaction.setTotalAmount(totalAmount);
+            transaction.setFees(BigDecimal.ZERO);
+            transaction.setAvgBuyPrice(avgBuyPrice);
+            transaction.setPnl(realizedPnL);
+            transaction.setPnlPercent(realizedPnLPercent);
+            transactionRepository.save(transaction);
+
+            log.info("Closed {} spot holding #{} on {}: closedQty={}, remainingQty={}, entry={}, close={}, realizedPnL={}",
+                    isPartial ? "PARTIAL" : "FULL", holding.getId(), symbol, closeQty, isPartial ? holding.getQuantity() : BigDecimal.ZERO, avgBuyPrice, closePrice, realizedPnL);
+
+            String companyName = stock != null && stock.getCompanyName() != null ? stock.getCompanyName() : symbol;
+            String exchange = stock != null && stock.getExchange() != null ? stock.getExchange() : "NSE";
+            String currency = stock != null && stock.getCurrency() != null ? stock.getCurrency() : "USD";
+
+            return new PositionDto(
+                    holding.getId(),
+                    symbol,
+                    companyName,
+                    exchange,
+                    currency,
+                    PositionSide.LONG,
+                    TradingMode.INTRADAY,
+                    closeQty,
+                    avgBuyPrice,
+                    closePrice,
+                    1,
+                    BigDecimal.ZERO,
+                    totalAmount,
+                    null,
+                    null,
+                    null,
+                    null,
+                    PositionStatus.CLOSED,
+                    closePrice,
+                    Instant.now(),
+                    realizedPnL,
+                    holding.getCreatedAt()
+            );
         }
     }
 
@@ -699,6 +828,81 @@ public class TradingService {
             }
 
             dtos.add(mapPositionToDto(p, currentPrice));
+        }
+
+        // Also include spot holdings that are not tracked as open position entities
+        if (status == null || status == PositionStatus.OPEN) {
+            List<Holding> holdings = holdingRepository.findByUserId(userId);
+            for (Holding holding : holdings) {
+                if (holding.getQuantity() == null || holding.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                    continue;
+                }
+                if (holding.getStock() == null) {
+                    continue;
+                }
+                String stockSymbol = holding.getStock().getSymbol();
+                if (symbol != null && !symbol.isBlank() && !stockSymbol.equalsIgnoreCase(symbol.trim())) {
+                    continue;
+                }
+
+                BigDecimal openPosQty = positions.stream()
+                        .filter(p -> p.getStatus() == PositionStatus.OPEN && p.getSide() == PositionSide.LONG && p.getStock() != null && p.getStock().getId().equals(holding.getStock().getId()))
+                        .map(Position::getQuantity)
+                        .filter(Objects::nonNull)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                BigDecimal unrepresentedQty = holding.getQuantity().subtract(openPosQty);
+                if (unrepresentedQty.compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal liveP = livePrices.computeIfAbsent(stockSymbol, s -> {
+                        try {
+                            StockQuoteDto quote = fetchRealMarketQuote(s);
+                            return quote != null && quote.price() != null ? quote.price() : null;
+                        } catch (Exception e) {
+                            return null;
+                        }
+                    });
+
+                    if (liveP == null) {
+                        liveP = holding.getAverageBuyPrice() != null ? holding.getAverageBuyPrice() : BigDecimal.ZERO;
+                    }
+
+                    BigDecimal avgBuyPrice = holding.getAverageBuyPrice() != null ? holding.getAverageBuyPrice() : liveP;
+                    BigDecimal positionValue = liveP.multiply(unrepresentedQty).setScale(4, RoundingMode.HALF_UP);
+                    BigDecimal margin = avgBuyPrice.multiply(unrepresentedQty).setScale(4, RoundingMode.HALF_UP);
+                    BigDecimal unrealizedPnl = liveP.subtract(avgBuyPrice).multiply(unrepresentedQty).setScale(4, RoundingMode.HALF_UP);
+                    BigDecimal unrealizedPnlPercent = BigDecimal.ZERO;
+                    if (margin.compareTo(BigDecimal.ZERO) > 0) {
+                        unrealizedPnlPercent = unrealizedPnl.divide(margin, 4, RoundingMode.HALF_UP)
+                                .multiply(new BigDecimal("100"))
+                                .setScale(2, RoundingMode.HALF_UP);
+                    }
+
+                    dtos.add(new PositionDto(
+                            holding.getId(),
+                            stockSymbol,
+                            holding.getStock().getCompanyName() != null ? holding.getStock().getCompanyName() : stockSymbol,
+                            holding.getStock().getExchange() != null ? holding.getStock().getExchange() : "CRYPTO",
+                            holding.getStock().getCurrency() != null ? holding.getStock().getCurrency() : "USD",
+                            PositionSide.LONG,
+                            TradingMode.LONG_TERM,
+                            unrepresentedQty,
+                            avgBuyPrice,
+                            liveP,
+                            1,
+                            margin,
+                            positionValue,
+                            unrealizedPnl,
+                            unrealizedPnlPercent,
+                            null,
+                            null,
+                            PositionStatus.OPEN,
+                            null,
+                            null,
+                            null,
+                            holding.getCreatedAt() != null ? holding.getCreatedAt() : Instant.now()
+                    ));
+                }
+            }
         }
 
         return dtos;

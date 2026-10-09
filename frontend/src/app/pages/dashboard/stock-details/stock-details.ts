@@ -1229,6 +1229,9 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     // Start WebSocket stream + fallback
     this.startLiveStream(cleanSym);
 
+    // Load persisted drawings for this symbol
+    this.loadDrawingsForSymbol(cleanSym);
+
     if (this.authService.isAuthenticated()) {
       this.refreshTradingState();
     }
@@ -1673,6 +1676,9 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         this.chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
           this.syncDrawingCoordinates();
         });
+        this.chart.timeScale().subscribeVisibleTimeRangeChange(() => {
+          this.syncDrawingCoordinates();
+        });
 
         if (typeof ResizeObserver !== 'undefined') {
           this.resizeObserver = new ResizeObserver((entries) => {
@@ -1680,6 +1686,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
             const { width, height } = entries[0].contentRect;
             if (width > 0 && height > 0) {
               this.chart.applyOptions({ width, height });
+              setTimeout(() => this.syncDrawingCoordinates(), 30);
             }
           });
           this.resizeObserver.observe(container);
@@ -1813,6 +1820,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       this.chart.timeScale().fitContent();
       this.updateChartPriceLines(this.activeSymbolPositions());
       this.updateLivePriceLine(this.currentQuote()?.price ?? 0);
+      setTimeout(() => this.syncDrawingCoordinates(), 50);
     } catch (e) {}
   }
 
@@ -2477,6 +2485,33 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     this.selectedDrawingId.set(null);
   }
 
+  saveDrawingsForSymbol(sym?: string): void {
+    if (typeof localStorage === 'undefined') return;
+    const targetSym = sym || this.symbol();
+    if (!targetSym) return;
+    try {
+      localStorage.setItem('stock_drawings_' + targetSym.toUpperCase(), JSON.stringify(this.drawings()));
+    } catch (e) {}
+  }
+
+  loadDrawingsForSymbol(sym?: string): void {
+    if (typeof localStorage === 'undefined') return;
+    const targetSym = sym || this.symbol();
+    if (!targetSym) return;
+    try {
+      const saved = localStorage.getItem('stock_drawings_' + targetSym.toUpperCase());
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          this.drawings.set(parsed);
+          setTimeout(() => this.syncDrawingCoordinates(), 50);
+          return;
+        }
+      }
+    } catch (e) {}
+    this.drawings.set([]);
+  }
+
   syncDrawingCoordinates(): void {
     const activeSer = this.candlestickSeries || this.lineSeries || this.areaSeries;
     if (!activeSer || !this.chart) return;
@@ -2493,16 +2528,26 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
           }
         }
 
+        let coordX: number | null = null;
         if (pt.time != null) {
-          const coordX = this.chart?.timeScale().timeToCoordinate(pt.time);
-          if (coordX != null && !isNaN(coordX)) {
-            newX = coordX;
+          coordX = this.chart?.timeScale().timeToCoordinate(pt.time as any) ?? null;
+          if (coordX == null && typeof pt.time === 'string') {
+            try {
+              const parsedDate = new Date(pt.time);
+              if (!isNaN(parsedDate.getTime())) {
+                const ts = Math.floor(parsedDate.getTime() / 1000);
+                coordX = this.chart?.timeScale().timeToCoordinate(ts as any) ?? null;
+              }
+            } catch (e) {}
           }
-        } else if (pt.logical != null) {
-          const coordX = this.chart?.timeScale().logicalToCoordinate(pt.logical as any);
-          if (coordX != null && !isNaN(coordX)) {
-            newX = coordX;
-          }
+        }
+
+        if ((coordX == null || isNaN(coordX)) && pt.logical != null) {
+          coordX = this.chart?.timeScale().logicalToCoordinate(pt.logical as any) ?? null;
+        }
+
+        if (coordX != null && !isNaN(coordX)) {
+          newX = coordX;
         }
 
         return { ...pt, x: newX, y: newY };
@@ -2576,7 +2621,12 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     }
     if (this.chart) {
       try {
-        timeVal = this.chart.timeScale().coordinateToTime(x) ?? undefined;
+        const rawTime: any = this.chart.timeScale().coordinateToTime(x);
+        if (typeof rawTime === 'object' && rawTime !== null && rawTime.year) {
+          timeVal = `${rawTime.year}-${String(rawTime.month).padStart(2, '0')}-${String(rawTime.day).padStart(2, '0')}`;
+        } else {
+          timeVal = rawTime ?? undefined;
+        }
         logicalVal = this.chart.timeScale().coordinateToLogical(x) ?? undefined;
       } catch (e) {}
     }
@@ -2738,6 +2788,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         price: priceVal
       };
       this.drawings.update(list => [...list, newItem]);
+      this.saveDrawingsForSymbol();
       this.selectedDrawingId.set(newItem.id);
       this.activeDrawingTool.set(null);
       this.isDrawingActive.set(false);
@@ -2773,6 +2824,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         price: priceVal
       };
       this.drawings.update(list => [...list, newItem]);
+      this.saveDrawingsForSymbol();
       this.selectedDrawingId.set(newItem.id);
       this.activeDrawingTool.set(null);
       this.isDrawingActive.set(false);
@@ -2801,6 +2853,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
           price: priceVal
         };
         this.drawings.update(list => [...list, newItem]);
+        this.saveDrawingsForSymbol();
         this.selectedDrawingId.set(newItem.id);
         this.activeDrawingTool.set(null);
         this.isDrawingActive.set(false);
@@ -2838,7 +2891,12 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
           }
           if (this.chart) {
             try {
-              newTime = this.chart.timeScale().coordinateToTime(nx) ?? p.time;
+              const rawT: any = this.chart.timeScale().coordinateToTime(nx);
+              if (typeof rawT === 'object' && rawT !== null && rawT.year) {
+                newTime = `${rawT.year}-${String(rawT.month).padStart(2, '0')}-${String(rawT.day).padStart(2, '0')}`;
+              } else {
+                newTime = rawT ?? p.time;
+              }
               newLogical = this.chart.timeScale().coordinateToLogical(nx) ?? p.logical;
             } catch (e) {}
           }
@@ -2867,6 +2925,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   onDrawingSvgMouseUp(event: MouseEvent): void {
     if (this.isDraggingDrawing()) {
       this.isDraggingDrawing.set(false);
+      this.saveDrawingsForSymbol();
       return;
     }
 
@@ -2890,7 +2949,12 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     }
     if (this.chart) {
       try {
-        timeVal = this.chart.timeScale().coordinateToTime(x) ?? undefined;
+        const rawT: any = this.chart.timeScale().coordinateToTime(x);
+        if (typeof rawT === 'object' && rawT !== null && rawT.year) {
+          timeVal = `${rawT.year}-${String(rawT.month).padStart(2, '0')}-${String(rawT.day).padStart(2, '0')}`;
+        } else {
+          timeVal = rawT ?? undefined;
+        }
         logicalVal = this.chart.timeScale().coordinateToLogical(x) ?? undefined;
       } catch (e) {}
     }
@@ -2910,6 +2974,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
           lineStyle: 'solid'
         };
         this.drawings.update(list => [...list, newItem]);
+        this.saveDrawingsForSymbol();
         this.selectedDrawingId.set(newItem.id);
       }
       this.activeDrawingTool.set(null);
@@ -2937,6 +3002,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
             lineStyle: 'solid'
           };
           this.drawings.update(list => [...list, newItem]);
+          this.saveDrawingsForSymbol();
           this.selectedDrawingId.set(newItem.id);
           this.activeDrawingTool.set(null);
           this.isDrawingActive.set(false);
@@ -2956,11 +3022,13 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     const selId = this.selectedDrawingId();
     if (!selId) return;
     this.drawings.update(list => list.filter(d => d.id !== selId));
+    this.saveDrawingsForSymbol();
     this.selectedDrawingId.set(null);
   }
 
   clearAllDrawings(): void {
     this.drawings.set([]);
+    this.saveDrawingsForSymbol();
     this.selectedDrawingId.set(null);
     this.inProgressPoints.set([]);
     this.isDrawingActive.set(false);
@@ -2986,6 +3054,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     const selId = this.selectedDrawingId();
     if (selId) {
       this.drawings.update(list => list.map(d => d.id === selId ? { ...d, color: color, fillColor: color + '22' } : d));
+      this.saveDrawingsForSymbol();
     }
   }
 
@@ -2994,6 +3063,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     const selId = this.selectedDrawingId();
     if (selId) {
       this.drawings.update(list => list.map(d => d.id === selId ? { ...d, lineWidth: width } : d));
+      this.saveDrawingsForSymbol();
     }
   }
 
@@ -3001,6 +3071,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     const selId = this.selectedDrawingId();
     if (!selId) return;
     this.drawings.update(list => list.map(d => d.id === selId ? { ...d, text } : d));
+    this.saveDrawingsForSymbol();
   }
 
   onDrawingDoubleClick(d: DrawingItem, event: MouseEvent): void {
@@ -3008,6 +3079,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     const promptText = prompt('Edit annotation text / value:', d.text || '');
     if (promptText !== null) {
       this.drawings.update(list => list.map(item => item.id === d.id ? { ...item, text: promptText } : item));
+      this.saveDrawingsForSymbol();
     }
   }
 
