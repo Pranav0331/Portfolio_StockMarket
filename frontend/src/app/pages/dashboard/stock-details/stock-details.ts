@@ -204,6 +204,32 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         { id: 'fib_wedge', name: 'Fib Wedge', pointsRequired: 2, icon: '◬' },
         { id: 'pitchfan', name: 'Pitchfan', pointsRequired: 3, icon: '⋒' }
       ]
+    },
+    {
+      id: 'gann',
+      name: 'Gann',
+      iconName: 'gann',
+      activeToolId: 'gann_box',
+      tools: [
+        { id: 'gann_box', name: 'Gann Box', pointsRequired: 2, icon: '⊞' },
+        { id: 'gann_square_fixed', name: 'Gann Square Fixed', pointsRequired: 2, icon: '⊡' },
+        { id: 'gann_square', name: 'Gann Square', pointsRequired: 2, icon: '◫' },
+        { id: 'gann_fan', name: 'Gann Fan', pointsRequired: 2, icon: '∠' }
+      ]
+    },
+    {
+      id: 'patterns',
+      name: 'Patterns',
+      iconName: 'patterns',
+      activeToolId: 'xabcd_pattern',
+      tools: [
+        { id: 'xabcd_pattern', name: 'XABCD Pattern', pointsRequired: 5, icon: '⧎' },
+        { id: 'cypher_pattern', name: 'Cypher Pattern', pointsRequired: 5, icon: '◬' },
+        { id: 'head_and_shoulders', name: 'Head and Shoulders', pointsRequired: 7, icon: '⩕' },
+        { id: 'abcd_pattern', name: 'ABCD Pattern', pointsRequired: 4, icon: '⫽' },
+        { id: 'triangle_pattern', name: 'Triangle Pattern', pointsRequired: 4, icon: '⊿' },
+        { id: 'three_drives_pattern', name: 'Three Drives Pattern', pointsRequired: 7, icon: '⋕' }
+      ]
     }
   ]);
 
@@ -2553,6 +2579,507 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       slY: d.toolId === 'short_position' ? p1.y - (dy * 0.5) : p1.y + (dy * 0.5),
       x: Math.min(p1.x, p2.x),
       w: Math.max(120, Math.abs(p2.x - p1.x))
+    };
+  }
+
+  getGannBox(d: DrawingItem): {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    hLevels: { y: number; label: string; color: string }[];
+    vLevels: { x: number; label: string; color: string }[];
+    diagonals: { x1: number; y1: number; x2: number; y2: number; color: string }[];
+  } {
+    if (!d.points || d.points.length < 2) {
+      return { x: 0, y: 0, w: 0, h: 0, hLevels: [], vLevels: [], diagonals: [] };
+    }
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const x = Math.min(p1.x, p2.x);
+    const y = Math.min(p1.y, p2.y);
+    const w = Math.max(10, Math.abs(p2.x - p1.x));
+    const h = Math.max(10, Math.abs(p2.y - p1.y));
+
+    const ratios = [
+      { r: 0.0, label: '0%', color: '#64748b' },
+      { r: 0.25, label: '25%', color: '#3b82f6' },
+      { r: 0.382, label: '38.2%', color: '#f59e0b' },
+      { r: 0.5, label: '50%', color: '#10b981' },
+      { r: 0.618, label: '61.8%', color: '#06b6d4' },
+      { r: 0.75, label: '75%', color: '#8b5cf6' },
+      { r: 1.0, label: '100%', color: '#64748b' }
+    ];
+
+    const hLevels = ratios.map(item => ({
+      y: y + h * item.r,
+      label: item.label,
+      color: item.color
+    }));
+
+    const vLevels = ratios.map(item => ({
+      x: x + w * item.r,
+      label: item.label,
+      color: item.color
+    }));
+
+    const diagonals = [
+      { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, color: '#2563eb' },
+      { x1: p1.x, y1: p2.y, x2: p2.x, y2: p1.y, color: '#2563eb' },
+      { x1: x, y1: y + h * 0.5, x2: x + w * 0.5, y2: y, color: '#94a3b8' },
+      { x1: x + w * 0.5, y1: y, x2: x + w, y2: y + h * 0.5, color: '#94a3b8' },
+      { x1: x + w, y1: y + h * 0.5, x2: x + w * 0.5, y2: y + h, color: '#94a3b8' },
+      { x1: x + w * 0.5, y1: y + h, x2: x, y2: y + h * 0.5, color: '#94a3b8' }
+    ];
+
+    return { x, y, w, h, hLevels, vLevels, diagonals };
+  }
+
+  getGannSquareFixed(d: DrawingItem): {
+    x: number;
+    y: number;
+    size: number;
+    hLevels: { y: number; label: string; color: string }[];
+    vLevels: { x: number; label: string; color: string }[];
+    diagonals: { x1: number; y1: number; x2: number; y2: number; color: string }[];
+    diamond: string;
+  } {
+    if (!d.points || d.points.length < 2) {
+      return { x: 0, y: 0, size: 0, hLevels: [], vLevels: [], diagonals: [], diamond: '' };
+    }
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const size = Math.max(10, Math.max(Math.abs(p2.x - p1.x), Math.abs(p2.y - p1.y)));
+    const x = p2.x >= p1.x ? p1.x : p1.x - size;
+    const y = p2.y >= p1.y ? p1.y : p1.y - size;
+
+    const ratios = [
+      { r: 0.0, label: '0.0', color: '#64748b' },
+      { r: 0.25, label: '1/4', color: '#3b82f6' },
+      { r: 0.382, label: '0.382', color: '#f59e0b' },
+      { r: 0.5, label: '1/2', color: '#10b981' },
+      { r: 0.618, label: '0.618', color: '#06b6d4' },
+      { r: 0.75, label: '3/4', color: '#8b5cf6' },
+      { r: 1.0, label: '1.0', color: '#64748b' }
+    ];
+
+    const hLevels = ratios.map(item => ({
+      y: y + size * item.r,
+      label: item.label,
+      color: item.color
+    }));
+
+    const vLevels = ratios.map(item => ({
+      x: x + size * item.r,
+      label: item.label,
+      color: item.color
+    }));
+
+    const diagonals = [
+      { x1: x, y1: y, x2: x + size, y2: y + size, color: '#2563eb' },
+      { x1: x, y1: y + size, x2: x + size, y2: y, color: '#2563eb' }
+    ];
+
+    const midX = x + size / 2;
+    const midY = y + size / 2;
+    const diamond = `${midX},${y} ${x + size},${midY} ${midX},${y + size} ${x},${midY}`;
+
+    return { x, y, size, hLevels, vLevels, diagonals, diamond };
+  }
+
+  getGannSquare(d: DrawingItem): {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    hLevels: { y: number; label: string; color: string }[];
+    vLevels: { x: number; label: string; color: string }[];
+    diagonals: { x1: number; y1: number; x2: number; y2: number; color: string }[];
+  } {
+    if (!d.points || d.points.length < 2) {
+      return { x: 0, y: 0, w: 0, h: 0, hLevels: [], vLevels: [], diagonals: [] };
+    }
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const x = Math.min(p1.x, p2.x);
+    const y = Math.min(p1.y, p2.y);
+    const w = Math.max(10, Math.abs(p2.x - p1.x));
+    const h = Math.max(10, Math.abs(p2.y - p1.y));
+
+    const ratios = [
+      { r: 0.0, label: '0.0', color: '#64748b' },
+      { r: 0.25, label: '0.25', color: '#3b82f6' },
+      { r: 0.382, label: '0.382', color: '#f59e0b' },
+      { r: 0.5, label: '0.50', color: '#10b981' },
+      { r: 0.618, label: '0.618', color: '#06b6d4' },
+      { r: 0.75, label: '0.75', color: '#8b5cf6' },
+      { r: 1.0, label: '1.00', color: '#64748b' }
+    ];
+
+    const hLevels = ratios.map(item => ({
+      y: y + h * item.r,
+      label: item.label,
+      color: item.color
+    }));
+
+    const vLevels = ratios.map(item => ({
+      x: x + w * item.r,
+      label: item.label,
+      color: item.color
+    }));
+
+    const diagonals = [
+      { x1: x, y1: y, x2: x + w, y2: y + h, color: '#2563eb' },
+      { x1: x, y1: y + h, x2: x + w, y2: y, color: '#2563eb' },
+      { x1: x, y1: y, x2: x + w, y2: y + h * 0.5, color: '#94a3b8' },
+      { x1: x, y1: y, x2: x + w * 0.5, y2: y + h, color: '#94a3b8' },
+      { x1: x, y1: y + h, x2: x + w, y2: y + h * 0.5, color: '#94a3b8' },
+      { x1: x, y1: y + h, x2: x + w * 0.5, y2: y, color: '#94a3b8' }
+    ];
+
+    return { x, y, w, h, hLevels, vLevels, diagonals };
+  }
+
+  getGannFanLines(d: DrawingItem): { x1: number; y1: number; x2: number; y2: number; label: string; color: string; isMain?: boolean }[] {
+    if (!d.points || d.points.length < 2) return [];
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+
+    const fanConfigs = [
+      { ratio: 0.125, label: '1/8', color: '#64748b' },
+      { ratio: 0.25, label: '1/4', color: '#f59e0b' },
+      { ratio: 0.333, label: '1/3', color: '#eab308' },
+      { ratio: 0.5, label: '1/2', color: '#10b981' },
+      { ratio: 1.0, label: '1/1 (45°)', color: '#2563eb', isMain: true },
+      { ratio: 2.0, label: '2/1', color: '#06b6d4' },
+      { ratio: 3.0, label: '3/1', color: '#6366f1' },
+      { ratio: 4.0, label: '4/1', color: '#8b5cf6' },
+      { ratio: 8.0, label: '8/1', color: '#ec4899' }
+    ];
+
+    const scale = 3.0;
+
+    return fanConfigs.map(cfg => {
+      let x2: number;
+      let y2: number;
+
+      if (cfg.ratio <= 1.0) {
+        x2 = p1.x + dx * scale;
+        y2 = p1.y + (dy * cfg.ratio) * scale;
+      } else {
+        x2 = p1.x + (dx / cfg.ratio) * scale;
+        y2 = p1.y + dy * scale;
+      }
+
+      return {
+        x1: p1.x,
+        y1: p1.y,
+        x2,
+        y2,
+        label: cfg.label,
+        color: cfg.color,
+        isMain: cfg.isMain
+      };
+    });
+  }
+
+  getXabcdPattern(d: DrawingItem): {
+    points: { pt: DrawingPoint; label: string }[];
+    polyline: string;
+    tri1: string;
+    tri2: string;
+    ratioXB: string;
+    ratioAC: string;
+    ratioBD: string;
+    ratioXD: string;
+    midXB: DrawingPoint;
+    midAC: DrawingPoint;
+    midBD: DrawingPoint;
+    midXD: DrawingPoint;
+  } {
+    const pts = d.points || [];
+    const labels = ['X', 'A', 'B', 'C', 'D'];
+    const points = pts.map((p, i) => ({ pt: p, label: labels[i] || `P${i + 1}` }));
+    const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+
+    if (pts.length < 5) {
+      return {
+        points,
+        polyline,
+        tri1: '',
+        tri2: '',
+        ratioXB: '',
+        ratioAC: '',
+        ratioBD: '',
+        ratioXD: '',
+        midXB: { x: 0, y: 0 },
+        midAC: { x: 0, y: 0 },
+        midBD: { x: 0, y: 0 },
+        midXD: { x: 0, y: 0 }
+      };
+    }
+
+    const [X, A, B, C, D] = pts;
+    const tri1 = `${X.x},${X.y} ${A.x},${A.y} ${B.x},${B.y}`;
+    const tri2 = `${B.x},${B.y} ${C.x},${C.y} ${D.x},${D.y}`;
+
+    const xa = Math.abs(A.y - X.y) || 1;
+    const ab = Math.abs(B.y - A.y) || 1;
+    const bc = Math.abs(C.y - B.y) || 1;
+    const cd = Math.abs(D.y - C.y) || 1;
+
+    const ratioXB = (ab / xa).toFixed(3);
+    const ratioAC = (bc / ab).toFixed(3);
+    const ratioBD = (cd / bc).toFixed(3);
+    const ratioXD = (Math.abs(D.y - X.y) / xa).toFixed(3);
+
+    const midXB = { x: (X.x + B.x) / 2, y: (X.y + B.y) / 2 };
+    const midAC = { x: (A.x + C.x) / 2, y: (A.y + C.y) / 2 };
+    const midBD = { x: (B.x + D.x) / 2, y: (B.y + D.y) / 2 };
+    const midXD = { x: (X.x + D.x) / 2, y: (X.y + D.y) / 2 };
+
+    return { points, polyline, tri1, tri2, ratioXB, ratioAC, ratioBD, ratioXD, midXB, midAC, midBD, midXD };
+  }
+
+  getCypherPattern(d: DrawingItem): {
+    points: { pt: DrawingPoint; label: string }[];
+    polyline: string;
+    tri1: string;
+    tri2: string;
+    ratioXB: string;
+    ratioXC: string;
+    ratioCD: string;
+    midXB: DrawingPoint;
+    midXC: DrawingPoint;
+    midCD: DrawingPoint;
+  } {
+    const pts = d.points || [];
+    const labels = ['X', 'A', 'B', 'C', 'D'];
+    const points = pts.map((p, i) => ({ pt: p, label: labels[i] || `P${i + 1}` }));
+    const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+
+    if (pts.length < 5) {
+      return {
+        points,
+        polyline,
+        tri1: '',
+        tri2: '',
+        ratioXB: '',
+        ratioXC: '',
+        ratioCD: '',
+        midXB: { x: 0, y: 0 },
+        midXC: { x: 0, y: 0 },
+        midCD: { x: 0, y: 0 }
+      };
+    }
+
+    const [X, A, B, C, D] = pts;
+    const tri1 = `${X.x},${X.y} ${A.x},${A.y} ${C.x},${C.y}`;
+    const tri2 = `${C.x},${C.y} ${B.x},${B.y} ${D.x},${D.y}`;
+
+    const xa = Math.abs(A.y - X.y) || 1;
+    const ab = Math.abs(B.y - A.y) || 1;
+    const xc = Math.abs(C.y - X.y) || 1;
+    const cd = Math.abs(D.y - C.y) || 1;
+
+    const ratioXB = (ab / xa).toFixed(3);
+    const ratioXC = (xc / xa).toFixed(3);
+    const ratioCD = (cd / xc).toFixed(3);
+
+    const midXB = { x: (X.x + B.x) / 2, y: (X.y + B.y) / 2 };
+    const midXC = { x: (X.x + C.x) / 2, y: (X.y + C.y) / 2 };
+    const midCD = { x: (C.x + D.x) / 2, y: (C.y + D.y) / 2 };
+
+    return { points, polyline, tri1, tri2, ratioXB, ratioXC, ratioCD, midXB, midXC, midCD };
+  }
+
+  getHeadAndShoulders(d: DrawingItem): {
+    points: { pt: DrawingPoint; label: string }[];
+    polyline: string;
+    fillPolygon: string;
+    neckline: { x1: number; y1: number; x2: number; y2: number };
+    ls: DrawingPoint;
+    head: DrawingPoint;
+    rs: DrawingPoint;
+  } {
+    const pts = d.points || [];
+    const labels = ['Start', 'LS', 'NL1', 'Head', 'NL2', 'RS', 'End'];
+    const points = pts.map((p, i) => ({ pt: p, label: labels[i] || `P${i + 1}` }));
+    const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+
+    if (pts.length < 7) {
+      return {
+        points,
+        polyline,
+        fillPolygon: '',
+        neckline: { x1: 0, y1: 0, x2: 0, y2: 0 },
+        ls: pts[1] || { x: 0, y: 0 },
+        head: pts[3] || { x: 0, y: 0 },
+        rs: pts[5] || { x: 0, y: 0 }
+      };
+    }
+
+    const [p0, p1, p2, p3, p4, p5, p6] = pts;
+    const fillPolygon = `${p0.x},${p0.y} ${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y} ${p4.x},${p4.y} ${p5.x},${p5.y} ${p6.x},${p6.y}`;
+
+    // Neckline extended line across
+    const dx = p4.x - p2.x || 1;
+    const dy = p4.y - p2.y;
+    const slope = dy / dx;
+
+    const x1 = Math.min(p0.x, p2.x) - 20;
+    const y1 = p2.y + slope * (x1 - p2.x);
+    const x2 = Math.max(p6.x, p4.x) + 40;
+    const y2 = p2.y + slope * (x2 - p2.x);
+
+    return {
+      points,
+      polyline,
+      fillPolygon,
+      neckline: { x1, y1, x2, y2 },
+      ls: p1,
+      head: p3,
+      rs: p5
+    };
+  }
+
+  getAbcdPattern(d: DrawingItem): {
+    points: { pt: DrawingPoint; label: string }[];
+    polyline: string;
+    ratioBC: string;
+    ratioCD: string;
+    midAC: DrawingPoint;
+    midBD: DrawingPoint;
+  } {
+    const pts = d.points || [];
+    const labels = ['A', 'B', 'C', 'D'];
+    const points = pts.map((p, i) => ({ pt: p, label: labels[i] || `P${i + 1}` }));
+    const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+
+    if (pts.length < 4) {
+      return {
+        points,
+        polyline,
+        ratioBC: '',
+        ratioCD: '',
+        midAC: { x: 0, y: 0 },
+        midBD: { x: 0, y: 0 }
+      };
+    }
+
+    const [A, B, C, D] = pts;
+    const ab = Math.abs(B.y - A.y) || 1;
+    const bc = Math.abs(C.y - B.y) || 1;
+    const cd = Math.abs(D.y - C.y) || 1;
+
+    const ratioBC = (bc / ab).toFixed(3);
+    const ratioCD = (cd / bc).toFixed(3);
+
+    const midAC = { x: (A.x + C.x) / 2, y: (A.y + C.y) / 2 };
+    const midBD = { x: (B.x + D.x) / 2, y: (B.y + D.y) / 2 };
+
+    return { points, polyline, ratioBC, ratioCD, midAC, midBD };
+  }
+
+  getTrianglePattern(d: DrawingItem): {
+    points: { pt: DrawingPoint; label: string }[];
+    polyline: string;
+    fillPolygon: string;
+    upperLine: { x1: number; y1: number; x2: number; y2: number };
+    lowerLine: { x1: number; y1: number; x2: number; y2: number };
+  } {
+    const pts = d.points || [];
+    const labels = ['A', 'B', 'C', 'D'];
+    const points = pts.map((p, i) => ({ pt: p, label: labels[i] || `P${i + 1}` }));
+    const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+
+    if (pts.length < 4) {
+      return {
+        points,
+        polyline,
+        fillPolygon: '',
+        upperLine: { x1: 0, y1: 0, x2: 0, y2: 0 },
+        lowerLine: { x1: 0, y1: 0, x2: 0, y2: 0 }
+      };
+    }
+
+    const [A, B, C, D] = pts;
+    const fillPolygon = `${A.x},${A.y} ${B.x},${B.y} ${D.x},${D.y} ${C.x},${C.y}`;
+
+    // Extended upper trendline (through A and C)
+    const upperDx = C.x - A.x || 1;
+    const upperSlope = (C.y - A.y) / upperDx;
+    const upperX2 = C.x + 80;
+    const upperY2 = C.y + upperSlope * 80;
+
+    // Extended lower trendline (through B and D)
+    const lowerDx = D.x - B.x || 1;
+    const lowerSlope = (D.y - B.y) / lowerDx;
+    const lowerX2 = D.x + 80;
+    const lowerY2 = D.y + lowerSlope * 80;
+
+    return {
+      points,
+      polyline,
+      fillPolygon,
+      upperLine: { x1: A.x, y1: A.y, x2: upperX2, y2: upperY2 },
+      lowerLine: { x1: B.x, y1: B.y, x2: lowerX2, y2: lowerY2 }
+    };
+  }
+
+  getThreeDrivesPattern(d: DrawingItem): {
+    points: { pt: DrawingPoint; label: string }[];
+    polyline: string;
+    ratioDrive2: string;
+    ratioDrive3: string;
+    d1: DrawingPoint;
+    d2: DrawingPoint;
+    d3: DrawingPoint;
+    midD1D2: DrawingPoint;
+    midD2D3: DrawingPoint;
+  } {
+    const pts = d.points || [];
+    const labels = ['0', 'Drive 1', 'Pullback 1', 'Drive 2', 'Pullback 2', 'Drive 3', 'End'];
+    const points = pts.map((p, i) => ({ pt: p, label: labels[i] || `P${i + 1}` }));
+    const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+
+    if (pts.length < 7) {
+      return {
+        points,
+        polyline,
+        ratioDrive2: '',
+        ratioDrive3: '',
+        d1: pts[1] || { x: 0, y: 0 },
+        d2: pts[3] || { x: 0, y: 0 },
+        d3: pts[5] || { x: 0, y: 0 },
+        midD1D2: { x: 0, y: 0 },
+        midD2D3: { x: 0, y: 0 }
+      };
+    }
+
+    const [, p1, , p3, , p5] = pts;
+    const swing1 = Math.abs(p1.y - pts[0].y) || 1;
+    const swing2 = Math.abs(p3.y - pts[2].y) || 1;
+    const swing3 = Math.abs(p5.y - pts[4].y) || 1;
+
+    const ratioDrive2 = (swing2 / swing1).toFixed(3);
+    const ratioDrive3 = (swing3 / swing2).toFixed(3);
+
+    const midD1D2 = { x: (p1.x + p3.x) / 2, y: (p1.y + p3.y) / 2 };
+    const midD2D3 = { x: (p3.x + p5.x) / 2, y: (p3.y + p5.y) / 2 };
+
+    return {
+      points,
+      polyline,
+      ratioDrive2,
+      ratioDrive3,
+      d1: p1,
+      d2: p3,
+      d3: p5,
+      midD1D2,
+      midD2D3
     };
   }
 

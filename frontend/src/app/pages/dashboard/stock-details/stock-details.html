@@ -689,8 +689,304 @@
                   }
                 }
 
+                <!-- 21. Gann Box -->
+                @else if (d.toolId === 'gann_box' && d.points.length >= 2) {
+                  @if (getGannBox(d); as gb) {
+                    <!-- Gann Box Outer Border & Fill -->
+                    <rect [attr.x]="gb.x" [attr.y]="gb.y" [attr.width]="gb.w" [attr.height]="gb.h" fill="rgba(37, 99, 235, 0.04)" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" />
+                    
+                    <!-- Horizontal Price Levels -->
+                    @for (hl of gb.hLevels; track hl.label) {
+                      <line [attr.x1]="gb.x" [attr.y1]="hl.y" [attr.x2]="gb.x + gb.w" [attr.y2]="hl.y" [attr.stroke]="hl.color" stroke-width="1" stroke-dasharray="2 2" />
+                      <text [attr.x]="gb.x + 4" [attr.y]="hl.y - 2" [attr.fill]="hl.color" class="svg-drawing-label">{{ hl.label }}</text>
+                    }
+
+                    <!-- Vertical Time Levels -->
+                    @for (vl of gb.vLevels; track vl.label) {
+                      <line [attr.x1]="vl.x" [attr.y1]="gb.y" [attr.x2]="vl.x" [attr.y2]="gb.y + gb.h" [attr.stroke]="vl.color" stroke-width="1" stroke-dasharray="2 2" />
+                      <text [attr.x]="vl.x + 2" [attr.y]="gb.y + 12" [attr.fill]="vl.color" class="svg-drawing-label">{{ vl.label }}</text>
+                    }
+
+                    <!-- Diagonals & Harmonic Angles -->
+                    @for (diag of gb.diagonals; track $index) {
+                      <line [attr.x1]="diag.x1" [attr.y1]="diag.y1" [attr.x2]="diag.x2" [attr.y2]="diag.y2" [attr.stroke]="diag.color" stroke-width="1.2" />
+                    }
+                  }
+                }
+
+                <!-- 22. Gann Square Fixed -->
+                @else if (d.toolId === 'gann_square_fixed' && d.points.length >= 2) {
+                  @if (getGannSquareFixed(d); as gsf) {
+                    <!-- Gann Square Fixed Outer Border -->
+                    <rect [attr.x]="gsf.x" [attr.y]="gsf.y" [attr.width]="gsf.size" [attr.height]="gsf.size" fill="rgba(59, 130, 246, 0.03)" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" />
+                    
+                    <!-- Inner Diamond -->
+                    <polygon [attr.points]="gsf.diamond" fill="none" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="3 3" />
+
+                    <!-- Horizontal Grid -->
+                    @for (hl of gsf.hLevels; track hl.label) {
+                      <line [attr.x1]="gsf.x" [attr.y1]="hl.y" [attr.x2]="gsf.x + gsf.size" [attr.y2]="hl.y" [attr.stroke]="hl.color" stroke-width="1" stroke-dasharray="2 2" />
+                      <text [attr.x]="gsf.x + 4" [attr.y]="hl.y - 2" [attr.fill]="hl.color" class="svg-drawing-label">{{ hl.label }}</text>
+                    }
+
+                    <!-- Vertical Grid -->
+                    @for (vl of gsf.vLevels; track vl.label) {
+                      <line [attr.x1]="vl.x" [attr.y1]="gsf.y" [attr.x2]="vl.x" [attr.y2]="gsf.y + gsf.size" [attr.stroke]="vl.color" stroke-width="1" stroke-dasharray="2 2" />
+                    }
+
+                    <!-- Main Diagonals -->
+                    @for (diag of gsf.diagonals; track $index) {
+                      <line [attr.x1]="diag.x1" [attr.y1]="diag.y1" [attr.x2]="diag.x2" [attr.y2]="diag.y2" [attr.stroke]="diag.color" stroke-width="1.4" />
+                    }
+                  }
+                }
+
+                <!-- 23. Gann Square -->
+                @else if (d.toolId === 'gann_square' && d.points.length >= 2) {
+                  @if (getGannSquare(d); as gs) {
+                    <!-- Gann Square Outer Border -->
+                    <rect [attr.x]="gs.x" [attr.y]="gs.y" [attr.width]="gs.w" [attr.height]="gs.h" fill="rgba(16, 185, 129, 0.03)" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" />
+                    
+                    <!-- Horizontal Levels -->
+                    @for (hl of gs.hLevels; track hl.label) {
+                      <line [attr.x1]="gs.x" [attr.y1]="hl.y" [attr.x2]="gs.x + gs.w" [attr.y2]="hl.y" [attr.stroke]="hl.color" stroke-width="1" stroke-dasharray="2 2" />
+                      <text [attr.x]="gs.x + 4" [attr.y]="hl.y - 2" [attr.fill]="hl.color" class="svg-drawing-label">{{ hl.label }}</text>
+                    }
+
+                    <!-- Vertical Levels -->
+                    @for (vl of gs.vLevels; track vl.label) {
+                      <line [attr.x1]="vl.x" [attr.y1]="gs.y" [attr.x2]="vl.x" [attr.y2]="gs.y + gs.h" [attr.stroke]="vl.color" stroke-width="1" stroke-dasharray="2 2" />
+                    }
+
+                    <!-- Harmonic Angle Rays -->
+                    @for (diag of gs.diagonals; track $index) {
+                      <line [attr.x1]="diag.x1" [attr.y1]="diag.y1" [attr.x2]="diag.x2" [attr.y2]="diag.y2" [attr.stroke]="diag.color" stroke-width="1.2" />
+                    }
+                  }
+                }
+
+                <!-- 24. Gann Fan -->
+                @else if (d.toolId === 'gann_fan' && d.points.length >= 2) {
+                  @for (fan of getGannFanLines(d); track fan.label) {
+                    <line
+                      [attr.x1]="fan.x1"
+                      [attr.y1]="fan.y1"
+                      [attr.x2]="fan.x2"
+                      [attr.y2]="fan.y2"
+                      [attr.stroke]="fan.color"
+                      [attr.stroke-width]="fan.isMain ? (d.lineWidth + 0.5) : 1.2"
+                      [attr.stroke-dasharray]="fan.isMain ? 'none' : '3 2'" />
+                    <text
+                      [attr.x]="fan.x2 + 4"
+                      [attr.y]="fan.y2"
+                      [attr.fill]="fan.color"
+                      class="svg-drawing-label font-bold">
+                      {{ fan.label }}
+                    </text>
+                  }
+                }
+
+                <!-- 25. XABCD Pattern -->
+                @else if (d.toolId === 'xabcd_pattern') {
+                  @if (getXabcdPattern(d); as pat) {
+                    <!-- Shaded Harmonic Triangles -->
+                    @if (pat.tri1) {
+                      <polygon [attr.points]="pat.tri1" fill="rgba(37, 99, 235, 0.12)" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" />
+                    }
+                    @if (pat.tri2) {
+                      <polygon [attr.points]="pat.tri2" fill="rgba(16, 185, 129, 0.12)" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" />
+                    }
+
+                    <!-- Connecting Lines (if not fully 5 points yet) -->
+                    @if (!pat.tri1) {
+                      <polyline [attr.points]="pat.polyline" fill="none" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" />
+                    }
+
+                    <!-- Harmonic Dotted Ratio Lines -->
+                    @if (pat.ratioXB) {
+                      <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[2].x" [attr.y2]="d.points[2].y" stroke="#3b82f6" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="pat.midXB.x" [attr.y]="pat.midXB.y - 4" fill="#1d4ed8" class="svg-drawing-label font-bold center">{{ pat.ratioXB }}</text>
+                    }
+                    @if (pat.ratioAC) {
+                      <line [attr.x1]="d.points[1].x" [attr.y1]="d.points[1].y" [attr.x2]="d.points[3].x" [attr.y2]="d.points[3].y" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="pat.midAC.x" [attr.y]="pat.midAC.y - 4" fill="#b45309" class="svg-drawing-label font-bold center">{{ pat.ratioAC }}</text>
+                    }
+                    @if (pat.ratioBD) {
+                      <line [attr.x1]="d.points[2].x" [attr.y1]="d.points[2].y" [attr.x2]="d.points[4].x" [attr.y2]="d.points[4].y" stroke="#10b981" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="pat.midBD.x" [attr.y]="pat.midBD.y - 4" fill="#047857" class="svg-drawing-label font-bold center">{{ pat.ratioBD }}</text>
+                    }
+                    @if (pat.ratioXD) {
+                      <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[4].x" [attr.y2]="d.points[4].y" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="2 2" />
+                      <text [attr.x]="pat.midXD.x" [attr.y]="pat.midXD.y - 4" fill="#6d28d9" class="svg-drawing-label font-bold center">{{ pat.ratioXD }}</text>
+                    }
+
+                    <!-- Vertex Badges -->
+                    @for (item of pat.points; track item.label) {
+                      <circle [attr.cx]="item.pt.x" [attr.cy]="item.pt.y" r="8" fill="#ffffff" [attr.stroke]="d.color" stroke-width="2" />
+                      <text [attr.x]="item.pt.x" [attr.y]="item.pt.y + 3.5" class="svg-drawing-label vertex-badge" text-anchor="middle" [attr.fill]="d.color">{{ item.label }}</text>
+                    }
+                  }
+                }
+
+                <!-- 26. Cypher Pattern -->
+                @else if (d.toolId === 'cypher_pattern') {
+                  @if (getCypherPattern(d); as pat) {
+                    <!-- Shaded Harmonic Triangles -->
+                    @if (pat.tri1) {
+                      <polygon [attr.points]="pat.tri1" fill="rgba(139, 92, 246, 0.12)" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" />
+                    }
+                    @if (pat.tri2) {
+                      <polygon [attr.points]="pat.tri2" fill="rgba(245, 158, 11, 0.12)" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" />
+                    }
+
+                    <!-- Connecting Lines -->
+                    @if (!pat.tri1) {
+                      <polyline [attr.points]="pat.polyline" fill="none" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" />
+                    }
+
+                    <!-- Harmonic Dotted Ratio Lines -->
+                    @if (pat.ratioXB) {
+                      <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[2].x" [attr.y2]="d.points[2].y" stroke="#3b82f6" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="pat.midXB.x" [attr.y]="pat.midXB.y - 4" fill="#1d4ed8" class="svg-drawing-label font-bold center">{{ pat.ratioXB }}</text>
+                    }
+                    @if (pat.ratioXC) {
+                      <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[3].x" [attr.y2]="d.points[3].y" stroke="#8b5cf6" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="pat.midXC.x" [attr.y]="pat.midXC.y - 4" fill="#6d28d9" class="svg-drawing-label font-bold center">{{ pat.ratioXC }}</text>
+                    }
+                    @if (pat.ratioCD) {
+                      <line [attr.x1]="d.points[2].x" [attr.y1]="d.points[2].y" [attr.x2]="d.points[4].x" [attr.y2]="d.points[4].y" stroke="#10b981" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="pat.midCD.x" [attr.y]="pat.midCD.y - 4" fill="#047857" class="svg-drawing-label font-bold center">{{ pat.ratioCD }}</text>
+                    }
+
+                    <!-- Vertex Badges -->
+                    @for (item of pat.points; track item.label) {
+                      <circle [attr.cx]="item.pt.x" [attr.cy]="item.pt.y" r="8" fill="#ffffff" [attr.stroke]="d.color" stroke-width="2" />
+                      <text [attr.x]="item.pt.x" [attr.y]="item.pt.y + 3.5" class="svg-drawing-label vertex-badge" text-anchor="middle" [attr.fill]="d.color">{{ item.label }}</text>
+                    }
+                  }
+                }
+
+                <!-- 27. Head and Shoulders Pattern -->
+                @else if (d.toolId === 'head_and_shoulders') {
+                  @if (getHeadAndShoulders(d); as hs) {
+                    <!-- Shaded Shape Fill -->
+                    @if (hs.fillPolygon) {
+                      <polygon [attr.points]="hs.fillPolygon" fill="rgba(37, 99, 235, 0.08)" />
+                    }
+
+                    <!-- Wave Outline Line -->
+                    <polyline [attr.points]="hs.polyline" fill="none" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" stroke-linecap="round" />
+
+                    <!-- Extended Neckline -->
+                    @if (hs.neckline.x1 !== hs.neckline.x2) {
+                      <line [attr.x1]="hs.neckline.x1" [attr.y1]="hs.neckline.y1" [attr.x2]="hs.neckline.x2" [attr.y2]="hs.neckline.y2" stroke="#ef4444" stroke-width="1.8" stroke-dasharray="4 3" />
+                      <text [attr.x]="hs.neckline.x2 + 4" [attr.y]="hs.neckline.y2 + 3" fill="#b91c1c" class="svg-drawing-label font-bold">Neckline</text>
+                    }
+
+                    <!-- Peak Labels -->
+                    @if (d.points.length >= 2) {
+                      <text [attr.x]="hs.ls.x" [attr.y]="hs.ls.y - 12" fill="#2563eb" class="svg-drawing-label font-bold center" text-anchor="middle">Left Shoulder</text>
+                    }
+                    @if (d.points.length >= 4) {
+                      <text [attr.x]="hs.head.x" [attr.y]="hs.head.y - 12" fill="#2563eb" class="svg-drawing-label font-bold center" text-anchor="middle">Head</text>
+                    }
+                    @if (d.points.length >= 6) {
+                      <text [attr.x]="hs.rs.x" [attr.y]="hs.rs.y - 12" fill="#2563eb" class="svg-drawing-label font-bold center" text-anchor="middle">Right Shoulder</text>
+                    }
+
+                    <!-- Vertex Dots -->
+                    @for (item of hs.points; track item.label) {
+                      <circle [attr.cx]="item.pt.x" [attr.cy]="item.pt.y" r="4.5" fill="#ffffff" [attr.stroke]="d.color" stroke-width="2" />
+                    }
+                  }
+                }
+
+                <!-- 28. ABCD Pattern -->
+                @else if (d.toolId === 'abcd_pattern') {
+                  @if (getAbcdPattern(d); as abcd) {
+                    <!-- Main ABCD Line -->
+                    <polyline [attr.points]="abcd.polyline" fill="none" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" stroke-linecap="round" />
+
+                    <!-- Dotted Measurement Lines -->
+                    @if (abcd.ratioBC) {
+                      <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[2].x" [attr.y2]="d.points[2].y" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="abcd.midAC.x" [attr.y]="abcd.midAC.y - 4" fill="#b45309" class="svg-drawing-label font-bold center">{{ abcd.ratioBC }}</text>
+                    }
+                    @if (abcd.ratioCD) {
+                      <line [attr.x1]="d.points[1].x" [attr.y1]="d.points[1].y" [attr.x2]="d.points[3].x" [attr.y2]="d.points[3].y" stroke="#10b981" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="abcd.midBD.x" [attr.y]="abcd.midBD.y - 4" fill="#047857" class="svg-drawing-label font-bold center">{{ abcd.ratioCD }}</text>
+                    }
+
+                    <!-- Vertex Badges -->
+                    @for (item of abcd.points; track item.label) {
+                      <circle [attr.cx]="item.pt.x" [attr.cy]="item.pt.y" r="8" fill="#ffffff" [attr.stroke]="d.color" stroke-width="2" />
+                      <text [attr.x]="item.pt.x" [attr.y]="item.pt.y + 3.5" class="svg-drawing-label vertex-badge" text-anchor="middle" [attr.fill]="d.color">{{ item.label }}</text>
+                    }
+                  }
+                }
+
+                <!-- 29. Triangle Pattern -->
+                @else if (d.toolId === 'triangle_pattern') {
+                  @if (getTrianglePattern(d); as tri) {
+                    <!-- Shaded Triangle Body -->
+                    @if (tri.fillPolygon) {
+                      <polygon [attr.points]="tri.fillPolygon" fill="rgba(59, 130, 246, 0.1)" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                    }
+
+                    <!-- Inner Swing Wave -->
+                    <polyline [attr.points]="tri.polyline" fill="none" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" />
+
+                    <!-- Extended Upper / Lower Trendlines -->
+                    @if (tri.upperLine.x1 !== tri.upperLine.x2) {
+                      <line [attr.x1]="tri.upperLine.x1" [attr.y1]="tri.upperLine.y1" [attr.x2]="tri.upperLine.x2" [attr.y2]="tri.upperLine.y2" stroke="#2563eb" stroke-width="1.8" />
+                      <line [attr.x1]="tri.lowerLine.x1" [attr.y1]="tri.lowerLine.y1" [attr.x2]="tri.lowerLine.x2" [attr.y2]="tri.lowerLine.y2" stroke="#2563eb" stroke-width="1.8" />
+                    }
+
+                    <!-- Vertex Badges -->
+                    @for (item of tri.points; track item.label) {
+                      <circle [attr.cx]="item.pt.x" [attr.cy]="item.pt.y" r="7" fill="#ffffff" [attr.stroke]="d.color" stroke-width="2" />
+                      <text [attr.x]="item.pt.x" [attr.y]="item.pt.y + 3.5" class="svg-drawing-label vertex-badge" text-anchor="middle" [attr.fill]="d.color">{{ item.label }}</text>
+                    }
+                  }
+                }
+
+                <!-- 30. Three Drives Pattern -->
+                @else if (d.toolId === 'three_drives_pattern') {
+                  @if (getThreeDrivesPattern(d); as td) {
+                    <!-- Main Wave Line -->
+                    <polyline [attr.points]="td.polyline" fill="none" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" stroke-linecap="round" />
+
+                    <!-- Drive Labels & Ratios -->
+                    @if (d.points.length >= 2) {
+                      <circle [attr.cx]="td.d1.x" [attr.cy]="td.d1.y" r="9" fill="#2563eb" />
+                      <text [attr.x]="td.d1.x" [attr.y]="td.d1.y + 4" fill="#ffffff" class="svg-drawing-label font-bold" text-anchor="middle">1</text>
+                    }
+                    @if (d.points.length >= 4) {
+                      <circle [attr.cx]="td.d2.x" [attr.cy]="td.d2.y" r="9" fill="#2563eb" />
+                      <text [attr.x]="td.d2.x" [attr.y]="td.d2.y + 4" fill="#ffffff" class="svg-drawing-label font-bold" text-anchor="middle">2</text>
+                      @if (td.ratioDrive2) {
+                        <text [attr.x]="td.midD1D2.x" [attr.y]="td.midD1D2.y - 6" fill="#1d4ed8" class="svg-drawing-label font-bold center">{{ td.ratioDrive2 }}</text>
+                      }
+                    }
+                    @if (d.points.length >= 6) {
+                      <circle [attr.cx]="td.d3.x" [attr.cy]="td.d3.y" r="9" fill="#2563eb" />
+                      <text [attr.x]="td.d3.x" [attr.y]="td.d3.y + 4" fill="#ffffff" class="svg-drawing-label font-bold" text-anchor="middle">3</text>
+                      @if (td.ratioDrive3) {
+                        <text [attr.x]="td.midD2D3.x" [attr.y]="td.midD2D3.y - 6" fill="#1d4ed8" class="svg-drawing-label font-bold center">{{ td.ratioDrive3 }}</text>
+                      }
+                    }
+
+                    <!-- Pullback and End Dots -->
+                    @for (item of td.points; track item.label) {
+                      @if (item.label !== 'Drive 1' && item.label !== 'Drive 2' && item.label !== 'Drive 3') {
+                        <circle [attr.cx]="item.pt.x" [attr.cy]="item.pt.y" r="4.5" fill="#ffffff" [attr.stroke]="d.color" stroke-width="2" />
+                      }
+                    }
+                  }
+                }
+
                 <!-- 6. Geometric Rectangle & Measure Box -->
-                @else if (d.toolId === 'rectangle' || d.toolId === 'price_range' || d.toolId === 'date_range' || d.toolId === 'date_price_range' || d.toolId === 'gann_box') {
+                @else if (d.toolId === 'rectangle' || d.toolId === 'price_range' || d.toolId === 'date_range' || d.toolId === 'date_price_range') {
                   @if (getMeasureBox(d); as mb) {
                     <rect
                       [attr.x]="mb.x"
