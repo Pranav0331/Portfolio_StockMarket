@@ -131,6 +131,41 @@
   color: #dc2626;
 }
 
+.chip-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  font-size: 9px;
+  line-height: 1;
+  color: #94a3b8;
+  margin-left: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  user-select: none;
+}
+
+.symbol-chip:hover .chip-close-btn,
+.symbol-chip.active .chip-close-btn {
+  opacity: 1;
+}
+
+.chip-close-btn:hover {
+  background: #cbd5e1;
+  color: #0f172a;
+}
+
+.symbol-chip.active .chip-close-btn {
+  color: #60a5fa;
+}
+
+.symbol-chip.active .chip-close-btn:hover {
+  background: #bfdbfe;
+  color: #1e40af;
+}
+
 .top-bar-actions {
   display: flex;
   align-items: center;

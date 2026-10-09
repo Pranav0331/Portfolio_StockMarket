@@ -144,8 +144,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly currentQuote = signal<StockQuote | null>(null);
   readonly Math = Math;
 
-  // Top Symbol Bar Instruments List
-  readonly topInstruments = signal<TopInstrumentItem[]>([
+  static readonly DEFAULT_INSTRUMENTS: TopInstrumentItem[] = [
     { symbol: 'BTC/USD', name: 'Bitcoin', marketType: 'Crypto' },
     { symbol: 'ETH/USD', name: 'Ethereum', marketType: 'Crypto' },
     { symbol: 'SOL/USD', name: 'Solana', marketType: 'Crypto' },
@@ -155,7 +154,10 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     { symbol: 'NIFTY 50', name: 'Nifty 50 Index', marketType: 'Index' },
     { symbol: 'SENSEX', name: 'BSE Sensex', marketType: 'Index' },
     { symbol: 'EUR/USD', name: 'Euro / USD', marketType: 'Forex' }
-  ]);
+  ];
+
+  // Top Symbol Bar Instruments List (with localStorage sync)
+  readonly topInstruments = signal<TopInstrumentItem[]>(this.loadOpenInstruments());
 
   // =========================================================================
   // 14 MAIN TOOLBAR TOOL GROUPS (EXNESS-STYLE GROUPED SYSTEM)
@@ -1033,23 +1035,99 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   }
 
   // =========================================================================
-  // INSTRUMENT SELECTION & SYMBOL SEARCH
+  // INSTRUMENT SELECTION, TABS & SYMBOL SEARCH
   // =========================================================================
+
+  private loadOpenInstruments(): TopInstrumentItem[] {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('exness_open_instruments');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch (e) {}
+    }
+    return StockDetailsComponent.DEFAULT_INSTRUMENTS;
+  }
+
+  private saveOpenInstruments(list: TopInstrumentItem[]): void {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('exness_open_instruments', JSON.stringify(list));
+      } catch (e) {}
+    }
+  }
 
   selectSymbol(sym: string): void {
     const cleanSym = sym.trim().toUpperCase();
-    if (!cleanSym || cleanSym === this.symbol()) return;
+    if (!cleanSym) return;
 
     // Check if symbol is in top bar; if not, add it
     const exists = this.topInstruments().some(i => i.symbol === cleanSym);
     if (!exists) {
-      this.topInstruments.update(list => [
-        { symbol: cleanSym, name: cleanSym, marketType: 'Custom' },
-        ...list
-      ]);
+      let marketType = 'Stock';
+      if (cleanSym.includes('NIFTY') || cleanSym.includes('SENSEX')) marketType = 'Index';
+      else if (cleanSym === 'XAU/USD' || cleanSym === 'USOIL') marketType = 'Commodity';
+      else if (cleanSym.includes('/') && (cleanSym.startsWith('BTC') || cleanSym.startsWith('ETH') || cleanSym.startsWith('SOL'))) marketType = 'Crypto';
+      else if (cleanSym.includes('/')) marketType = 'Forex';
+
+      const updated = [
+        ...this.topInstruments(),
+        { symbol: cleanSym, name: cleanSym, marketType }
+      ];
+      this.topInstruments.set(updated);
+      this.saveOpenInstruments(updated);
     }
 
+    if (cleanSym === this.symbol()) return;
     this.navigateToStock(cleanSym);
+  }
+
+  closeInstrumentTab(symToClose: string, event: Event): void {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+
+    const currentList = this.topInstruments();
+    const targetIdx = currentList.findIndex(i => i.symbol === symToClose);
+    if (targetIdx === -1) return;
+
+    // Filter out the closed tab
+    const updatedList = currentList.filter(i => i.symbol !== symToClose);
+
+    // If active tab was closed
+    if (this.symbol() === symToClose) {
+      if (updatedList.length > 0) {
+        // Pick next available tab (same index if within bounds, otherwise last item)
+        const nextIdx = targetIdx < updatedList.length ? targetIdx : updatedList.length - 1;
+        const nextSymbol = updatedList[nextIdx].symbol;
+        this.topInstruments.set(updatedList);
+        this.saveOpenInstruments(updatedList);
+        this.selectSymbol(nextSymbol);
+      } else {
+        // Fallback to default instrument if all tabs closed
+        const fallback = StockDetailsComponent.DEFAULT_INSTRUMENTS[0];
+        const fallbackList = [fallback];
+        this.topInstruments.set(fallbackList);
+        this.saveOpenInstruments(fallbackList);
+        this.selectSymbol(fallback.symbol);
+      }
+    } else {
+      // Non-active tab closed
+      if (updatedList.length === 0) {
+        const fallback = StockDetailsComponent.DEFAULT_INSTRUMENTS[0];
+        const fallbackList = [fallback];
+        this.topInstruments.set(fallbackList);
+        this.saveOpenInstruments(fallbackList);
+      } else {
+        this.topInstruments.set(updatedList);
+        this.saveOpenInstruments(updatedList);
+      }
+    }
   }
 
   openSearchModal(): void {
@@ -1130,6 +1208,17 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       this.instrumentType.set('Stock');
       this.exchange.set('NASDAQ');
       this.companyName.set(cleanSym);
+    }
+
+    // Ensure tab exists in open tabs list
+    const exists = this.topInstruments().some(i => i.symbol === cleanSym);
+    if (!exists) {
+      const updated = [
+        ...this.topInstruments(),
+        { symbol: cleanSym, name: cleanSym, marketType: this.instrumentType() }
+      ];
+      this.topInstruments.set(updated);
+      this.saveOpenInstruments(updated);
     }
 
     // Fetch initial quote & candles

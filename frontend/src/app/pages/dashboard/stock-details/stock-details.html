@@ -19,6 +19,12 @@
                 {{ formatCurrencySymbol(item.symbol) }}{{ currentQuote()?.price | number:'1.2-4' }}
               </span>
             }
+            <span
+              class="chip-close-btn"
+              (click)="closeInstrumentTab(item.symbol, $event)"
+              [title]="'Close ' + item.symbol + ' tab'">
+              ✕
+            </span>
           </button>
         }
       </div>
