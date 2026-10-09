@@ -234,76 +234,96 @@
         @if (getGroupById(curGroupId); as curGroup) {
           @if (curGroup.id === 'emoji_stickers') {
             <div class="tool-popover drawing-category-popover emoji-stickers-popover" (click)="$event.stopPropagation()">
-              <div class="popover-category-header">
+              <div class="popover-category-header emoji-panel-header">
                 <div class="cat-title-wrap">
                   <span class="cat-title">Markers & Stickers</span>
                 </div>
-                <button type="button" class="btn-close-popover" (click)="closeFlyout($event)">✕</button>
+                <button type="button" class="btn-close-popover" (click)="closeFlyout($event)" title="Close">✕</button>
               </div>
 
-              <div class="emoji-popover-tabs">
+              @if (activeEmojiTab() === 'emoji') {
+                <div class="emoji-top-categories-bar">
+                  @for (cat of emojiCategories; track cat.id) {
+                    <button
+                      type="button"
+                      class="emoji-cat-btn"
+                      [class.active]="activeEmojiCategory() === cat.id"
+                      (click)="activeEmojiCategory.set(cat.id)"
+                      [title]="cat.label">
+                      <span class="emoji-cat-icon">{{ cat.icon }}</span>
+                    </button>
+                  }
+                </div>
+                <div class="emoji-category-title">
+                  {{ currentCategoryLabel() }}
+                </div>
+              }
+
+              <div class="emoji-panel-content-area">
+                @if (activeEmojiTab() === 'emoji') {
+                  <div class="emoji-exness-grid">
+                    @for (emoji of currentCategoryEmojis(); track $index) {
+                      <button
+                        type="button"
+                        class="emoji-cell"
+                        [class.active]="activeEmojiMarker().text === emoji"
+                        (click)="selectEmojiMarkerItem(emoji, 'emoji', $event)"
+                        [title]="'Place ' + emoji">
+                        {{ emoji }}
+                      </button>
+                    }
+                  </div>
+                } @else if (activeEmojiTab() === 'stickers') {
+                  <div class="stickers-list-wrap-dark">
+                    @for (stk of availableStickers; track stk) {
+                      <button
+                        type="button"
+                        class="sticker-item-btn-dark"
+                        [class.active]="activeEmojiMarker().text === stk"
+                        (click)="selectEmojiMarkerItem(stk, 'sticker', $event)">
+                        <span class="sticker-pill-text-dark">{{ stk }}</span>
+                      </button>
+                    }
+                  </div>
+                } @else if (activeEmojiTab() === 'icons') {
+                  <div class="icons-list-wrap-dark">
+                    @for (ic of availableIcons; track ic.label) {
+                      <button
+                        type="button"
+                        class="icon-item-btn-dark"
+                        [class.active]="activeEmojiMarker().text === ic.icon"
+                        (click)="selectEmojiMarkerItem(ic.icon, 'icon', $event)">
+                        <span class="icon-glyph-dark">{{ ic.icon }}</span>
+                        <span class="icon-lbl-dark">{{ ic.label }}</span>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+
+              <div class="emoji-bottom-tabs">
                 <button
                   type="button"
-                  class="emoji-tab-btn"
+                  class="emoji-bottom-tab-btn"
                   [class.active]="activeEmojiTab() === 'emoji'"
                   (click)="activeEmojiTab.set('emoji')">
                   Emojis
                 </button>
                 <button
                   type="button"
-                  class="emoji-tab-btn"
+                  class="emoji-bottom-tab-btn"
                   [class.active]="activeEmojiTab() === 'stickers'"
                   (click)="activeEmojiTab.set('stickers')">
                   Stickers
                 </button>
                 <button
                   type="button"
-                  class="emoji-tab-btn"
+                  class="emoji-bottom-tab-btn"
                   [class.active]="activeEmojiTab() === 'icons'"
                   (click)="activeEmojiTab.set('icons')">
                   Icons
                 </button>
               </div>
-
-              @if (activeEmojiTab() === 'emoji') {
-                <div class="emoji-grid-wrap">
-                  @for (emoji of availableEmojis; track emoji) {
-                    <button
-                      type="button"
-                      class="emoji-grid-btn"
-                      [class.active]="activeEmojiMarker().text === emoji"
-                      (click)="selectEmojiMarkerItem(emoji, 'emoji', $event)"
-                      [title]="'Place ' + emoji">
-                      {{ emoji }}
-                    </button>
-                  }
-                </div>
-              } @else if (activeEmojiTab() === 'stickers') {
-                <div class="stickers-list-wrap">
-                  @for (stk of availableStickers; track stk) {
-                    <button
-                      type="button"
-                      class="sticker-item-btn"
-                      [class.active]="activeEmojiMarker().text === stk"
-                      (click)="selectEmojiMarkerItem(stk, 'sticker', $event)">
-                      <span class="sticker-pill-text">{{ stk }}</span>
-                    </button>
-                  }
-                </div>
-              } @else if (activeEmojiTab() === 'icons') {
-                <div class="icons-list-wrap">
-                  @for (ic of availableIcons; track ic.label) {
-                    <button
-                      type="button"
-                      class="icon-item-btn"
-                      [class.active]="activeEmojiMarker().text === ic.icon"
-                      (click)="selectEmojiMarkerItem(ic.icon, 'icon', $event)">
-                      <span class="icon-glyph">{{ ic.icon }}</span>
-                      <span class="icon-lbl">{{ ic.label }}</span>
-                    </button>
-                  }
-                </div>
-              }
             </div>
           } @else {
             <div class="tool-popover drawing-category-popover" (click)="$event.stopPropagation()">

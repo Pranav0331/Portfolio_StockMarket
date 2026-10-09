@@ -352,28 +352,172 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly activeToolGroupId = signal<string>('cursor');
   readonly openToolGroupId = signal<string | null>(null);
 
-  // Emoji / Sticker / Icons panel state
+  // Emoji / Sticker / Icons panel state (Exness Charcoal Theme System)
   readonly activeEmojiTab = signal<'emoji' | 'stickers' | 'icons'>('emoji');
-  readonly availableEmojis = ['🚀', '📈', '📉', '🎯', '🔥', '💰', '💎', '🐂', '🐻', '⚠️', '⚡', '🔔', '🏆', '💡', '🛡️', '🛑', '📊', '🧠', '👑', '👀', '⭐', '💯', '💸', '⏳', '📌', '💣', '💥', '✨'];
-  readonly availableStickers = [
-    'Bull Market 🐂', 'Bear Market 🐻', 'Breakout 🚀', 'Stop Out 🛑',
-    'To The Moon 🌕', 'Diamond Hands 💎', 'Buy The Dip 📉', 'Take Profit 🎯',
-    'Whale Alert 🐋', 'Support Level 🛡️', 'Resistance 🚧', 'Pump It 🔥'
+  readonly activeEmojiCategory = signal<string>('smiles_people');
+
+  readonly emojiCategories = [
+    { id: 'smiles_people', label: 'SMILES & PEOPLE', icon: '😊' },
+    { id: 'animals_nature', label: 'ANIMALS & NATURE', icon: '🐻' },
+    { id: 'food_drink', label: 'FOOD & DRINK', icon: '🍔' },
+    { id: 'activities', label: 'ACTIVITIES', icon: '⚽' },
+    { id: 'travel_places', label: 'TRAVEL & PLACES', icon: '✈️' },
+    { id: 'objects', label: 'OBJECTS', icon: '💡' },
+    { id: 'symbols', label: 'SYMBOLS', icon: '🔣' },
+    { id: 'flags', label: 'FLAGS', icon: '🚩' }
   ];
+
+  readonly emojisByCategory: Record<string, string[]> = {
+    smiles_people: [
+      '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂',
+      '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩',
+      '😘', '😗', '😚', '😋', '😛', '😜', '🤪', '😝',
+      '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐',
+      '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌',
+      '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢',
+      '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠',
+      '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '😮',
+      '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰',
+      '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓',
+      '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈',
+      '👿', '💀', '☠️', '💩', '🤡', '👹', '👺', '👻'
+    ],
+    animals_nature: [
+      '🐂', '🐻', '🐋', '🦈', '🦅', '🦁', '🐯', '🐺',
+      '🦊', '🐶', '🐱', '🐭', '🐹', '🐰', '🐼', '🐨',
+      '🐵', '🐒', '🦍', '🦧', '🐮', '🐷', '🐗', '🐴',
+      '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦟',
+      '🦗', '🕷️', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕',
+      '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟',
+      '🌲', '🌳', '🌴', '🌱', '🌿', '☘️', '🍀', '🎍',
+      '🍃', '🍂', '🍁', '🍄', '🌾', '💐', '🌷', '🌹',
+      '🥀', '🌺', '🌸', '🌼', '🌻', '🌞', '🌝', '🌛',
+      '🌕', '🌖', '🌗', '🌘', '🌑', '🌒', '🌓', '🌔',
+      '🌙', '🌎', '🪐', '💫', '⭐', '🌟', '✨', '⚡',
+      '☄️', '💥', '🔥', '🌪️', '🌈', '☀️', '☁️', '🌊'
+    ],
+    food_drink: [
+      '🍏', '🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇',
+      '🍓', '🫐', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥',
+      '🥝', '🍅', '🥑', '🍆', '🥦', '🥬', '🥒', '🌶️',
+      '🌽', '🥕', '🧄', '🧅', '🥔', '🍠', '🥐', '🥯',
+      '🍞', '🥖', '🥨', '🧀', '🥚', '🍳', '🧈', '🥞',
+      '🧇', '🥓', '🥩', '🍗', '🍖', '🦴', '🌭', '🍔',
+      '🍟', '🍕', '🫓', '🥪', '🥙', '🧆', '🌮', '🌯',
+      '🥗', '🥘', '🫕', '🥫', '🍝', '🍜', '🍲', '🍛',
+      '🍣', '🍱', '🥟', '🍤', '🍙', '🍚', '🍘', '🍥',
+      '🎂', '🍰', '🧁', '🥧', '🍫', '🍿', '🍩', '🍪',
+      '☕', '🫖', '🍵', '🧃', '🥤', '🧋', '🍺', '🍻',
+      '🥂', '🍷', '🥃', '🍸', '🍹', '🧉', '🍾', '🧊'
+    ],
+    activities: [
+      '⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉',
+      '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍',
+      '🏏', '🪃', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿',
+      '🥊', '🥋', '🎽', '🛹', '🛼', '🛷', '⛸️', '🥌',
+      '🎿', '⛷️', '🏂', '🪂', '🏋️', '🤼', '🤸', '⛹️',
+      '🤺', '🤾', '🧗', '🏌️', '🏇', '🧘', '🏄', '🏊',
+      '🏆', '🥇', '🥈', '🥉', '🏅', '🎖️', '🏵️', '🎗️',
+      '🎫', '🎟️', '🎪', '🤹', '🎭', '🩰', '🎨', '🎬',
+      '🎤', '🎧', '🎼', '🎹', '🥁', '🎷', '🎺', '🎸',
+      '🪕', '🎻', '🎲', '♟️', '🎯', '🎳', '🎮', '🎰'
+    ],
+    travel_places: [
+      '🚗', '🚙', '🚚', '🚛', '🚜', '🏎️', '🏍️', '🛵',
+      '🚲', '🛴', '🚨', '🚔', '🚍', '🚘', '🚖', '🚡',
+      '🚠', '🚟', '🚃', '🚋', '🚄', '🚅', '🚆', '🚇',
+      '🚈', '🚉', '🚊', '🚂', '🚁', '🛩️', '✈️', '🛫',
+      '🛬', '🚀', '🛸', '🛰️', '⛵', '🚤', '🛥️', '🚢',
+      '⚓', '⛽', '🚧', '🚦', '🚥', '🗺️', '🗽', '🗼',
+      '🏰', '🏯', '🏟️', '🎡', '🎢', '⛲', '🏖️', '🏝️',
+      '🏜️', '🌋', '⛰️', '🏔️', '🗻', '🏕️', '⛺', '🏠',
+      '🏢', '🏥', '🏦', '🏨', '🏫', '🏬', '🏭', '🏛️'
+    ],
+    objects: [
+      '💡', '🔦', '🕯️', '🧯', '🛢️', '💸', '💵', '💴',
+      '💶', '💷', '🪙', '💰', '💳', '💎', '⚖️', '🪜',
+      '🧰', '🪛', '🔧', '🔨', '⚒️', '🛠️', '⛏️', '🪓',
+      '🪚', '🔩', '⚙️', '🪤', '🧱', '⛓️', '🧲', '🔫',
+      '💣', '🧨', '🔪', '🗡️', '⚔️', '🛡️', '🚬', '⚰️',
+      '🔮', '📿', '🧿', '💈', '🪞', '🪟', '🪑', '🚪',
+      '🛒', '📦', '📫', '📬', '📭', '📮', '🏷️', '✉️',
+      '📊', '📈', '📉', '🗒️', '🗓️', '📅', '📆', '📇',
+      '📋', '📁', '📂', '🗂️', '🗞️', '📰', '📓', '📕',
+      '📗', '📘', '📙', '📚', '📖', '🔖', '🔗', '📎',
+      '📐', '📏', '📌', '📍', '✂️', '🖊️', '🖋️', '📝',
+      '✏️', '🔍', '🔎', '🔏', '🔐', '🔒', '🔓', '🔑'
+    ],
+    symbols: [
+      '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍',
+      '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘',
+      '💯', '💢', '♨️', '❗️', '❕', '❓', '❔', '‼️',
+      '⚠️', '🔱', '⚜️', '🔰', '♻️', '✅', '💹', '❇️',
+      '✳️', '❎', '🌐', '💠', 'Ⓜ️', '🌀', '💤', '🏧',
+      '🚾', '♿', '🅿️', '📶', '🈁', '🔣', 'ℹ️', '🔤',
+      '🆗', '🆙', '🆒', '🆕', '🆓', '0️⃣', '1️⃣', '2️⃣',
+      '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣',
+      '🔟', '🔢', '▶️', '⏸️', '⏹️', '⏺️', '⏭️', '⏮️',
+      '⏩', '⏪', '⏫', '⏬', '➡️', '⬅️', '⬆️', '⬇️',
+      '↗️', '↘️', '↙️', '↖️', '↕️', '↔️', '🔄', '🔃',
+      '➕', '➖', '➗', '✖️', '🟰', '♾️', '💲', '💱'
+    ],
+    flags: [
+      '🚩', '🏁', '🎌', '🏴', '🏳️', '🏳️‍🌈', '🏴‍☠️', '🇺🇸',
+      '🇬🇧', '🇪🇺', '🇯🇵', '🇩🇪', '🇫🇷', '🇮🇳', '🇨🇦', '🇦🇺',
+      '🇨🇳', '🇧🇷', '🇷🇺', '🇰🇷', '🇮🇹', '🇪🇸', '🇲🇽', '🇨🇭',
+      '🇸🇪', '🇳🇱', '🇸🇬', '🇦🇪', '🇿🇦', '🇹🇷', '🇸🇦', '🇳🇿'
+    ]
+  };
+
+  readonly currentCategoryEmojis = computed(() => {
+    const cat = this.activeEmojiCategory();
+    return this.emojisByCategory[cat] || this.emojisByCategory['smiles_people'];
+  });
+
+  readonly currentCategoryLabel = computed(() => {
+    const catId = this.activeEmojiCategory();
+    const found = this.emojiCategories.find(c => c.id === catId);
+    return found ? found.label : 'SMILES & PEOPLE';
+  });
+
+  readonly availableStickers = [
+    'Bullish Trend 🐂',
+    'Bearish Drop 🐻',
+    'Breakout 🚀',
+    'Stop Out 🛑',
+    'To The Moon 🌕',
+    'Diamond Hands 💎',
+    'Buy The Dip 📉',
+    'Take Profit 🎯',
+    'Whale Alert 🐋',
+    'Support Level 🛡️',
+    'Resistance 🚧',
+    'Pump It 🔥',
+    'HODL ✊',
+    'FOMO ⚡',
+    'Golden Cross ✨',
+    'Death Cross ☠️'
+  ];
+
   readonly availableIcons = [
     { label: 'Star', icon: '⭐' },
     { label: 'Heart', icon: '❤️' },
-    { label: 'Check', icon: '✅' },
+    { label: 'Checkmark', icon: '✅' },
     { label: 'Cross', icon: '❌' },
     { label: 'Bullish', icon: '👍' },
     { label: 'Bearish', icon: '👎' },
     { label: 'Target', icon: '🎯' },
-    { label: 'Alert', icon: '🔔' },
-    { label: 'Hot', icon: '🔥' },
-    { label: 'Moon', icon: '🚀' },
-    { label: 'Flash', icon: '⚡' },
-    { label: 'Gem', icon: '💎' }
+    { label: 'Alert Bell', icon: '🔔' },
+    { label: 'Fire', icon: '🔥' },
+    { label: 'Rocket', icon: '🚀' },
+    { label: 'Flash / Lightning', icon: '⚡' },
+    { label: 'Diamond', icon: '💎' },
+    { label: 'Lock', icon: '🔒' },
+    { label: 'Shield', icon: '🛡️' },
+    { label: 'Warning', icon: '⚠️' },
+    { label: 'Idea / Light', icon: '💡' }
   ];
+
   readonly activeEmojiMarker = signal<{ text: string; type: 'emoji' | 'sticker' | 'icon' }>({ text: '🚀', type: 'emoji' });
 
   readonly drawings = signal<DrawingItem[]>([]);

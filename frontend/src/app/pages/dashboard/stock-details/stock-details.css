@@ -459,60 +459,61 @@
 }
 
 /* ==========================================================================
-   EMOJI & STICKERS POPOVER STYLES
+   EMOJI & STICKERS POPOVER STYLES (EXNESS DARK CHARCOAL THEME)
    ========================================================================== */
 .emoji-stickers-popover {
-  width: 270px;
+  width: 312px;
+  background: #24282B !important;
+  border: 1px solid #3D4247 !important;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  padding: 0;
+  overflow: hidden;
+  z-index: 1050;
 }
 
-.emoji-popover-tabs {
-  display: flex;
-  background: #f1f5f9;
-  border-radius: 6px;
-  padding: 2px;
-  gap: 2px;
-  margin-bottom: 6px;
+.emoji-stickers-popover .popover-category-header.emoji-panel-header {
+  background: #24282B;
+  border-bottom: 1px solid #33383E;
+  padding: 8px 12px;
 }
 
-.emoji-tab-btn {
-  flex: 1;
+.emoji-stickers-popover .popover-category-header .cat-title {
+  color: #E2E8F0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.emoji-stickers-popover .btn-close-popover {
+  color: #94A3B8;
   background: transparent;
   border: none;
-  font-size: 11px;
-  font-weight: 600;
-  color: #64748b;
-  padding: 4px 6px;
-  border-radius: 4px;
+  font-size: 13px;
   cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
   transition: all 0.15s ease;
 }
 
-.emoji-tab-btn:hover {
-  color: #0f172a;
+.emoji-stickers-popover .btn-close-popover:hover {
+  background: #33383E;
+  color: #FFFFFF;
 }
 
-.emoji-tab-btn.active {
-  background: #ffffff;
-  color: #2563eb;
-  font-weight: 700;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+.emoji-top-categories-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px 4px 10px;
+  background: #1C1F22;
+  border-bottom: 1px solid #2E3338;
 }
 
-.emoji-grid-wrap {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 4px;
-  max-height: 280px;
-  overflow-y: auto;
-  padding: 2px;
-}
-
-.emoji-grid-btn {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  font-size: 20px;
-  padding: 6px 0;
+.emoji-cat-btn {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 5px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -520,29 +521,94 @@
   transition: all 0.12s ease;
 }
 
-.emoji-grid-btn:hover {
-  background: #f3f6fa;
-  border-color: #93c5fd;
+.emoji-cat-btn .emoji-cat-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.emoji-cat-btn:hover {
+  background: #2E3338;
+}
+
+.emoji-cat-btn.active {
+  background: #373D44;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.emoji-category-title {
+  padding: 6px 12px 2px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #8C939E;
+  background: #24282B;
+}
+
+.emoji-panel-content-area {
+  padding: 6px 8px;
+  max-height: 230px;
+  min-height: 180px;
+  overflow-y: auto;
+  background: #24282B;
+}
+
+.emoji-panel-content-area::-webkit-scrollbar {
+  width: 5px;
+}
+
+.emoji-panel-content-area::-webkit-scrollbar-track {
+  background: #1E2224;
+}
+
+.emoji-panel-content-area::-webkit-scrollbar-thumb {
+  background: #3D4247;
+  border-radius: 3px;
+}
+
+.emoji-exness-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+}
+
+.emoji-cell {
+  width: 100%;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s ease, transform 0.1s ease;
+  padding: 0;
+}
+
+.emoji-cell:hover {
+  background: #373D44;
   transform: scale(1.15);
 }
 
-.emoji-grid-btn.active {
-  background: #eff6ff;
-  border-color: #2563eb;
+.emoji-cell.active {
+  background: #2563eb;
+  border-radius: 4px;
 }
 
-.stickers-list-wrap {
+.stickers-list-wrap-dark {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 300px;
-  overflow-y: auto;
   padding: 2px;
 }
 
-.sticker-item-btn {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+.sticker-item-btn-dark {
+  background: #1C1F22;
+  border: 1px solid #33383E;
   border-radius: 6px;
   padding: 6px 10px;
   cursor: pointer;
@@ -550,61 +616,91 @@
   transition: all 0.15s ease;
 }
 
-.sticker-item-btn:hover {
-  background: #eff6ff;
-  border-color: #93c5fd;
+.sticker-item-btn-dark:hover {
+  background: #2A3036;
+  border-color: #3B82F6;
 }
 
-.sticker-item-btn.active {
-  background: #dbeafe;
-  border-color: #2563eb;
+.sticker-item-btn-dark.active {
+  background: rgba(37, 99, 235, 0.25);
+  border-color: #3B82F6;
 }
 
-.sticker-pill-text {
-  font-size: 11px;
-  font-weight: 700;
-  color: #1e40af;
+.sticker-pill-text-dark {
+  font-size: 12px;
+  font-weight: 600;
+  color: #E2E8F0;
 }
 
-.icons-list-wrap {
+.icons-list-wrap-dark {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 4px;
-  max-height: 280px;
-  overflow-y: auto;
   padding: 2px;
 }
 
-.icon-item-btn {
+.icon-item-btn-dark {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: #1C1F22;
+  border: 1px solid #33383E;
   border-radius: 6px;
   padding: 6px 8px;
   cursor: pointer;
   transition: all 0.12s ease;
 }
 
-.icon-item-btn:hover {
-  background: #f3f6fa;
-  border-color: #93c5fd;
+.icon-item-btn-dark:hover {
+  background: #2A3036;
+  border-color: #3B82F6;
 }
 
-.icon-item-btn.active {
-  background: #eff6ff;
-  border-color: #2563eb;
+.icon-item-btn-dark.active {
+  background: rgba(37, 99, 235, 0.25);
+  border-color: #3B82F6;
 }
 
-.icon-glyph {
-  font-size: 16px;
+.icon-glyph-dark {
+  font-size: 15px;
 }
 
-.icon-lbl {
+.icon-lbl-dark {
+  font-size: 11px;
+  font-weight: 500;
+  color: #CBD5E1;
+}
+
+.emoji-bottom-tabs {
+  display: flex;
+  align-items: center;
+  background: #1A1D1F;
+  border-top: 1px solid #2E3338;
+  padding: 0;
+}
+
+.emoji-bottom-tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
   font-size: 11px;
   font-weight: 600;
-  color: #334155;
+  color: #8C939E;
+  padding: 8px 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.emoji-bottom-tab-btn:hover {
+  color: #CBD5E1;
+}
+
+.emoji-bottom-tab-btn.active {
+  color: #FFFFFF;
+  border-bottom-color: #2962FF;
+  background: rgba(41, 98, 255, 0.08);
 }
 
 /* Header chart actions and type picker */
