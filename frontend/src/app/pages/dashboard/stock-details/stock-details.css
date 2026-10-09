@@ -291,6 +291,23 @@
   pointer-events: none;
 }
 
+.toolbar-separator {
+  width: 26px;
+  height: 1px;
+  background: #e5e7eb;
+  margin: 4px auto;
+}
+
+.v-tool-btn.delete-tool-btn:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.v-tool-btn.delete-tool-btn:hover svg {
+  stroke: #dc2626;
+}
+
 /* ==========================================================================
    FLOATING CATEGORIZED SUBMENUS (EXNESS FLYOUT STYLE)
    ========================================================================== */

@@ -324,17 +324,6 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       ]
     },
     {
-      id: 'measure',
-      name: 'Measure & Zoom',
-      iconName: 'measure',
-      activeToolId: 'measure',
-      tools: [
-        { id: 'measure', name: 'Measure', pointsRequired: 2, icon: '📏' },
-        { id: 'zoom_in', name: 'Zoom In', pointsRequired: 0, icon: '🔍+' },
-        { id: 'zoom_out', name: 'Zoom Out', pointsRequired: 0, icon: '🔍-' }
-      ]
-    },
-    {
       id: 'emoji_stickers',
       name: 'Emoji & Stickers',
       iconName: 'emoji_stickers',
@@ -2446,6 +2435,115 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     this.openToolGroupId.set(null);
   }
 
+  activateMeasureTool(event?: Event): void {
+    if (event) event.stopPropagation();
+    this.activeDrawingTool.set({
+      id: 'measure',
+      name: 'Measure',
+      pointsRequired: 2,
+      icon: '📏'
+    });
+    this.activeToolGroupId.set('measure');
+    this.openToolGroupId.set(null);
+    this.inProgressPoints.set([]);
+    this.isDrawingActive.set(false);
+    this.selectedDrawingId.set(null);
+  }
+
+  zoomInChart(event?: Event): void {
+    if (event) event.stopPropagation();
+    if (this.chart) {
+      const timeScale = this.chart.timeScale();
+      const range = timeScale.getVisibleLogicalRange();
+      if (range) {
+        const delta = (range.to - range.from) * 0.2;
+        timeScale.setVisibleLogicalRange({ from: range.from + delta, to: range.to - delta });
+      }
+    }
+  }
+
+  confirmClearAllDrawings(event?: Event): void {
+    if (event) event.stopPropagation();
+    const count = this.drawings().length;
+    if (count === 0) return;
+    if (confirm(`Delete all ${count} drawings from the chart?`)) {
+      this.clearAllDrawings();
+    }
+  }
+
+  getPointWithMagnet(x: number, y: number): { x: number; y: number; priceVal?: number; timeVal?: any; logicalVal?: number } {
+    let priceVal: number | undefined = undefined;
+    let timeVal: any = undefined;
+    let logicalVal: number | undefined = undefined;
+    let finalX = x;
+    let finalY = y;
+
+    const activeSer = this.candlestickSeries || this.lineSeries || this.areaSeries;
+    if (activeSer && typeof (activeSer as any).coordinateToPrice === 'function') {
+      priceVal = (activeSer as any).coordinateToPrice(y) ?? undefined;
+    }
+    if (!priceVal && this.currentQuote()) {
+      priceVal = this.currentQuote()?.price;
+    }
+    if (this.chart) {
+      try {
+        timeVal = this.chart.timeScale().coordinateToTime(x) ?? undefined;
+        logicalVal = this.chart.timeScale().coordinateToLogical(x) ?? undefined;
+      } catch (e) {}
+    }
+
+    if (this.isMagnetEnabled() && this.candleData().length > 0 && this.chart && activeSer) {
+      const candles = this.candleData();
+      let closestCandle: Candle | null = null;
+      let minDistance = Infinity;
+
+      for (const c of candles) {
+        try {
+          const rawTs = (c as any).timestamp ?? (c as any).time;
+          const cTime = typeof rawTs === 'string' ? Math.floor(new Date(rawTs).getTime() / 1000) : rawTs;
+          if (cTime) {
+            const cx = this.chart.timeScale().timeToCoordinate(cTime as any);
+            if (cx !== null) {
+              const dist = Math.abs(cx - x);
+              if (dist < minDistance && dist < 60) {
+                minDistance = dist;
+                closestCandle = c;
+                finalX = cx;
+                timeVal = cTime;
+              }
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (closestCandle && priceVal !== undefined) {
+        const o = closestCandle.open;
+        const h = closestCandle.high;
+        const l = closestCandle.low;
+        const cl = closestCandle.close;
+        const ohlc = [o, h, l, cl];
+        let nearestOhlc = ohlc[0];
+        let minPriceDiff = Math.abs(priceVal - nearestOhlc);
+        for (const p of ohlc) {
+          const diff = Math.abs(priceVal - p);
+          if (diff < minPriceDiff) {
+            minPriceDiff = diff;
+            nearestOhlc = p;
+          }
+        }
+        priceVal = nearestOhlc;
+        try {
+          const cy = (activeSer as any).priceToCoordinate(nearestOhlc);
+          if (cy !== null && cy !== undefined) {
+            finalY = cy;
+          }
+        } catch (e) {}
+      }
+    }
+
+    return { x: finalX, y: finalY, priceVal, timeVal, logicalVal };
+  }
+
   selectDrawingTool(group: DrawingToolGroup, tool: DrawingToolOption, event?: Event): void {
     if (event) event.stopPropagation();
     group.activeToolId = tool.id;
@@ -2466,14 +2564,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     }
 
     if (tool.id === 'zoom_in') {
-      if (this.chart) {
-        const timeScale = this.chart.timeScale();
-        const range = timeScale.getVisibleLogicalRange();
-        if (range) {
-          const delta = (range.to - range.from) * 0.2;
-          timeScale.setVisibleLogicalRange({ from: range.from + delta, to: range.to - delta });
-        }
-      }
+      this.zoomInChart();
       return;
     }
 
@@ -2518,8 +2609,8 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     if (!svg) return;
 
     const rect = svg.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const rawX = event.clientX - rect.left;
+    const rawY = event.clientY - rect.top;
 
     if (!tool) {
       if ((event.target as HTMLElement).tagName === 'svg') {
@@ -2528,30 +2619,14 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         const selDrawing = this.selectedDrawing();
         if (selDrawing) {
           this.isDraggingDrawing.set(true);
-          this.dragStartMouse = { x, y };
+          this.dragStartMouse = { x: rawX, y: rawY };
           this.initialDragPoints = selDrawing.points.map(p => ({ ...p }));
         }
       }
       return;
     }
 
-    let priceVal: number | undefined = undefined;
-    let timeVal: any = undefined;
-    let logicalVal: number | undefined = undefined;
-
-    const activeSer = this.candlestickSeries || this.lineSeries || this.areaSeries;
-    if (activeSer && typeof (activeSer as any).coordinateToPrice === 'function') {
-      priceVal = (activeSer as any).coordinateToPrice(y) ?? undefined;
-    }
-    if (!priceVal && this.currentQuote()) {
-      priceVal = this.currentQuote()?.price;
-    }
-    if (this.chart) {
-      try {
-        timeVal = this.chart.timeScale().coordinateToTime(x) ?? undefined;
-        logicalVal = this.chart.timeScale().coordinateToLogical(x) ?? undefined;
-      } catch (e) {}
-    }
+    const { x, y, priceVal, timeVal, logicalVal } = this.getPointWithMagnet(rawX, rawY);
 
     const newPt: DrawingPoint = { x, y, price: priceVal, time: timeVal, logical: logicalVal };
     const currSym = this.formatCurrencySymbol(this.symbol());
@@ -2802,15 +2877,18 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     this.isDrawingActive.set(false);
   }
 
-  toggleLockDrawings(): void {
+  toggleLockDrawings(event?: Event): void {
+    if (event) event.stopPropagation();
     this.areDrawingsLocked.update(v => !v);
   }
 
-  toggleHideDrawings(): void {
+  toggleHideDrawings(event?: Event): void {
+    if (event) event.stopPropagation();
     this.areDrawingsHidden.update(v => !v);
   }
 
-  toggleMagnet(): void {
+  toggleMagnet(event?: Event): void {
+    if (event) event.stopPropagation();
     this.isMagnetEnabled.update(v => !v);
   }
 
