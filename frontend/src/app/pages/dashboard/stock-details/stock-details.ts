@@ -94,6 +94,7 @@ export interface DrawingItem {
   lineWidth: number;
   lineStyle?: 'solid' | 'dashed' | 'dotted';
   text?: string;
+  price?: number;
   locked?: boolean;
   extraStats?: string;
 }
@@ -271,6 +272,25 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         { id: 'arc', name: 'Arc', pointsRequired: 3, icon: '⌒' },
         { id: 'curve', name: 'Curve', pointsRequired: 3, icon: '∿' }
       ]
+    },
+    {
+      id: 'text_notes',
+      name: 'Text & Notes',
+      iconName: 'text_notes',
+      activeToolId: 'text',
+      tools: [
+        { id: 'text', name: 'Text', pointsRequired: 1, icon: 'T' },
+        { id: 'anchored_text', name: 'Anchored Text', pointsRequired: 1, icon: '⚓' },
+        { id: 'note', name: 'Note', pointsRequired: 1, icon: '📝' },
+        { id: 'price_note', name: 'Price Note', pointsRequired: 1, icon: '🏷' },
+        { id: 'pin', name: 'Pin', pointsRequired: 1, icon: '📌' },
+        { id: 'table', name: 'Table', pointsRequired: 1, icon: '▦' },
+        { id: 'callout', name: 'Callout', pointsRequired: 2, icon: '💬' },
+        { id: 'comment', name: 'Comment', pointsRequired: 1, icon: '🗨' },
+        { id: 'price_label', name: 'Price Label', pointsRequired: 1, icon: '💲' },
+        { id: 'signpost', name: 'Signpost', pointsRequired: 1, icon: '🪧' },
+        { id: 'flag_mark', name: 'Flag Mark', pointsRequired: 1, icon: '🚩' }
+      ]
     }
   ]);
 
@@ -283,6 +303,11 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
   readonly drawings = signal<DrawingItem[]>([]);
   readonly selectedDrawingId = signal<string | null>(null);
+  readonly selectedDrawing = computed(() => {
+    const selId = this.selectedDrawingId();
+    if (!selId) return null;
+    return this.drawings().find(d => d.id === selId) || null;
+  });
   readonly inProgressPoints = signal<DrawingPoint[]>([]);
   readonly isDrawingActive = signal<boolean>(false);
 
@@ -2185,7 +2210,30 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
     const newPt: DrawingPoint = { x, y };
 
+    let priceVal: number | undefined = undefined;
+    const activeSer = this.candlestickSeries || this.lineSeries || this.areaSeries;
+    if (activeSer && typeof (activeSer as any).coordinateToPrice === 'function') {
+      priceVal = (activeSer as any).coordinateToPrice(y) ?? undefined;
+    }
+    if (!priceVal && this.currentQuote()) {
+      priceVal = this.currentQuote()?.price;
+    }
+    const currSym = this.formatCurrencySymbol(this.symbol());
+    const formattedPrice = priceVal ? `${currSym}${priceVal.toFixed(2)}` : `${currSym}0.00`;
+
     if (tool.pointsRequired === 1) {
+      let defaultText: string | undefined = undefined;
+      if (tool.id === 'text') defaultText = 'Text Annotation';
+      else if (tool.id === 'anchored_text') defaultText = 'Anchored Note';
+      else if (tool.id === 'note') defaultText = 'Memo Note';
+      else if (tool.id === 'price_note') defaultText = `${formattedPrice} — Key Level`;
+      else if (tool.id === 'price_label') defaultText = formattedPrice;
+      else if (tool.id === 'pin') defaultText = 'Key Pivot';
+      else if (tool.id === 'table') defaultText = 'Metric: Entry | Value: ' + formattedPrice;
+      else if (tool.id === 'comment') defaultText = 'Trade Comment';
+      else if (tool.id === 'signpost') defaultText = 'Bullish Zone';
+      else if (tool.id === 'flag_mark') defaultText = 'Target 1';
+
       const newItem: DrawingItem = {
         id: 'draw_' + Date.now(),
         toolId: tool.id,
@@ -2196,7 +2244,8 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         fillColor: this.activeColor() + '22',
         lineWidth: this.activeLineWidth(),
         lineStyle: 'solid',
-        text: tool.id === 'text' ? 'Note Text' : undefined
+        text: defaultText,
+        price: priceVal
       };
       this.drawings.update(list => [...list, newItem]);
       this.selectedDrawingId.set(newItem.id);
@@ -2222,7 +2271,9 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
           color: this.activeColor(),
           fillColor: this.activeColor() + '22',
           lineWidth: this.activeLineWidth(),
-          lineStyle: 'solid'
+          lineStyle: 'solid',
+          text: tool.id === 'callout' ? 'Callout Note' : undefined,
+          price: priceVal
         };
         this.drawings.update(list => [...list, newItem]);
         this.selectedDrawingId.set(newItem.id);
@@ -2362,6 +2413,50 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     if (selId) {
       this.drawings.update(list => list.map(d => d.id === selId ? { ...d, lineWidth: width } : d));
     }
+  }
+
+  updateSelectedDrawingText(text: string): void {
+    const selId = this.selectedDrawingId();
+    if (!selId) return;
+    this.drawings.update(list => list.map(d => d.id === selId ? { ...d, text } : d));
+  }
+
+  onDrawingDoubleClick(d: DrawingItem, event: MouseEvent): void {
+    event.stopPropagation();
+    const promptText = prompt('Edit annotation text / value:', d.text || '');
+    if (promptText !== null) {
+      this.drawings.update(list => list.map(item => item.id === d.id ? { ...item, text: promptText } : item));
+    }
+  }
+
+  getCalloutPath(d: DrawingItem): { bubble: { x: number; y: number; w: number; h: number }; pointer: string } {
+    if (!d.points || d.points.length < 2) {
+      const p = d.points?.[0] || { x: 0, y: 0 };
+      return { bubble: { x: p.x + 20, y: p.y - 40, w: 120, h: 36 }, pointer: '' };
+    }
+    const p0 = d.points[0]; // Target point
+    const p1 = d.points[1]; // Bubble position
+    const w = Math.max(100, Math.min(220, (d.text?.length || 12) * 8 + 24));
+    const h = 38;
+    const bubble = { x: p1.x, y: p1.y, w, h };
+
+    const pointer = `M ${p0.x} ${p0.y} L ${p1.x + 10} ${p1.y + h} L ${p1.x + 25} ${p1.y + h} Z`;
+    return { bubble, pointer };
+  }
+
+  getTableRows(d: DrawingItem): { metric: string; val: string }[] {
+    const text = d.text || 'Metric: Entry | Value: $150';
+    if (text.includes('\n')) {
+      return text.split('\n').map(line => {
+        const parts = line.split(/[:|]/).map(s => s.trim());
+        return { metric: parts[0] || 'Key', val: parts[1] || '-' };
+      });
+    }
+    const parts = text.split('|').map(s => s.trim());
+    return parts.map(p => {
+      const sub = p.split(':').map(s => s.trim());
+      return { metric: sub[0] || 'Metric', val: sub[1] || '-' };
+    });
   }
 
   getPointsPolyline(points: DrawingPoint[]): string {

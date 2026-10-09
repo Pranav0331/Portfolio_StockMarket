@@ -976,6 +976,26 @@
   font-weight: 700;
 }
 
+.prop-text-input {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: #0f172a;
+  min-width: 130px;
+  max-width: 220px;
+  outline: none;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.prop-text-input:focus {
+  background: #ffffff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
 .btn-prop-icon {
   width: 24px;
   height: 24px;
