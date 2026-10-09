@@ -217,6 +217,11 @@
                 </svg>
               }
 
+              <!-- 18. Emoji & Stickers -->
+              @else if (group.id === 'emoji_stickers') {
+                <span style="font-size: 16px; line-height: 1;">😀</span>
+              }
+
               <!-- Submenu indicator arrow -->
               <span class="v-tool-arrow">›</span>
             </button>
@@ -227,32 +232,107 @@
       <!-- FLOATING FLYOUT SUBMENU (RENDERED AT TOOLBAR ROOT TO PREVENT SCROLL OVERFLOW CLIPPING) -->
       @if (openToolGroupId(); as curGroupId) {
         @if (getGroupById(curGroupId); as curGroup) {
-          <div class="tool-popover drawing-category-popover" (click)="$event.stopPropagation()">
-            <div class="popover-category-header">
-              <div class="cat-title-wrap">
-                <span class="cat-title">{{ curGroup.name }}</span>
-                <span class="cat-subtitle">{{ curGroup.tools.length }} tools</span>
+          @if (curGroup.id === 'emoji_stickers') {
+            <div class="tool-popover drawing-category-popover emoji-stickers-popover" (click)="$event.stopPropagation()">
+              <div class="popover-category-header">
+                <div class="cat-title-wrap">
+                  <span class="cat-title">Markers & Stickers</span>
+                </div>
+                <button type="button" class="btn-close-popover" (click)="closeFlyout($event)">✕</button>
               </div>
-              <button type="button" class="btn-close-popover" (click)="closeFlyout($event)">✕</button>
-            </div>
-            <div class="popover-tools-list">
-              @for (tool of curGroup.tools; track tool.id) {
+
+              <div class="emoji-popover-tabs">
                 <button
                   type="button"
-                  class="category-tool-item"
-                  [class.active]="activeDrawingTool()?.id === tool.id"
-                  (click)="selectDrawingTool(curGroup, tool, $event)">
-                  <span class="tool-item-icon">{{ tool.icon || '•' }}</span>
-                  <span class="tool-name">{{ tool.name }}</span>
-                  @if (tool.shortcut) {
-                    <span class="tool-shortcut">{{ tool.shortcut }}</span>
-                  } @else if (tool.pointsRequired > 0) {
-                    <span class="tool-pts-badge">{{ tool.pointsRequired }} pt</span>
-                  }
+                  class="emoji-tab-btn"
+                  [class.active]="activeEmojiTab() === 'emoji'"
+                  (click)="activeEmojiTab.set('emoji')">
+                  Emojis
                 </button>
+                <button
+                  type="button"
+                  class="emoji-tab-btn"
+                  [class.active]="activeEmojiTab() === 'stickers'"
+                  (click)="activeEmojiTab.set('stickers')">
+                  Stickers
+                </button>
+                <button
+                  type="button"
+                  class="emoji-tab-btn"
+                  [class.active]="activeEmojiTab() === 'icons'"
+                  (click)="activeEmojiTab.set('icons')">
+                  Icons
+                </button>
+              </div>
+
+              @if (activeEmojiTab() === 'emoji') {
+                <div class="emoji-grid-wrap">
+                  @for (emoji of availableEmojis; track emoji) {
+                    <button
+                      type="button"
+                      class="emoji-grid-btn"
+                      [class.active]="activeEmojiMarker().text === emoji"
+                      (click)="selectEmojiMarkerItem(emoji, 'emoji', $event)"
+                      [title]="'Place ' + emoji">
+                      {{ emoji }}
+                    </button>
+                  }
+                </div>
+              } @else if (activeEmojiTab() === 'stickers') {
+                <div class="stickers-list-wrap">
+                  @for (stk of availableStickers; track stk) {
+                    <button
+                      type="button"
+                      class="sticker-item-btn"
+                      [class.active]="activeEmojiMarker().text === stk"
+                      (click)="selectEmojiMarkerItem(stk, 'sticker', $event)">
+                      <span class="sticker-pill-text">{{ stk }}</span>
+                    </button>
+                  }
+                </div>
+              } @else if (activeEmojiTab() === 'icons') {
+                <div class="icons-list-wrap">
+                  @for (ic of availableIcons; track ic.label) {
+                    <button
+                      type="button"
+                      class="icon-item-btn"
+                      [class.active]="activeEmojiMarker().text === ic.icon"
+                      (click)="selectEmojiMarkerItem(ic.icon, 'icon', $event)">
+                      <span class="icon-glyph">{{ ic.icon }}</span>
+                      <span class="icon-lbl">{{ ic.label }}</span>
+                    </button>
+                  }
+                </div>
               }
             </div>
-          </div>
+          } @else {
+            <div class="tool-popover drawing-category-popover" (click)="$event.stopPropagation()">
+              <div class="popover-category-header">
+                <div class="cat-title-wrap">
+                  <span class="cat-title">{{ curGroup.name }}</span>
+                  <span class="cat-subtitle">{{ curGroup.tools.length }} tools</span>
+                </div>
+                <button type="button" class="btn-close-popover" (click)="closeFlyout($event)">✕</button>
+              </div>
+              <div class="popover-tools-list">
+                @for (tool of curGroup.tools; track tool.id) {
+                  <button
+                    type="button"
+                    class="category-tool-item"
+                    [class.active]="activeDrawingTool()?.id === tool.id"
+                    (click)="selectDrawingTool(curGroup, tool, $event)">
+                    <span class="tool-item-icon">{{ tool.icon || '•' }}</span>
+                    <span class="tool-name">{{ tool.name }}</span>
+                    @if (tool.shortcut) {
+                      <span class="tool-shortcut">{{ tool.shortcut }}</span>
+                    } @else if (tool.pointsRequired > 0) {
+                      <span class="tool-pts-badge">{{ tool.pointsRequired }} pt</span>
+                    }
+                  </button>
+                }
+              </div>
+            </div>
+          }
         }
       }
     </aside>
@@ -1118,7 +1198,7 @@
                 }
 
                 <!-- 6. Geometric Rectangle & Measure Box -->
-                @else if (d.toolId === 'rectangle' || d.toolId === 'price_range' || d.toolId === 'date_range' || d.toolId === 'date_price_range') {
+                @else if (d.toolId === 'rectangle') {
                   @if (getMeasureBox(d); as mb) {
                     <rect
                       [attr.x]="mb.x"
@@ -1128,12 +1208,110 @@
                       [attr.fill]="d.fillColor || (d.color + '1a')"
                       [attr.stroke]="d.color"
                       [attr.stroke-width]="d.lineWidth" />
-                    
-                    @if (d.toolId.includes('range') || d.toolId === 'price_range') {
-                      <text [attr.x]="mb.x + mb.w / 2" [attr.y]="mb.y + mb.h / 2" class="svg-drawing-label center" [attr.fill]="d.color">
-                        Δ {{ mb.h | number:'1.0-0' }}px | {{ mb.w | number:'1.0-0' }}bars
-                      </text>
+                  }
+                }
+
+                <!-- Date Range -->
+                @else if (d.toolId === 'date_range' && d.points.length >= 2) {
+                  @if (getDateRange(d); as dr) {
+                    <rect [attr.x]="dr.x" y="0" [attr.width]="dr.w" height="3000" fill="rgba(37, 99, 235, 0.08)" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3 3" />
+                    <rect [attr.x]="dr.x + dr.w/2 - 40" y="50" width="80" height="22" rx="4" fill="#1e293b" />
+                    <text [attr.x]="dr.x + dr.w/2" y="65" fill="#ffffff" class="svg-drawing-label center font-bold" text-anchor="middle">{{ dr.timeText }}</text>
+                  }
+                }
+
+                <!-- Price Range -->
+                @else if (d.toolId === 'price_range' && d.points.length >= 2) {
+                  @if (getPriceRange(d); as pr) {
+                    <rect x="0" [attr.y]="pr.y" width="3000" [attr.height]="pr.h" [attr.fill]="pr.isPositive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'" [attr.stroke]="pr.isPositive ? '#10b981' : '#ef4444'" stroke-width="1.5" stroke-dasharray="3 3" />
+                    <rect x="120" [attr.y]="pr.y + pr.h/2 - 12" width="110" height="24" rx="4" [attr.fill]="pr.isPositive ? '#047857' : '#b91c1c'" />
+                    <text x="175" [attr.y]="pr.y + pr.h/2 + 4" fill="#ffffff" class="svg-drawing-label center font-bold" text-anchor="middle">{{ pr.deltaPrice }} ({{ pr.deltaPct }})</text>
+                  }
+                }
+
+                <!-- Date and Price Range -->
+                @else if (d.toolId === 'date_price_range' && d.points.length >= 2) {
+                  @if (getDatePriceRange(d); as dpr) {
+                    <rect [attr.x]="dpr.x" [attr.y]="dpr.y" [attr.width]="dpr.w" [attr.height]="dpr.h" [attr.fill]="dpr.isPositive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)'" [attr.stroke]="dpr.isPositive ? '#10b981' : '#ef4444'" stroke-width="1.5" />
+                    <rect [attr.x]="dpr.x + dpr.w/2 - 60" [attr.y]="dpr.y + dpr.h/2 - 14" width="120" height="28" rx="4" fill="#0f172a" />
+                    <text [attr.x]="dpr.x + dpr.w/2" [attr.y]="dpr.y + dpr.h/2" fill="#ffffff" class="svg-drawing-label center font-bold" text-anchor="middle">{{ dpr.deltaPrice }} ({{ dpr.deltaPct }})</text>
+                    <text [attr.x]="dpr.x + dpr.w/2" [attr.y]="dpr.y + dpr.h/2 + 10" fill="#94a3b8" class="svg-drawing-label center" text-anchor="middle" font-size="8">{{ dpr.bars }} bars</text>
+                  }
+                }
+
+                <!-- Forecast Tool -->
+                @else if (d.toolId === 'forecast' && d.points.length >= 2) {
+                  @if (getForecast(d); as fc) {
+                    <polygon [attr.points]="fc.cone" fill="rgba(37, 99, 235, 0.1)" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 3" />
+                    <line [attr.x1]="fc.x1" [attr.y1]="fc.y1" [attr.x2]="fc.x2" [attr.y2]="fc.y2" stroke="#2563eb" stroke-width="2" stroke-dasharray="4 2" />
+                    <circle [attr.cx]="fc.x2" [attr.cy]="fc.y2" r="5" fill="#2563eb" />
+                    <rect [attr.x]="fc.x2 + 8" [attr.y]="fc.y2 - 16" width="90" height="24" rx="4" fill="#1e293b" />
+                    <text [attr.x]="fc.x2 + 14" [attr.y]="fc.y2 - 1" fill="#ffffff" class="svg-drawing-label font-bold">{{ fc.changePct }}</text>
+                  }
+                }
+
+                <!-- Bars Pattern, Ghost Feed & Projection -->
+                @else if ((d.toolId === 'bars_pattern' || d.toolId === 'ghost_feed' || d.toolId === 'projection') && d.points.length >= 2) {
+                  <polyline [attr.points]="getPointsPolyline(d.points)" fill="none" [attr.stroke]="d.color" stroke-width="2" stroke-dasharray="3 3" />
+                  <circle [attr.cx]="d.points[d.points.length - 1].x" [attr.cy]="d.points[d.points.length - 1].y" r="5" [attr.fill]="d.color" />
+                }
+
+                <!-- Volume Profile & Fixed Range Volume -->
+                @else if ((d.toolId === 'fixed_range_volume' || d.toolId === 'volume_profile') && d.points.length >= 2) {
+                  @if (getVolumeProfile(d); as vp) {
+                    <rect [attr.x]="vp.x" [attr.y]="vp.y" [attr.width]="vp.w" [attr.height]="vp.h" fill="rgba(241, 245, 249, 0.4)" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="2 2" />
+                    @for (b of vp.bars; track $index) {
+                      <rect [attr.x]="vp.x" [attr.y]="b.y" [attr.width]="b.w1" height="8" fill="rgba(37, 99, 235, 0.45)" />
+                      <rect [attr.x]="vp.x + b.w1" [attr.y]="b.y" [attr.width]="b.w2" height="8" fill="rgba(245, 158, 11, 0.45)" />
                     }
+                    <!-- Point of Control (POC Line) -->
+                    <line [attr.x1]="vp.x" [attr.y1]="vp.pocY" [attr.x2]="vp.x + vp.w" [attr.y2]="vp.pocY" stroke="#ef4444" stroke-width="2" />
+                    <text [attr.x]="vp.x + vp.w + 4" [attr.y]="vp.pocY + 3" fill="#ef4444" class="svg-drawing-label font-bold">POC</text>
+                  }
+                }
+
+                <!-- Anchored VWAP -->
+                @else if (d.toolId === 'anchored_vwap' && d.points.length >= 1) {
+                  @if (getAnchoredVwap(d); as vwap) {
+                    <circle [attr.cx]="vwap.x1" [attr.cy]="vwap.y1" r="5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5" />
+                    <path [attr.d]="vwap.path" fill="none" stroke="#f59e0b" stroke-width="2.2" />
+                    <text [attr.x]="vwap.x1 + 10" [attr.y]="vwap.y1 - 6" fill="#b45309" class="svg-drawing-label font-bold">{{ vwap.label }}</text>
+                  }
+                }
+
+                <!-- Measure Tool -->
+                @else if (d.toolId === 'measure' && d.points.length >= 2) {
+                  @if (getMeasureData(d); as md) {
+                    <rect [attr.x]="md.x" [attr.y]="md.y" [attr.width]="md.w" [attr.height]="md.h" fill="rgba(37, 99, 235, 0.12)" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="3 3" />
+                    <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" stroke="#2563eb" stroke-width="1.5" />
+                    <rect [attr.x]="md.x + md.w / 2 - 55" [attr.y]="md.y + md.h / 2 - 18" width="110" height="36" rx="5" fill="#0f172a" opacity="0.95" />
+                    <text [attr.x]="md.x + md.w / 2" [attr.y]="md.y + md.h / 2 - 2" fill="#ffffff" class="svg-drawing-label center font-bold" text-anchor="middle">{{ md.deltaPrice }} ({{ md.deltaPct }})</text>
+                    <text [attr.x]="md.x + md.w / 2" [attr.y]="md.y + md.h / 2 + 10" fill="#94a3b8" class="svg-drawing-label center" text-anchor="middle" font-size="8">{{ md.bars }} bars, {{ md.pxDist }}px</text>
+                  }
+                }
+
+                <!-- Emoji Marker / Sticker / Icon -->
+                @else if (d.toolId === 'emoji_marker' && d.points.length >= 1) {
+                  @if (d.extraStats === 'emoji' || !d.extraStats) {
+                    <text
+                      [attr.x]="d.points[0].x"
+                      [attr.y]="d.points[0].y + 2"
+                      font-size="28"
+                      text-anchor="middle"
+                      dominant-baseline="central"
+                      style="user-select: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)); cursor: pointer;">
+                      {{ d.text || '🚀' }}
+                    </text>
+                  } @else if (d.extraStats === 'sticker') {
+                    <g class="annotation-sticker" (dblclick)="onDrawingDoubleClick(d, $event)">
+                      <rect [attr.x]="d.points[0].x - 60" [attr.y]="d.points[0].y - 18" width="120" height="34" rx="17" fill="#ffffff" stroke="#2563eb" stroke-width="2" style="filter: drop-shadow(0 3px 6px rgba(37,99,235,0.2));" />
+                      <text [attr.x]="d.points[0].x" [attr.y]="d.points[0].y + 4" class="svg-drawing-label font-bold" text-anchor="middle" fill="#1d4ed8" font-size="11">{{ d.text || 'Bullish' }}</text>
+                    </g>
+                  } @else if (d.extraStats === 'icon') {
+                    <g class="annotation-icon" (dblclick)="onDrawingDoubleClick(d, $event)">
+                      <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y" r="16" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5" />
+                      <text [attr.x]="d.points[0].x" [attr.y]="d.points[0].y + 2" font-size="16" text-anchor="middle" dominant-baseline="central">{{ d.text || '⭐' }}</text>
+                    </g>
                   }
                 }
 

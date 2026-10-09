@@ -458,6 +458,155 @@
   color: #ffffff;
 }
 
+/* ==========================================================================
+   EMOJI & STICKERS POPOVER STYLES
+   ========================================================================== */
+.emoji-stickers-popover {
+  width: 270px;
+}
+
+.emoji-popover-tabs {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.emoji-tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.emoji-tab-btn:hover {
+  color: #0f172a;
+}
+
+.emoji-tab-btn.active {
+  background: #ffffff;
+  color: #2563eb;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.emoji-grid-wrap {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.emoji-grid-btn {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 20px;
+  padding: 6px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+}
+
+.emoji-grid-btn:hover {
+  background: #f3f6fa;
+  border-color: #93c5fd;
+  transform: scale(1.15);
+}
+
+.emoji-grid-btn.active {
+  background: #eff6ff;
+  border-color: #2563eb;
+}
+
+.stickers-list-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.sticker-item-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.sticker-item-btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.sticker-item-btn.active {
+  background: #dbeafe;
+  border-color: #2563eb;
+}
+
+.sticker-pill-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.icons-list-wrap {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.icon-item-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.icon-item-btn:hover {
+  background: #f3f6fa;
+  border-color: #93c5fd;
+}
+
+.icon-item-btn.active {
+  background: #eff6ff;
+  border-color: #2563eb;
+}
+
+.icon-glyph {
+  font-size: 16px;
+}
+
+.icon-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: #334155;
+}
+
 /* Header chart actions and type picker */
 .header-chart-type-picker, .header-indicators-toggles, .header-chart-actions {
   display: flex;

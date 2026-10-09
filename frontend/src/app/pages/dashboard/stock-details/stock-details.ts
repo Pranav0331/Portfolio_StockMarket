@@ -81,6 +81,7 @@ export interface DrawingPoint {
   y: number;
   time?: any;
   price?: number;
+  logical?: number;
 }
 
 export interface DrawingItem {
@@ -102,7 +103,7 @@ export interface DrawingItem {
 export interface DrawingToolOption {
   id: string;
   name: string;
-  pointsRequired: number; // 0, 1, 2, 3, 5, 7, -1
+  pointsRequired: number; // 0, 1, 2, 3, 4, 5, 7, -1
   icon?: string;
   shortcut?: string;
 }
@@ -167,7 +168,9 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       activeToolId: 'crosshair',
       tools: [
         { id: 'crosshair', name: 'Crosshair', pointsRequired: 0, icon: '┼' },
-        { id: 'cursor', name: 'Cursor / Arrow', pointsRequired: 0, icon: '↖' }
+        { id: 'cursor', name: 'Cursor / Arrow', pointsRequired: 0, icon: '↖' },
+        { id: 'dot', name: 'Dot', pointsRequired: 0, icon: '•' },
+        { id: 'eraser', name: 'Eraser', pointsRequired: 0, icon: '⌫' }
       ]
     },
     {
@@ -196,14 +199,14 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         { id: 'fib_retracement', name: 'Fib Retracement', pointsRequired: 2, shortcut: 'Alt+F', icon: '≡' },
         { id: 'trend_fib_extension', name: 'Trend-Based Fib Extension', pointsRequired: 3, icon: '≚' },
         { id: 'fib_channel', name: 'Fib Channel', pointsRequired: 3, icon: '⫽' },
+        { id: 'fib_speed_fan', name: 'Fib Fan', pointsRequired: 2, icon: '⌔' },
         { id: 'fib_time_zone', name: 'Fib Time Zone', pointsRequired: 2, icon: '⧉' },
-        { id: 'fib_speed_fan', name: 'Fib Speed Resistance Fan', pointsRequired: 2, icon: '⌔' },
-        { id: 'trend_fib_time', name: 'Trend-Based Fib Time', pointsRequired: 2, icon: '⏱' },
         { id: 'fib_circles', name: 'Fib Circles', pointsRequired: 2, icon: '◎' },
         { id: 'fib_spiral', name: 'Fib Spiral', pointsRequired: 2, icon: '🌀' },
-        { id: 'fib_speed_arcs', name: 'Fib Speed Resistance Arcs', pointsRequired: 2, icon: '⌒' },
+        { id: 'fib_speed_arcs', name: 'Fib Arcs', pointsRequired: 2, icon: '⌒' },
         { id: 'fib_wedge', name: 'Fib Wedge', pointsRequired: 2, icon: '◬' },
-        { id: 'pitchfan', name: 'Pitchfan', pointsRequired: 3, icon: '⋒' }
+        { id: 'pitchfan', name: 'Pitchfan', pointsRequired: 3, icon: '⋒' },
+        { id: 'trend_fib_time', name: 'Trend-Based Fib Time', pointsRequired: 2, icon: '⏱' }
       ]
     },
     {
@@ -230,6 +233,23 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         { id: 'abcd_pattern', name: 'ABCD Pattern', pointsRequired: 4, icon: '⫽' },
         { id: 'triangle_pattern', name: 'Triangle Pattern', pointsRequired: 4, icon: '⊿' },
         { id: 'three_drives_pattern', name: 'Three Drives Pattern', pointsRequired: 7, icon: '⋕' }
+      ]
+    },
+    {
+      id: 'projection',
+      name: 'Projection & Ranges',
+      iconName: 'projection',
+      activeToolId: 'long_position',
+      tools: [
+        { id: 'long_position', name: 'Long Position', pointsRequired: 2, icon: '⤊' },
+        { id: 'short_position', name: 'Short Position', pointsRequired: 2, icon: '⤋' },
+        { id: 'forecast', name: 'Forecast', pointsRequired: 2, icon: '🔮' },
+        { id: 'date_range', name: 'Date Range', pointsRequired: 2, icon: '↔' },
+        { id: 'price_range', name: 'Price Range', pointsRequired: 2, icon: '↕' },
+        { id: 'date_price_range', name: 'Date and Price Range', pointsRequired: 2, icon: '⤧' },
+        { id: 'bars_pattern', name: 'Bars Pattern', pointsRequired: 2, icon: '▥' },
+        { id: 'ghost_feed', name: 'Ghost Feed', pointsRequired: 2, icon: '👻' },
+        { id: 'projection', name: 'Projection', pointsRequired: 2, icon: '📈' }
       ]
     },
     {
@@ -291,6 +311,37 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         { id: 'signpost', name: 'Signpost', pointsRequired: 1, icon: '🪧' },
         { id: 'flag_mark', name: 'Flag Mark', pointsRequired: 1, icon: '🚩' }
       ]
+    },
+    {
+      id: 'volume',
+      name: 'Volume & VWAP',
+      iconName: 'volume',
+      activeToolId: 'fixed_range_volume',
+      tools: [
+        { id: 'fixed_range_volume', name: 'Fixed Range Volume Profile', pointsRequired: 2, icon: '📊' },
+        { id: 'anchored_vwap', name: 'Anchored VWAP', pointsRequired: 1, icon: '⚓' },
+        { id: 'volume_profile', name: 'Volume Profile', pointsRequired: 2, icon: '📶' }
+      ]
+    },
+    {
+      id: 'measure',
+      name: 'Measure & Zoom',
+      iconName: 'measure',
+      activeToolId: 'measure',
+      tools: [
+        { id: 'measure', name: 'Measure', pointsRequired: 2, icon: '📏' },
+        { id: 'zoom_in', name: 'Zoom In', pointsRequired: 0, icon: '🔍+' },
+        { id: 'zoom_out', name: 'Zoom Out', pointsRequired: 0, icon: '🔍-' }
+      ]
+    },
+    {
+      id: 'emoji_stickers',
+      name: 'Emoji & Stickers',
+      iconName: 'emoji_stickers',
+      activeToolId: 'emoji_marker',
+      tools: [
+        { id: 'emoji_marker', name: 'Emoji / Sticker', pointsRequired: 1, icon: '😀' }
+      ]
     }
   ]);
 
@@ -301,8 +352,35 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly activeToolGroupId = signal<string>('cursor');
   readonly openToolGroupId = signal<string | null>(null);
 
+  // Emoji / Sticker / Icons panel state
+  readonly activeEmojiTab = signal<'emoji' | 'stickers' | 'icons'>('emoji');
+  readonly availableEmojis = ['🚀', '📈', '📉', '🎯', '🔥', '💰', '💎', '🐂', '🐻', '⚠️', '⚡', '🔔', '🏆', '💡', '🛡️', '🛑', '📊', '🧠', '👑', '👀', '⭐', '💯', '💸', '⏳', '📌', '💣', '💥', '✨'];
+  readonly availableStickers = [
+    'Bull Market 🐂', 'Bear Market 🐻', 'Breakout 🚀', 'Stop Out 🛑',
+    'To The Moon 🌕', 'Diamond Hands 💎', 'Buy The Dip 📉', 'Take Profit 🎯',
+    'Whale Alert 🐋', 'Support Level 🛡️', 'Resistance 🚧', 'Pump It 🔥'
+  ];
+  readonly availableIcons = [
+    { label: 'Star', icon: '⭐' },
+    { label: 'Heart', icon: '❤️' },
+    { label: 'Check', icon: '✅' },
+    { label: 'Cross', icon: '❌' },
+    { label: 'Bullish', icon: '👍' },
+    { label: 'Bearish', icon: '👎' },
+    { label: 'Target', icon: '🎯' },
+    { label: 'Alert', icon: '🔔' },
+    { label: 'Hot', icon: '🔥' },
+    { label: 'Moon', icon: '🚀' },
+    { label: 'Flash', icon: '⚡' },
+    { label: 'Gem', icon: '💎' }
+  ];
+  readonly activeEmojiMarker = signal<{ text: string; type: 'emoji' | 'sticker' | 'icon' }>({ text: '🚀', type: 'emoji' });
+
   readonly drawings = signal<DrawingItem[]>([]);
   readonly selectedDrawingId = signal<string | null>(null);
+  readonly isDraggingDrawing = signal<boolean>(false);
+  private dragStartMouse: { x: number; y: number } = { x: 0, y: 0 };
+  private initialDragPoints: DrawingPoint[] = [];
   readonly selectedDrawing = computed(() => {
     const selId = this.selectedDrawingId();
     if (!selId) return null;
@@ -1370,6 +1448,10 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
           }
         });
 
+        this.chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+          this.syncDrawingCoordinates();
+        });
+
         if (typeof ResizeObserver !== 'undefined') {
           this.resizeObserver = new ResizeObserver((entries) => {
             if (entries.length === 0 || !this.chart) return;
@@ -2151,22 +2233,115 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     }
   }
 
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+        return;
+      }
+      if (this.selectedDrawingId()) {
+        this.deleteSelectedDrawing();
+      }
+    } else if (event.key === 'Escape') {
+      this.cancelCurrentDrawing();
+    }
+  }
+
+  cancelCurrentDrawing(): void {
+    this.activeDrawingTool.set(null);
+    this.isDrawingActive.set(false);
+    this.inProgressPoints.set([]);
+    this.selectedDrawingId.set(null);
+  }
+
+  syncDrawingCoordinates(): void {
+    const activeSer = this.candlestickSeries || this.lineSeries || this.areaSeries;
+    if (!activeSer || !this.chart) return;
+
+    this.drawings.update(list => list.map(d => {
+      const updatedPoints = d.points.map(pt => {
+        let newX = pt.x;
+        let newY = pt.y;
+
+        if (pt.price != null && typeof (activeSer as any).priceToCoordinate === 'function') {
+          const coordY = (activeSer as any).priceToCoordinate(pt.price);
+          if (coordY != null && !isNaN(coordY)) {
+            newY = coordY;
+          }
+        }
+
+        if (pt.time != null) {
+          const coordX = this.chart?.timeScale().timeToCoordinate(pt.time);
+          if (coordX != null && !isNaN(coordX)) {
+            newX = coordX;
+          }
+        } else if (pt.logical != null) {
+          const coordX = this.chart?.timeScale().logicalToCoordinate(pt.logical as any);
+          if (coordX != null && !isNaN(coordX)) {
+            newX = coordX;
+          }
+        }
+
+        return { ...pt, x: newX, y: newY };
+      });
+      return { ...d, points: updatedPoints };
+    }));
+  }
+
+  selectEmojiMarkerItem(text: string, type: 'emoji' | 'sticker' | 'icon', event?: Event): void {
+    if (event) event.stopPropagation();
+    this.activeEmojiMarker.set({ text, type });
+    this.activeDrawingTool.set({
+      id: 'emoji_marker',
+      name: text,
+      pointsRequired: 1,
+      icon: text
+    });
+    this.activeToolGroupId.set('emoji_stickers');
+    this.openToolGroupId.set(null);
+  }
+
   selectDrawingTool(group: DrawingToolGroup, tool: DrawingToolOption, event?: Event): void {
     if (event) event.stopPropagation();
     group.activeToolId = tool.id;
     this.activeToolGroupId.set(group.id);
     this.openToolGroupId.set(null);
 
-    if (tool.id === 'crosshair' || tool.id === 'cursor') {
+    if (tool.id === 'crosshair' || tool.id === 'cursor' || tool.id === 'dot') {
       this.activeDrawingTool.set(null);
       this.inProgressPoints.set([]);
       this.isDrawingActive.set(false);
       return;
     }
 
-    if (tool.id === 'delete_drawings') {
+    if (tool.id === 'eraser' || tool.id === 'delete_drawings') {
       this.clearAllDrawings();
       this.activeDrawingTool.set(null);
+      return;
+    }
+
+    if (tool.id === 'zoom_in') {
+      if (this.chart) {
+        const timeScale = this.chart.timeScale();
+        const range = timeScale.getVisibleLogicalRange();
+        if (range) {
+          const delta = (range.to - range.from) * 0.2;
+          timeScale.setVisibleLogicalRange({ from: range.from + delta, to: range.to - delta });
+        }
+      }
+      return;
+    }
+
+    if (tool.id === 'zoom_out') {
+      if (this.chart) {
+        const timeScale = this.chart.timeScale();
+        const range = timeScale.getVisibleLogicalRange();
+        if (range) {
+          const delta = (range.to - range.from) * 0.25;
+          timeScale.setVisibleLogicalRange({ from: range.from - delta, to: range.to + delta });
+        }
+      }
       return;
     }
 
@@ -2194,12 +2369,6 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   onDrawingSvgMouseDown(event: MouseEvent): void {
     if (this.areDrawingsLocked()) return;
     const tool = this.activeDrawingTool();
-    if (!tool) {
-      if ((event.target as HTMLElement).tagName === 'svg') {
-        this.selectedDrawingId.set(null);
-      }
-      return;
-    }
 
     const svg = this.drawingSvgRef()?.nativeElement;
     if (!svg) return;
@@ -2208,9 +2377,24 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    const newPt: DrawingPoint = { x, y };
+    if (!tool) {
+      if ((event.target as HTMLElement).tagName === 'svg') {
+        this.selectedDrawingId.set(null);
+      } else {
+        const selDrawing = this.selectedDrawing();
+        if (selDrawing) {
+          this.isDraggingDrawing.set(true);
+          this.dragStartMouse = { x, y };
+          this.initialDragPoints = selDrawing.points.map(p => ({ ...p }));
+        }
+      }
+      return;
+    }
 
     let priceVal: number | undefined = undefined;
+    let timeVal: any = undefined;
+    let logicalVal: number | undefined = undefined;
+
     const activeSer = this.candlestickSeries || this.lineSeries || this.areaSeries;
     if (activeSer && typeof (activeSer as any).coordinateToPrice === 'function') {
       priceVal = (activeSer as any).coordinateToPrice(y) ?? undefined;
@@ -2218,8 +2402,40 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     if (!priceVal && this.currentQuote()) {
       priceVal = this.currentQuote()?.price;
     }
+    if (this.chart) {
+      try {
+        timeVal = this.chart.timeScale().coordinateToTime(x) ?? undefined;
+        logicalVal = this.chart.timeScale().coordinateToLogical(x) ?? undefined;
+      } catch (e) {}
+    }
+
+    const newPt: DrawingPoint = { x, y, price: priceVal, time: timeVal, logical: logicalVal };
     const currSym = this.formatCurrencySymbol(this.symbol());
     const formattedPrice = priceVal ? `${currSym}${priceVal.toFixed(2)}` : `${currSym}0.00`;
+
+    if (tool.id === 'emoji_marker') {
+      const markerInfo = this.activeEmojiMarker();
+      const newItem: DrawingItem = {
+        id: 'draw_' + Date.now(),
+        toolId: 'emoji_marker',
+        category: 'emoji_stickers',
+        name: markerInfo.text,
+        points: [newPt],
+        color: this.activeColor(),
+        fillColor: this.activeColor() + '22',
+        lineWidth: this.activeLineWidth(),
+        lineStyle: 'solid',
+        text: markerInfo.text,
+        extraStats: markerInfo.type,
+        price: priceVal
+      };
+      this.drawings.update(list => [...list, newItem]);
+      this.selectedDrawingId.set(newItem.id);
+      this.activeDrawingTool.set(null);
+      this.isDrawingActive.set(false);
+      this.inProgressPoints.set([]);
+      return;
+    }
 
     if (tool.pointsRequired === 1) {
       let defaultText: string | undefined = undefined;
@@ -2233,6 +2449,7 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       else if (tool.id === 'comment') defaultText = 'Trade Comment';
       else if (tool.id === 'signpost') defaultText = 'Bullish Zone';
       else if (tool.id === 'flag_mark') defaultText = 'Target 1';
+      else if (tool.id === 'anchored_vwap') defaultText = 'VWAP';
 
       const newItem: DrawingItem = {
         id: 'draw_' + Date.now(),
@@ -2287,13 +2504,44 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   }
 
   onDrawingSvgMouseMove(event: MouseEvent): void {
-    if (!this.isDrawingActive()) return;
     const svg = this.drawingSvgRef()?.nativeElement;
     if (!svg) return;
 
     const rect = svg.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
+
+    if (this.isDraggingDrawing() && this.selectedDrawingId()) {
+      const dx = x - this.dragStartMouse.x;
+      const dy = y - this.dragStartMouse.y;
+      const selId = this.selectedDrawingId();
+      const activeSer = this.candlestickSeries || this.lineSeries || this.areaSeries;
+
+      this.drawings.update(list => list.map(d => {
+        if (d.id !== selId) return d;
+        const newPoints = this.initialDragPoints.map(p => {
+          const nx = p.x + dx;
+          const ny = p.y + dy;
+          let newPrice = p.price;
+          let newTime = p.time;
+          let newLogical = p.logical;
+          if (activeSer && typeof (activeSer as any).coordinateToPrice === 'function') {
+            newPrice = (activeSer as any).coordinateToPrice(ny) ?? p.price;
+          }
+          if (this.chart) {
+            try {
+              newTime = this.chart.timeScale().coordinateToTime(nx) ?? p.time;
+              newLogical = this.chart.timeScale().coordinateToLogical(nx) ?? p.logical;
+            } catch (e) {}
+          }
+          return { x: nx, y: ny, price: newPrice, time: newTime, logical: newLogical };
+        });
+        return { ...d, points: newPoints };
+      }));
+      return;
+    }
+
+    if (!this.isDrawingActive()) return;
 
     const tool = this.activeDrawingTool();
     if (tool && tool.pointsRequired === -1) {
@@ -2309,6 +2557,11 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   }
 
   onDrawingSvgMouseUp(event: MouseEvent): void {
+    if (this.isDraggingDrawing()) {
+      this.isDraggingDrawing.set(false);
+      return;
+    }
+
     const tool = this.activeDrawingTool();
     if (!tool || !this.isDrawingActive()) return;
 
@@ -2318,6 +2571,21 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     const rect = svg.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
+
+    let priceVal: number | undefined = undefined;
+    let timeVal: any = undefined;
+    let logicalVal: number | undefined = undefined;
+
+    const activeSer = this.candlestickSeries || this.lineSeries || this.areaSeries;
+    if (activeSer && typeof (activeSer as any).coordinateToPrice === 'function') {
+      priceVal = (activeSer as any).coordinateToPrice(y) ?? undefined;
+    }
+    if (this.chart) {
+      try {
+        timeVal = this.chart.timeScale().coordinateToTime(x) ?? undefined;
+        logicalVal = this.chart.timeScale().coordinateToLogical(x) ?? undefined;
+      } catch (e) {}
+    }
 
     if (tool.pointsRequired === -1) {
       const pts = this.inProgressPoints();
@@ -2345,24 +2613,27 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     if (tool.pointsRequired === 2) {
       const pts = this.inProgressPoints();
       if (pts.length >= 2) {
-        const p1 = pts[0];
-        const p2 = { x, y };
-        const newItem: DrawingItem = {
-          id: 'draw_' + Date.now(),
-          toolId: tool.id,
-          category: this.activeToolGroupId(),
-          name: tool.name,
-          points: [p1, p2],
-          color: this.activeColor(),
-          fillColor: this.activeColor() + '22',
-          lineWidth: this.activeLineWidth(),
-          lineStyle: 'solid'
-        };
-        this.drawings.update(list => [...list, newItem]);
-        this.selectedDrawingId.set(newItem.id);
-        this.activeDrawingTool.set(null);
-        this.isDrawingActive.set(false);
-        this.inProgressPoints.set([]);
+        const dist = Math.hypot(x - pts[0].x, y - pts[0].y);
+        if (dist > 6) {
+          const p1 = pts[0];
+          const p2 = { x, y, price: priceVal, time: timeVal, logical: logicalVal };
+          const newItem: DrawingItem = {
+            id: 'draw_' + Date.now(),
+            toolId: tool.id,
+            category: this.activeToolGroupId(),
+            name: tool.name,
+            points: [p1, p2],
+            color: this.activeColor(),
+            fillColor: this.activeColor() + '22',
+            lineWidth: this.activeLineWidth(),
+            lineStyle: 'solid'
+          };
+          this.drawings.update(list => [...list, newItem]);
+          this.selectedDrawingId.set(newItem.id);
+          this.activeDrawingTool.set(null);
+          this.isDrawingActive.set(false);
+          this.inProgressPoints.set([]);
+        }
       }
     }
   }
@@ -2427,6 +2698,145 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     if (promptText !== null) {
       this.drawings.update(list => list.map(item => item.id === d.id ? { ...item, text: promptText } : item));
     }
+  }
+
+  getForecast(d: DrawingItem): { x1: number; y1: number; x2: number; y2: number; cone: string; targetPrice: string; changePct: string } {
+    if (!d.points || d.points.length < 2) return { x1: 0, y1: 0, x2: 0, y2: 0, cone: '', targetPrice: '0.00', changePct: '0.00%' };
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const spread = Math.max(15, Math.abs(dx) * 0.35);
+    const cone = `${p1.x},${p1.y} ${p2.x},${p2.y - spread} ${p2.x},${p2.y + spread}`;
+    const price1 = d.points[0].price || 0;
+    const price2 = d.points[1].price || 0;
+    const pct = price1 > 0 ? (((price2 - price1) / price1) * 100).toFixed(2) : '0.00';
+    return {
+      x1: p1.x,
+      y1: p1.y,
+      x2: p2.x,
+      y2: p2.y,
+      cone,
+      targetPrice: price2.toFixed(2),
+      changePct: `${Number(pct) >= 0 ? '+' : ''}${pct}%`
+    };
+  }
+
+  getDateRange(d: DrawingItem): { x: number; y: number; w: number; h: number; bars: number; timeText: string } {
+    if (!d.points || d.points.length < 2) return { x: 0, y: 0, w: 0, h: 0, bars: 0, timeText: '' };
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const x = Math.min(p1.x, p2.x);
+    const w = Math.max(10, Math.abs(p2.x - p1.x));
+    const bars = Math.max(1, Math.round(w / 10));
+    return { x, y: 0, w, h: 2000, bars, timeText: `${bars} bars` };
+  }
+
+  getPriceRange(d: DrawingItem): { x: number; y: number; w: number; h: number; deltaPrice: string; deltaPct: string; isPositive: boolean } {
+    if (!d.points || d.points.length < 2) return { x: 0, y: 0, w: 0, h: 0, deltaPrice: '0.00', deltaPct: '0.00%', isPositive: true };
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const y = Math.min(p1.y, p2.y);
+    const h = Math.max(10, Math.abs(p2.y - p1.y));
+    const price1 = p1.price || 0;
+    const price2 = p2.price || 0;
+    const dp = price2 - price1;
+    const pct = price1 > 0 ? (dp / price1) * 100 : 0;
+    return {
+      x: 0,
+      y,
+      w: 3000,
+      h,
+      deltaPrice: (dp >= 0 ? '+' : '') + dp.toFixed(2),
+      deltaPct: (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%',
+      isPositive: dp >= 0
+    };
+  }
+
+  getDatePriceRange(d: DrawingItem): { x: number; y: number; w: number; h: number; deltaPrice: string; deltaPct: string; bars: number; isPositive: boolean } {
+    if (!d.points || d.points.length < 2) return { x: 0, y: 0, w: 0, h: 0, deltaPrice: '0.00', deltaPct: '0.00%', bars: 0, isPositive: true };
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const x = Math.min(p1.x, p2.x);
+    const y = Math.min(p1.y, p2.y);
+    const w = Math.max(10, Math.abs(p2.x - p1.x));
+    const h = Math.max(10, Math.abs(p2.y - p1.y));
+    const price1 = p1.price || 0;
+    const price2 = p2.price || 0;
+    const dp = price2 - price1;
+    const pct = price1 > 0 ? (dp / price1) * 100 : 0;
+    const bars = Math.max(1, Math.round(w / 10));
+    return {
+      x,
+      y,
+      w,
+      h,
+      deltaPrice: (dp >= 0 ? '+' : '') + dp.toFixed(2),
+      deltaPct: (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%',
+      bars,
+      isPositive: dp >= 0
+    };
+  }
+
+  getVolumeProfile(d: DrawingItem): { x: number; y: number; w: number; h: number; pocY: number; bars: { y: number; w1: number; w2: number }[] } {
+    if (!d.points || d.points.length < 2) return { x: 0, y: 0, w: 0, h: 0, pocY: 0, bars: [] };
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const x = Math.min(p1.x, p2.x);
+    const y = Math.min(p1.y, p2.y);
+    const w = Math.max(20, Math.abs(p2.x - p1.x));
+    const h = Math.max(20, Math.abs(p2.y - p1.y));
+    const rowCount = 8;
+    const rowH = h / rowCount;
+    const bars: { y: number; w1: number; w2: number }[] = [];
+    const midRow = Math.floor(rowCount / 2);
+    for (let i = 0; i < rowCount; i++) {
+      const dist = Math.abs(i - midRow);
+      const intensity = Math.max(0.2, 1 - (dist / rowCount));
+      const totalW = (w * 0.85) * intensity;
+      const w1 = totalW * 0.55;
+      const w2 = totalW * 0.45;
+      bars.push({ y: y + i * rowH, w1, w2 });
+    }
+    const pocY = y + midRow * rowH + rowH / 2;
+    return { x, y, w, h, pocY, bars };
+  }
+
+  getAnchoredVwap(d: DrawingItem): { x1: number; y1: number; path: string; label: string } {
+    if (!d.points || d.points.length < 1) return { x1: 0, y1: 0, path: '', label: 'VWAP' };
+    const p1 = d.points[0];
+    const width = 3000;
+    const path = `M ${p1.x} ${p1.y} C ${p1.x + 100} ${p1.y + 5}, ${p1.x + 250} ${p1.y - 10}, ${p1.x + width} ${p1.y - 15}`;
+    const currSym = this.formatCurrencySymbol(this.symbol());
+    const priceStr = d.points[0].price ? `${currSym}${d.points[0].price.toFixed(2)}` : 'VWAP';
+    return { x1: p1.x, y1: p1.y, path, label: `Anchored VWAP (${priceStr})` };
+  }
+
+  getMeasureData(d: DrawingItem): { x: number; y: number; w: number; h: number; deltaPrice: string; deltaPct: string; bars: number; pxDist: number; isPositive: boolean } {
+    if (!d.points || d.points.length < 2) return { x: 0, y: 0, w: 0, h: 0, deltaPrice: '0.00', deltaPct: '0.00%', bars: 0, pxDist: 0, isPositive: true };
+    const p1 = d.points[0];
+    const p2 = d.points[1];
+    const x = Math.min(p1.x, p2.x);
+    const y = Math.min(p1.y, p2.y);
+    const w = Math.max(10, Math.abs(p2.x - p1.x));
+    const h = Math.max(10, Math.abs(p2.y - p1.y));
+    const price1 = p1.price || 0;
+    const price2 = p2.price || 0;
+    const dp = price2 - price1;
+    const pct = price1 > 0 ? (dp / price1) * 100 : 0;
+    const bars = Math.max(1, Math.round(w / 10));
+    const pxDist = Math.round(Math.hypot(p2.x - p1.x, p2.y - p1.y));
+    return {
+      x,
+      y,
+      w,
+      h,
+      deltaPrice: (dp >= 0 ? '+' : '') + dp.toFixed(2),
+      deltaPct: (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%',
+      bars,
+      pxDist,
+      isPositive: dp >= 0
+    };
   }
 
   getCalloutPath(d: DrawingItem): { bubble: { x: number; y: number; w: number; h: number }; pointer: string } {
