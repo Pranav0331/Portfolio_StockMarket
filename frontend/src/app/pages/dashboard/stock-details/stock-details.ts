@@ -230,6 +230,47 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
         { id: 'triangle_pattern', name: 'Triangle Pattern', pointsRequired: 4, icon: '⊿' },
         { id: 'three_drives_pattern', name: 'Three Drives Pattern', pointsRequired: 7, icon: '⋕' }
       ]
+    },
+    {
+      id: 'brushes',
+      name: 'Brushes',
+      iconName: 'brushes',
+      activeToolId: 'brush',
+      tools: [
+        { id: 'brush', name: 'Brush', pointsRequired: -1, icon: '✎' },
+        { id: 'highlighter', name: 'Highlighter', pointsRequired: -1, icon: '🖍' }
+      ]
+    },
+    {
+      id: 'arrows',
+      name: 'Arrows',
+      iconName: 'arrows',
+      activeToolId: 'arrow',
+      tools: [
+        { id: 'arrow_marker', name: 'Arrow Marker', pointsRequired: 1, icon: '📍' },
+        { id: 'arrow', name: 'Arrow', pointsRequired: 2, icon: '➔' },
+        { id: 'arrow_up', name: 'Arrow Mark Up', pointsRequired: 1, icon: '⬆' },
+        { id: 'arrow_down', name: 'Arrow Mark Down', pointsRequired: 1, icon: '⬇' },
+        { id: 'arrow_left', name: 'Arrow Mark Left', pointsRequired: 1, icon: '⬅' },
+        { id: 'arrow_right', name: 'Arrow Mark Right', pointsRequired: 1, icon: '➡' }
+      ]
+    },
+    {
+      id: 'shapes',
+      name: 'Shapes',
+      iconName: 'shapes',
+      activeToolId: 'rectangle',
+      tools: [
+        { id: 'rectangle', name: 'Rectangle', pointsRequired: 2, icon: '▭' },
+        { id: 'rotated_rectangle', name: 'Rotated Rectangle', pointsRequired: 3, icon: '▱' },
+        { id: 'path', name: 'Path', pointsRequired: -1, icon: '〰' },
+        { id: 'circle', name: 'Circle', pointsRequired: 2, icon: '○' },
+        { id: 'ellipse', name: 'Ellipse', pointsRequired: 2, icon: '⬭' },
+        { id: 'polyline', name: 'Polyline', pointsRequired: 3, icon: '☡' },
+        { id: 'triangle', name: 'Triangle', pointsRequired: 3, icon: '△' },
+        { id: 'arc', name: 'Arc', pointsRequired: 3, icon: '⌒' },
+        { id: 'curve', name: 'Curve', pointsRequired: 3, icon: '∿' }
+      ]
     }
   ]);
 
@@ -3080,6 +3121,66 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       d3: p5,
       midD1D2,
       midD2D3
+    };
+  }
+
+  getRotatedRectangle(d: DrawingItem): string {
+    if (!d.points || d.points.length < 2) return '';
+    const p0 = d.points[0];
+    const p1 = d.points[1];
+    const p2 = d.points[2] || { x: p1.x, y: p1.y - 30 };
+
+    const dx = p1.x - p0.x;
+    const dy = p1.y - p0.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+
+    const proj = (p2.x - p1.x) * nx + (p2.y - p1.y) * ny;
+    const hx = nx * proj;
+    const hy = ny * proj;
+
+    const corner2 = { x: p1.x + hx, y: p1.y + hy };
+    const corner3 = { x: p0.x + hx, y: p0.y + hy };
+
+    return `${p0.x},${p0.y} ${p1.x},${p1.y} ${corner2.x},${corner2.y} ${corner3.x},${corner3.y}`;
+  }
+
+  getTrianglePoints(d: DrawingItem): string {
+    if (!d.points || d.points.length < 3) {
+      if (d.points && d.points.length === 2) {
+        return `${d.points[0].x},${d.points[0].y} ${d.points[1].x},${d.points[1].y} ${d.points[0].x},${d.points[1].y}`;
+      }
+      return '';
+    }
+    return `${d.points[0].x},${d.points[0].y} ${d.points[1].x},${d.points[1].y} ${d.points[2].x},${d.points[2].y}`;
+  }
+
+  getArcPath(d: DrawingItem): string {
+    if (!d.points || d.points.length < 2) return '';
+    const p0 = d.points[0];
+    const p1 = d.points[1];
+    const p2 = d.points[2] || { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 - 30 };
+    return `M ${p0.x} ${p0.y} Q ${p2.x} ${p2.y} ${p1.x} ${p1.y}`;
+  }
+
+  getCurvePath(d: DrawingItem): string {
+    if (!d.points || d.points.length < 2) return '';
+    const p0 = d.points[0];
+    const p1 = d.points[1];
+    const p2 = d.points[2] || { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 - 30 };
+    return `M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`;
+  }
+
+  getEllipseData(d: DrawingItem): { cx: number; cy: number; rx: number; ry: number } {
+    if (!d.points || d.points.length < 2) return { cx: 0, cy: 0, rx: 0, ry: 0 };
+    const p0 = d.points[0];
+    const p1 = d.points[1];
+    return {
+      cx: p0.x,
+      cy: p0.y,
+      rx: Math.max(10, Math.abs(p1.x - p0.x)),
+      ry: Math.max(10, Math.abs(p1.y - p0.y))
     };
   }
 

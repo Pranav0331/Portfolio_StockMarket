@@ -168,7 +168,30 @@
                 </svg>
               }
 
-              <!-- 12. Measure -->
+              <!-- 12. Brushes -->
+              @else if (group.id === 'brushes') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18.37 2.63a2.12 2.12 0 1 1 3 3L7.5 19.5 3 21l1.5-4.5L18.37 2.63z"></path>
+                </svg>
+              }
+
+              <!-- 13. Arrows -->
+              @else if (group.id === 'arrows') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                  <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+              }
+
+              <!-- 14. Shapes -->
+              @else if (group.id === 'shapes') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                  <circle cx="12" cy="12" r="4"></circle>
+                </svg>
+              }
+
+              <!-- 15. Measure -->
               @else if (group.id === 'measure') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="4" y="5" width="16" height="14" rx="1" stroke-dasharray="3 3"></rect>
@@ -177,15 +200,7 @@
                 </svg>
               }
 
-              <!-- 13. Brushes & Shapes -->
-              @else if (group.id === 'shapes') {
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="4" y="4" width="16" height="16" rx="2"></rect>
-                  <path d="M12.71 4.75L3.5 13.96V18h4.04l9.21-9.21-4.04-4.04z" fill="currentColor" opacity="0.4"></path>
-                </svg>
-              }
-
-              <!-- 14. Utility -->
+              <!-- 16. Utility -->
               @else if (group.id === 'utility') {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="3"></circle>
@@ -985,6 +1000,114 @@
                   }
                 }
 
+                <!-- 31. Freehand Highlighter -->
+                @else if (d.toolId === 'highlighter' && d.points.length >= 2) {
+                  <polyline
+                    [attr.points]="getPointsPolyline(d.points)"
+                    [attr.stroke]="d.color"
+                    stroke-width="14"
+                    opacity="0.35"
+                    fill="none"
+                    stroke-linecap="round"
+                    stroke-linejoin="round" />
+                }
+
+                <!-- 32. Freehand Brush & Continuous Path -->
+                @else if ((d.toolId === 'brush' || d.toolId === 'path') && d.points.length >= 2) {
+                  <polyline
+                    [attr.points]="getPointsPolyline(d.points)"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth || 2.5"
+                    fill="none"
+                    stroke-linecap="round"
+                    stroke-linejoin="round" />
+                }
+
+                <!-- 33. Rotated Rectangle -->
+                @else if (d.toolId === 'rotated_rectangle' && d.points.length >= 2) {
+                  <polygon
+                    [attr.points]="getRotatedRectangle(d)"
+                    [attr.fill]="d.fillColor || (d.color + '1a')"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth"
+                    stroke-linejoin="round" />
+                }
+
+                <!-- 34. Triangle Shape -->
+                @else if (d.toolId === 'triangle' && d.points.length >= 2) {
+                  <polygon
+                    [attr.points]="getTrianglePoints(d)"
+                    [attr.fill]="d.fillColor || (d.color + '1a')"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth"
+                    stroke-linejoin="round" />
+                }
+
+                <!-- 35. Arc Shape -->
+                @else if (d.toolId === 'arc' && d.points.length >= 2) {
+                  <path
+                    [attr.d]="getArcPath(d)"
+                    fill="none"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                }
+
+                <!-- 36. Curve Shape -->
+                @else if (d.toolId === 'curve' && d.points.length >= 2) {
+                  <path
+                    [attr.d]="getCurvePath(d)"
+                    fill="none"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                }
+
+                <!-- 37. Ellipse Shape -->
+                @else if (d.toolId === 'ellipse' && d.points.length >= 2) {
+                  @if (getEllipseData(d); as el) {
+                    <ellipse
+                      [attr.cx]="el.cx"
+                      [attr.cy]="el.cy"
+                      [attr.rx]="el.rx"
+                      [attr.ry]="el.ry"
+                      [attr.fill]="d.fillColor || (d.color + '1a')"
+                      [attr.stroke]="d.color"
+                      [attr.stroke-width]="d.lineWidth" />
+                  }
+                }
+
+                <!-- 38. Arrow Markers & Directions (Single Click Markers) -->
+                @else if (d.toolId === 'arrow_marker' && d.points.length >= 1) {
+                  <g class="arrow-marker-group">
+                    <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y" r="8" [attr.fill]="d.color" opacity="0.25" />
+                    <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y" r="3.5" [attr.fill]="d.color" />
+                    <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y - 20" [attr.x2]="d.points[0].x" [attr.y2]="d.points[0].y - 4" [attr.stroke]="d.color" stroke-width="2" marker-end="url(#arrowHead)" />
+                  </g>
+                }
+                @else if (d.toolId === 'arrow_up' && d.points.length >= 1) {
+                  <g class="arrow-up-badge">
+                    <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y + 12" r="11" fill="#10b981" stroke="#ffffff" stroke-width="1.5" />
+                    <path [attr.d]="'M ' + (d.points[0].x - 4.5) + ' ' + (d.points[0].y + 15) + ' L ' + d.points[0].x + ' ' + (d.points[0].y + 7.5) + ' L ' + (d.points[0].x + 4.5) + ' ' + (d.points[0].y + 15)" stroke="#ffffff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                  </g>
+                }
+                @else if (d.toolId === 'arrow_down' && d.points.length >= 1) {
+                  <g class="arrow-down-badge">
+                    <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y - 12" r="11" fill="#ef4444" stroke="#ffffff" stroke-width="1.5" />
+                    <path [attr.d]="'M ' + (d.points[0].x - 4.5) + ' ' + (d.points[0].y - 15) + ' L ' + d.points[0].x + ' ' + (d.points[0].y - 7.5) + ' L ' + (d.points[0].x + 4.5) + ' ' + (d.points[0].y - 15)" stroke="#ffffff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                  </g>
+                }
+                @else if (d.toolId === 'arrow_left' && d.points.length >= 1) {
+                  <g class="arrow-left-badge">
+                    <circle [attr.cx]="d.points[0].x + 12" [attr.cy]="d.points[0].y" r="11" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5" />
+                    <path [attr.d]="'M ' + (d.points[0].x + 15) + ' ' + (d.points[0].y - 4.5) + ' L ' + (d.points[0].x + 7.5) + ' ' + d.points[0].y + ' L ' + (d.points[0].x + 15) + ' ' + (d.points[0].y + 4.5)" stroke="#ffffff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                  </g>
+                }
+                @else if (d.toolId === 'arrow_right' && d.points.length >= 1) {
+                  <g class="arrow-right-badge">
+                    <circle [attr.cx]="d.points[0].x - 12" [attr.cy]="d.points[0].y" r="11" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5" />
+                    <path [attr.d]="'M ' + (d.points[0].x - 15) + ' ' + (d.points[0].y - 4.5) + ' L ' + (d.points[0].x - 7.5) + ' ' + d.points[0].y + ' L ' + (d.points[0].x - 15) + ' ' + (d.points[0].y + 4.5)" stroke="#ffffff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                  </g>
+                }
+
                 <!-- 6. Geometric Rectangle & Measure Box -->
                 @else if (d.toolId === 'rectangle' || d.toolId === 'price_range' || d.toolId === 'date_range' || d.toolId === 'date_price_range') {
                   @if (getMeasureBox(d); as mb) {
@@ -993,7 +1116,7 @@
                       [attr.y]="mb.y"
                       [attr.width]="mb.w"
                       [attr.height]="mb.h"
-                      [attr.fill]="d.fillColor || (d.color + '22')"
+                      [attr.fill]="d.fillColor || (d.color + '1a')"
                       [attr.stroke]="d.color"
                       [attr.stroke-width]="d.lineWidth" />
                     
@@ -1022,13 +1145,13 @@
                   }
                 }
 
-                <!-- 8. Circles & Ellipses -->
+                <!-- 8. Circles -->
                 @else if (d.toolId === 'circle' && d.points.length >= 2) {
                   <circle
                     [attr.cx]="d.points[0].x"
                     [attr.cy]="d.points[0].y"
                     [attr.r]="Math.hypot(d.points[1].x - d.points[0].x, d.points[1].y - d.points[0].y)"
-                    [attr.fill]="d.fillColor || (d.color + '22')"
+                    [attr.fill]="d.fillColor || (d.color + '1a')"
                     [attr.stroke]="d.color"
                     [attr.stroke-width]="d.lineWidth" />
                 }
@@ -1054,14 +1177,6 @@
                     fill="none"
                     stroke-linecap="round"
                     stroke-linejoin="round" />
-                  
-                  <!-- Label vertex markers for harmonic patterns / waves -->
-                  @for (pt of d.points; track $index) {
-                    <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="4" [attr.fill]="d.color" />
-                    <text [attr.x]="pt.x + 6" [attr.y]="pt.y - 6" class="svg-drawing-label" [attr.fill]="d.color">
-                      {{ $index === 0 ? 'X' : $index === 1 ? 'A' : $index === 2 ? 'B' : $index === 3 ? 'C' : $index === 4 ? 'D' : $index }}
-                    </text>
-                  }
                 }
 
                 <!-- 11. Text Annotation / Utility -->
