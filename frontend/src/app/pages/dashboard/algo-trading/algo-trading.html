@@ -15,15 +15,19 @@
       </div>
 
       <!-- Active Symbol & Provider Badge -->
-      <div class="symbol-pill-box">
+      <div class="symbol-pill-box interactive" (click)="openSearchModal()" title="Click to search & switch instruments">
         <span class="active-sym-tag">{{ formStrategy().symbol }}</span>
         <span class="provider-badge" [class.upstox]="providerName() === 'Upstox'">
           <span class="pulse-dot"></span>
           {{ providerName() }} Real-Time
         </span>
         <span class="live-price-val">
-          {{ currentPrice() > 0 ? (currentPrice() | currency:(formStrategy().marketType === 'INDIAN' ? 'INR' : 'USD'):'symbol':'1.2-4') : 'Connecting...' }}
+          {{ !marketDataError() && currentPrice() > 0 ? (currentPrice() | currency:(formStrategy().marketType === 'INDIAN' ? 'INR' : 'USD'):'symbol':'1.2-4') : 'Data unavailable' }}
         </span>
+        <svg class="search-switch-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
       </div>
     </div>
 
@@ -109,9 +113,18 @@
           </div>
         </div>
 
-        <!-- Popular Symbol Quick Picks -->
+        <!-- Popular Symbol Quick Picks & Search -->
         <div class="form-group">
-          <label class="form-label">Instrument / Symbol</label>
+          <div class="form-label-row">
+            <label class="form-label">Instrument / Symbol</label>
+            <button type="button" class="btn-text-search" (click)="openSearchModal()" title="Search all asset classes">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              Search All
+            </button>
+          </div>
           <div class="quick-picks-row">
             @for (item of popularInstruments[formStrategy().marketType]; track item.symbol) {
               <button
@@ -124,13 +137,21 @@
               </button>
             }
           </div>
-          <input
-            type="text"
-            class="form-control mt-2"
-            [(ngModel)]="formStrategy().symbol"
-            (change)="onSymbolChanged()"
-            placeholder="Custom symbol (e.g. BTC/USD, RELIANCE)"
-          />
+          <div class="custom-sym-input-wrap">
+            <input
+              type="text"
+              class="form-control"
+              [(ngModel)]="formStrategy().symbol"
+              (change)="onSymbolChanged()"
+              placeholder="Custom symbol (e.g. BTC/USD, RELIANCE, AAPL)"
+            />
+            <button type="button" class="btn-input-search" (click)="openSearchModal()" title="Open search catalog">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <!-- Mode & Timeframe -->
@@ -389,23 +410,115 @@
               <line x1="12" y1="8" x2="12" y2="12"></line>
               <line x1="12" y1="16" x2="12.01" y2="16"></line>
             </svg>
-            <span>Live market data unavailable</span>
+            <span>Data unavailable</span>
           </div>
         }
       </section>
 
       <!-- CANDLESTICK CHART CONTAINER -->
       <div class="chart-wrapper">
-        <div class="chart-header-overlay">
-          <div class="chart-meta">
-            <span class="meta-sym">{{ formStrategy().symbol }}</span>
-            <span class="meta-tf">{{ formStrategy().timeframe }}</span>
-            <span class="meta-mode">{{ formStrategy().tradingMode }}</span>
+        <div class="chart-toolbar-bar">
+          <!-- Left: Instrument Selector & Timeframe Pill Switcher -->
+          <div class="chart-toolbar-left">
+            <button type="button" class="btn-chart-instrument" (click)="openSearchModal()" title="Switch instrument">
+              <span class="chart-sym-name">{{ formStrategy().symbol }}</span>
+              <span class="chart-market-badge" [attr.data-market]="formStrategy().marketType">{{ formStrategy().marketType }}</span>
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" class="chevron-icon">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+
+            <!-- Timeframe Switcher Pill Group -->
+            <div class="timeframe-pill-group">
+              <button
+                type="button"
+                class="btn-tf-pill"
+                [class.active]="formStrategy().timeframe === '1m'"
+                (click)="setTimeframe('1m')"
+              >
+                1m
+              </button>
+              <button
+                type="button"
+                class="btn-tf-pill"
+                [class.active]="formStrategy().timeframe === '5m'"
+                (click)="setTimeframe('5m')"
+              >
+                5m
+              </button>
+              <button
+                type="button"
+                class="btn-tf-pill"
+                [class.active]="formStrategy().timeframe === '15m'"
+                (click)="setTimeframe('15m')"
+              >
+                15m
+              </button>
+              <button
+                type="button"
+                class="btn-tf-pill"
+                [class.active]="formStrategy().timeframe === '30m'"
+                (click)="setTimeframe('30m')"
+              >
+                30m
+              </button>
+              <button
+                type="button"
+                class="btn-tf-pill"
+                [class.active]="formStrategy().timeframe === '1h'"
+                (click)="setTimeframe('1h')"
+              >
+                1h
+              </button>
+            </div>
+
+            <span class="meta-mode-tag">{{ formStrategy().tradingMode }}</span>
           </div>
-          @if (isMarketDataLoading()) {
-            <span class="chart-loading-tag">Loading real {{ providerName() }} candles...</span>
-          }
+
+          <!-- Right: Live Quote & Search Asset Button -->
+          <div class="chart-toolbar-right">
+            @if (!marketDataError() && currentPrice() > 0) {
+              <div class="toolbar-quote-info">
+                <span class="toolbar-price">
+                  {{ currentPrice() | currency:(formStrategy().marketType === 'INDIAN' ? 'INR' : 'USD'):'symbol':'1.2-4' }}
+                </span>
+                @if (currentQuote()?.changePercent) {
+                  <span class="toolbar-change" [class.up]="(currentQuote()?.change ?? 0) >= 0" [class.down]="(currentQuote()?.change ?? 0) < 0">
+                    {{ (currentQuote()?.change ?? 0) >= 0 ? '+' : '' }}{{ currentQuote()?.changePercent }}%
+                  </span>
+                }
+              </div>
+            } @else {
+              <span class="toolbar-data-unavailable">Data unavailable</span>
+            }
+
+            <button type="button" class="btn-open-search" (click)="openSearchModal()" title="Search all market instruments">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <span>Search Asset</span>
+            </button>
+          </div>
         </div>
+
+        @if (isMarketDataLoading()) {
+          <div class="chart-loading-overlay">
+            <div class="chart-spinner"></div>
+            <span>Loading real {{ providerName() }} candles...</span>
+          </div>
+        }
+
+        @if (marketDataError()) {
+          <div class="chart-error-banner">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>{{ marketDataError() }}</span>
+          </div>
+        }
 
         <div #chartContainer class="lightweight-chart-container"></div>
       </div>
@@ -858,4 +971,128 @@
       </div>
     }
   </section>
+
+  <!-- ASSET SEARCH & INSTRUMENT SWITCHER MODAL -->
+  @if (isSearchModalOpen()) {
+    <div class="modal-backdrop" (click)="closeSearchModal()">
+      <div class="asset-search-modal" (click)="$event.stopPropagation()">
+        <!-- Modal Header -->
+        <div class="modal-search-header">
+          <div class="search-title-row">
+            <div class="search-title-left">
+              <div class="search-title-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </div>
+              <div>
+                <h3 class="modal-title">Select Trading Instrument</h3>
+                <span class="modal-subtitle">Search & switch Crypto, Forex, US Stocks, Indian Stocks & Indices</span>
+              </div>
+            </div>
+            <button type="button" class="btn-close-modal" (click)="closeSearchModal()" aria-label="Close dialog">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Search Input Box -->
+          <div class="search-input-box">
+            <svg class="search-input-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="text"
+              class="search-query-field"
+              [value]="searchQuery()"
+              (input)="onSearchInput($event)"
+              placeholder="Search by ticker or asset name (e.g. BTC, ETH, AAPL, RELIANCE, NIFTY 50, EUR/USD)..."
+              autofocus
+            />
+            @if (searchQuery()) {
+              <button type="button" class="btn-clear-query" (click)="clearSearchQuery()" title="Clear">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            }
+            @if (isSearching()) {
+              <div class="search-spinner"></div>
+            }
+          </div>
+
+          <!-- Category Filter Tabs -->
+          <div class="category-tabs-bar">
+            @for (cat of categoryList; track cat) {
+              <button
+                type="button"
+                class="category-tab-btn"
+                [class.active]="selectedCategory() === cat"
+                (click)="selectCategory(cat)"
+              >
+                <span>{{ cat }}</span>
+                <span class="cat-count">{{ getCategoryCount(cat) }}</span>
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Modal Body / Instrument Results Grid -->
+        <div class="modal-search-body">
+          @if (displayedInstruments().length > 0) {
+            <div class="instruments-grid">
+              @for (item of displayedInstruments(); track item.symbol) {
+                <div
+                  class="instrument-card"
+                  [class.active]="formStrategy().symbol === item.symbol"
+                  (click)="switchInstrument(item)"
+                >
+                  <div class="card-left">
+                    <div class="sym-badge-line">
+                      <span class="inst-symbol">{{ item.symbol }}</span>
+                      <span class="inst-category-tag" [attr.data-cat]="item.category">{{ item.category }}</span>
+                      @if (item.exchange) {
+                        <span class="inst-exchange-tag">{{ item.exchange }}</span>
+                      }
+                    </div>
+                    <span class="inst-name">{{ item.name }}</span>
+                  </div>
+
+                  <div class="card-right">
+                    <span class="inst-currency">{{ item.currency || (item.marketType === 'INDIAN' ? 'INR' : 'USD') }}</span>
+                    @if (formStrategy().symbol === item.symbol) {
+                      <span class="active-check">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      </span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="no-results-state">
+              <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <h4>No instruments found</h4>
+              <p>Try searching for another symbol, name, or select "ALL" categories.</p>
+            </div>
+          }
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="modal-search-footer">
+          <span class="footer-tip">Press <strong>ESC</strong> to close. Switching instruments preserves strategy indicators and evaluates live market conditions.</span>
+        </div>
+      </div>
+    </div>
+  }
 </div>

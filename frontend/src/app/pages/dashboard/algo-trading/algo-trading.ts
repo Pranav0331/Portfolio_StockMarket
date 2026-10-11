@@ -7,7 +7,8 @@ import {
   computed,
   ElementRef,
   viewChild,
-  effect
+  effect,
+  HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -42,6 +43,16 @@ import {
 } from '../../../models/algo-trading.model';
 import { PositionItem, VirtualWallet } from '../../../models/trading.model';
 import { StockQuote, Candle } from '../../../models/market.model';
+
+export interface InstrumentOption {
+  symbol: string;
+  name: string;
+  marketType: MarketType;
+  category: 'CRYPTO' | 'FOREX' | 'US' | 'INDIAN' | 'INDEX';
+  exchange?: string;
+  currency?: string;
+  type?: string;
+}
 
 @Component({
   selector: 'app-algo-trading',
@@ -116,6 +127,106 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
 
   // Tabs & Views
   readonly activeBottomTab = signal<'logs' | 'positions' | 'performance' | 'strategies'>('logs');
+
+  // Instrument Search Modal & Chart Switcher State
+  readonly isSearchModalOpen = signal<boolean>(false);
+  readonly searchQuery = signal<string>('');
+  readonly selectedCategory = signal<string>('ALL');
+  readonly isSearching = signal<boolean>(false);
+  readonly apiSearchResults = signal<InstrumentOption[]>([]);
+  private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  readonly categoryList = ['ALL', 'CRYPTO', 'FOREX', 'US', 'INDIAN', 'INDEX'] as const;
+
+  // Curated multi-market instrument catalog across all asset classes
+  readonly catalogInstruments: InstrumentOption[] = [
+    // Cryptocurrencies
+    { symbol: 'BTC/USD', name: 'Bitcoin', marketType: 'CRYPTO', category: 'CRYPTO', exchange: 'CRYPTO', currency: 'USD' },
+    { symbol: 'ETH/USD', name: 'Ethereum', marketType: 'CRYPTO', category: 'CRYPTO', exchange: 'CRYPTO', currency: 'USD' },
+    { symbol: 'SOL/USD', name: 'Solana', marketType: 'CRYPTO', category: 'CRYPTO', exchange: 'CRYPTO', currency: 'USD' },
+    { symbol: 'BNB/USD', name: 'BNB Chain', marketType: 'CRYPTO', category: 'CRYPTO', exchange: 'CRYPTO', currency: 'USD' },
+    { symbol: 'XRP/USD', name: 'XRP Ledger', marketType: 'CRYPTO', category: 'CRYPTO', exchange: 'CRYPTO', currency: 'USD' },
+    { symbol: 'DOGE/USD', name: 'Dogecoin', marketType: 'CRYPTO', category: 'CRYPTO', exchange: 'CRYPTO', currency: 'USD' },
+    { symbol: 'ADA/USD', name: 'Cardano', marketType: 'CRYPTO', category: 'CRYPTO', exchange: 'CRYPTO', currency: 'USD' },
+    { symbol: 'AVAX/USD', name: 'Avalanche', marketType: 'CRYPTO', category: 'CRYPTO', exchange: 'CRYPTO', currency: 'USD' },
+    { symbol: 'LINK/USD', name: 'Chainlink', marketType: 'CRYPTO', category: 'CRYPTO', exchange: 'CRYPTO', currency: 'USD' },
+
+    // Forex Pairs
+    { symbol: 'EUR/USD', name: 'Euro / US Dollar', marketType: 'FOREX', category: 'FOREX', exchange: 'FOREX', currency: 'USD' },
+    { symbol: 'GBP/USD', name: 'British Pound / US Dollar', marketType: 'FOREX', category: 'FOREX', exchange: 'FOREX', currency: 'USD' },
+    { symbol: 'USD/JPY', name: 'US Dollar / Japanese Yen', marketType: 'FOREX', category: 'FOREX', exchange: 'FOREX', currency: 'JPY' },
+    { symbol: 'AUD/USD', name: 'Australian Dollar / US Dollar', marketType: 'FOREX', category: 'FOREX', exchange: 'FOREX', currency: 'USD' },
+    { symbol: 'USD/CAD', name: 'US Dollar / Canadian Dollar', marketType: 'FOREX', category: 'FOREX', exchange: 'FOREX', currency: 'CAD' },
+    { symbol: 'USD/CHF', name: 'US Dollar / Swiss Franc', marketType: 'FOREX', category: 'FOREX', exchange: 'FOREX', currency: 'CHF' },
+    { symbol: 'NZD/USD', name: 'New Zealand Dollar / US Dollar', marketType: 'FOREX', category: 'FOREX', exchange: 'FOREX', currency: 'USD' },
+
+    // US Equities
+    { symbol: 'AAPL', name: 'Apple Inc.', marketType: 'US', category: 'US', exchange: 'NASDAQ', currency: 'USD' },
+    { symbol: 'NVDA', name: 'NVIDIA Corporation', marketType: 'US', category: 'US', exchange: 'NASDAQ', currency: 'USD' },
+    { symbol: 'TSLA', name: 'Tesla Inc.', marketType: 'US', category: 'US', exchange: 'NASDAQ', currency: 'USD' },
+    { symbol: 'MSFT', name: 'Microsoft Corporation', marketType: 'US', category: 'US', exchange: 'NASDAQ', currency: 'USD' },
+    { symbol: 'GOOGL', name: 'Alphabet Inc. (Google)', marketType: 'US', category: 'US', exchange: 'NASDAQ', currency: 'USD' },
+    { symbol: 'AMZN', name: 'Amazon.com Inc.', marketType: 'US', category: 'US', exchange: 'NASDAQ', currency: 'USD' },
+    { symbol: 'META', name: 'Meta Platforms Inc.', marketType: 'US', category: 'US', exchange: 'NASDAQ', currency: 'USD' },
+    { symbol: 'AMD', name: 'Advanced Micro Devices', marketType: 'US', category: 'US', exchange: 'NASDAQ', currency: 'USD' },
+    { symbol: 'NFLX', name: 'Netflix Inc.', marketType: 'US', category: 'US', exchange: 'NASDAQ', currency: 'USD' },
+
+    // Indian Equities (Upstox)
+    { symbol: 'RELIANCE', name: 'Reliance Industries Ltd', marketType: 'INDIAN', category: 'INDIAN', exchange: 'NSE', currency: 'INR' },
+    { symbol: 'TCS', name: 'Tata Consultancy Services', marketType: 'INDIAN', category: 'INDIAN', exchange: 'NSE', currency: 'INR' },
+    { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', marketType: 'INDIAN', category: 'INDIAN', exchange: 'NSE', currency: 'INR' },
+    { symbol: 'INFY', name: 'Infosys Ltd', marketType: 'INDIAN', category: 'INDIAN', exchange: 'NSE', currency: 'INR' },
+    { symbol: 'ICICIBANK', name: 'ICICI Bank Ltd', marketType: 'INDIAN', category: 'INDIAN', exchange: 'NSE', currency: 'INR' },
+    { symbol: 'SBIN', name: 'State Bank of India', marketType: 'INDIAN', category: 'INDIAN', exchange: 'NSE', currency: 'INR' },
+    { symbol: 'BHARTIARTL', name: 'Bharti Airtel Ltd', marketType: 'INDIAN', category: 'INDIAN', exchange: 'NSE', currency: 'INR' },
+    { symbol: 'ITC', name: 'ITC Ltd', marketType: 'INDIAN', category: 'INDIAN', exchange: 'NSE', currency: 'INR' },
+    { symbol: 'KOTAKBANK', name: 'Kotak Mahindra Bank', marketType: 'INDIAN', category: 'INDIAN', exchange: 'NSE', currency: 'INR' },
+    { symbol: 'LT', name: 'Larsen & Toubro Ltd', marketType: 'INDIAN', category: 'INDIAN', exchange: 'NSE', currency: 'INR' },
+    { symbol: 'TATAMOTORS', name: 'Tata Motors Ltd', marketType: 'INDIAN', category: 'INDIAN', exchange: 'NSE', currency: 'INR' },
+    { symbol: 'TATASTEEL', name: 'Tata Steel Ltd', marketType: 'INDIAN', category: 'INDIAN', exchange: 'NSE', currency: 'INR' },
+
+    // Major Market Indices
+    { symbol: 'NIFTY 50', name: 'Nifty 50 Index', marketType: 'INDIAN', category: 'INDEX', exchange: 'NSE', currency: 'INR' },
+    { symbol: 'BANKNIFTY', name: 'Nifty Bank Index', marketType: 'INDIAN', category: 'INDEX', exchange: 'NSE', currency: 'INR' },
+    { symbol: 'SENSEX', name: 'BSE Sensex Index', marketType: 'INDIAN', category: 'INDEX', exchange: 'BSE', currency: 'INR' },
+    { symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust', marketType: 'US', category: 'INDEX', exchange: 'NYSE', currency: 'USD' },
+    { symbol: 'QQQ', name: 'Invesco QQQ Trust (Nasdaq 100)', marketType: 'US', category: 'INDEX', exchange: 'NASDAQ', currency: 'USD' },
+    { symbol: 'DIA', name: 'SPDR Dow Jones Industrial Average', marketType: 'US', category: 'INDEX', exchange: 'NYSE', currency: 'USD' }
+  ];
+
+  // Dynamically displayed search results + catalog items
+  readonly displayedInstruments = computed(() => {
+    const q = this.searchQuery().trim().toLowerCase();
+    const cat = this.selectedCategory();
+    const apiItems = this.apiSearchResults();
+
+    const map = new Map<string, InstrumentOption>();
+    for (const item of this.catalogInstruments) {
+      map.set(item.symbol.toUpperCase(), item);
+    }
+    for (const item of apiItems) {
+      if (!map.has(item.symbol.toUpperCase())) {
+        map.set(item.symbol.toUpperCase(), item);
+      }
+    }
+
+    let all = Array.from(map.values());
+
+    if (cat !== 'ALL') {
+      all = all.filter((item) => item.category === cat);
+    }
+
+    if (q) {
+      all = all.filter(
+        (item) =>
+          item.symbol.toLowerCase().includes(q) ||
+          item.name.toLowerCase().includes(q) ||
+          (item.exchange && item.exchange.toLowerCase().includes(q))
+      );
+    }
+
+    return all;
+  });
 
   // Instrument quick-pick list
   readonly popularInstruments: { [key in MarketType]: { symbol: string; name: string }[] } = {
@@ -249,6 +360,206 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
     this.algoService.getAllTradeLogs().subscribe({ error: () => {} });
   }
 
+  // Search Modal Handlers
+  openSearchModal(): void {
+    this.isSearchModalOpen.set(true);
+    this.searchQuery.set('');
+    this.apiSearchResults.set([]);
+  }
+
+  closeSearchModal(): void {
+    this.isSearchModalOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.isSearchModalOpen()) {
+      this.closeSearchModal();
+    }
+  }
+
+  onSearchInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const query = input?.value || '';
+    this.searchQuery.set(query);
+
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+
+    const clean = query.trim();
+    if (clean.length < 2) {
+      this.isSearching.set(false);
+      this.apiSearchResults.set([]);
+      return;
+    }
+
+    this.isSearching.set(true);
+    this.searchDebounceTimer = setTimeout(() => {
+      this.marketService.searchSymbols(clean).subscribe({
+        next: (res) => {
+          this.isSearching.set(false);
+          if (res && res.bestMatches && res.bestMatches.length > 0) {
+            const mapped: InstrumentOption[] = res.bestMatches.map((bm) => {
+              const detected = this.detectMarketType(bm.symbol, bm.type, bm.region);
+              return {
+                symbol: bm.symbol,
+                name: bm.name || bm.symbol,
+                marketType: detected.marketType,
+                category: detected.category,
+                exchange: bm.region || detected.marketType,
+                currency: bm.currency || (detected.marketType === 'INDIAN' ? 'INR' : 'USD'),
+                type: bm.type
+              };
+            });
+            this.apiSearchResults.set(mapped);
+          } else {
+            this.apiSearchResults.set([]);
+          }
+        },
+        error: () => {
+          this.isSearching.set(false);
+          this.apiSearchResults.set([]);
+        }
+      });
+    }, 300);
+  }
+
+  clearSearchQuery(): void {
+    this.searchQuery.set('');
+    this.apiSearchResults.set([]);
+  }
+
+  selectCategory(cat: string): void {
+    this.selectedCategory.set(cat);
+  }
+
+  getCategoryCount(cat: string): number {
+    if (cat === 'ALL') {
+      return this.catalogInstruments.length;
+    }
+    return this.catalogInstruments.filter((i) => i.category === cat).length;
+  }
+
+  /**
+   * Helper to determine market type and category from symbol and metadata
+   */
+  detectMarketType(symbol: string, type?: string, region?: string): { marketType: MarketType; category: 'CRYPTO' | 'FOREX' | 'US' | 'INDIAN' | 'INDEX' } {
+    const sym = (symbol || '').trim().toUpperCase();
+    const t = (type || '').trim().toUpperCase();
+    const r = (region || '').trim().toUpperCase();
+
+    // Check Indian equities and indices
+    if (
+      this.marketService.isIndianSymbol(sym) ||
+      r.includes('INDIA') ||
+      r.includes('NSE') ||
+      r.includes('BSE')
+    ) {
+      if (t.includes('INDEX') || sym.includes('NIFTY') || sym.includes('SENSEX')) {
+        return { marketType: 'INDIAN', category: 'INDEX' };
+      }
+      return { marketType: 'INDIAN', category: 'INDIAN' };
+    }
+
+    // Check Forex
+    if (
+      t.includes('PHYSICAL CURRENCY') ||
+      t.includes('FOREX') ||
+      sym.includes('EUR/') ||
+      sym.includes('GBP/') ||
+      sym.includes('USD/') ||
+      sym.includes('/USD') ||
+      sym.includes('/JPY') ||
+      sym.includes('/EUR')
+    ) {
+      if (
+        sym.startsWith('BTC') ||
+        sym.startsWith('ETH') ||
+        sym.startsWith('SOL') ||
+        sym.startsWith('BNB') ||
+        sym.startsWith('XRP') ||
+        sym.startsWith('DOGE') ||
+        sym.startsWith('ADA') ||
+        sym.startsWith('AVAX') ||
+        sym.endsWith('USDT')
+      ) {
+        return { marketType: 'CRYPTO', category: 'CRYPTO' };
+      }
+      return { marketType: 'FOREX', category: 'FOREX' };
+    }
+
+    // Check Crypto
+    if (
+      t.includes('DIGITAL CURRENCY') ||
+      t.includes('CRYPTO') ||
+      sym.endsWith('USDT') ||
+      sym.startsWith('BTC') ||
+      sym.startsWith('ETH')
+    ) {
+      return { marketType: 'CRYPTO', category: 'CRYPTO' };
+    }
+
+    // Check US Index / ETF
+    if (t.includes('INDEX') || t.includes('ETF') || sym === 'SPY' || sym === 'QQQ' || sym === 'DIA') {
+      return { marketType: 'US', category: 'INDEX' };
+    }
+
+    // Default US Equity
+    return { marketType: 'US', category: 'US' };
+  }
+
+  /**
+   * Switch instrument directly from selector/modal, preserving all indicator & risk settings
+   */
+  switchInstrument(item: InstrumentOption): void {
+    const oldSym = this.formStrategy().symbol.trim().toUpperCase();
+    const newSym = item.symbol.trim().toUpperCase();
+
+    if (oldSym && oldSym !== newSym) {
+      this.marketWebSocketService.unsubscribe(oldSym);
+    }
+
+    // Validate and update strategy while preserving all indicator parameters
+    this.formStrategy.update((prev) => {
+      let qty = prev.quantity;
+      let lev = prev.leverage;
+
+      if (item.marketType === 'INDIAN') {
+        qty = Math.max(1, Math.round(qty));
+        if (lev > 5) lev = 5;
+      } else if (item.marketType === 'US') {
+        qty = Math.max(1, Math.round(qty));
+      } else if (item.marketType === 'CRYPTO') {
+        if (qty > 10) qty = 0.1;
+        if (qty <= 0) qty = 0.1;
+      } else if (item.marketType === 'FOREX') {
+        if (qty < 100) qty = 1000;
+      }
+
+      return {
+        ...prev,
+        symbol: item.symbol,
+        marketType: item.marketType,
+        quantity: qty,
+        leverage: lev
+      };
+    });
+
+    this.closeSearchModal();
+    this.onSymbolChanged();
+  }
+
+  /**
+   * Directly switch chart timeframe from chart toolbar
+   */
+  setTimeframe(tf: string): void {
+    if (this.formStrategy().timeframe === tf) return;
+    this.formStrategy.update((s) => ({ ...s, timeframe: tf }));
+    this.loadCandles(this.formStrategy().symbol, tf);
+    this.evaluateCurrentStrategy();
+  }
+
   onMarketTypeChange(market: MarketType): void {
     const strat = { ...this.formStrategy(), marketType: market };
     const defaultSym = this.popularInstruments[market][0].symbol;
@@ -258,8 +569,20 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
   }
 
   selectInstrument(sym: string): void {
-    this.formStrategy.update((s) => ({ ...s, symbol: sym }));
-    this.onSymbolChanged();
+    const catalogItem = this.catalogInstruments.find(
+      (c) => c.symbol.toUpperCase() === sym.trim().toUpperCase()
+    );
+    if (catalogItem) {
+      this.switchInstrument(catalogItem);
+    } else {
+      const detected = this.detectMarketType(sym);
+      this.switchInstrument({
+        symbol: sym,
+        name: sym,
+        marketType: detected.marketType,
+        category: detected.category
+      });
+    }
   }
 
   onSymbolChanged(): void {
@@ -276,13 +599,16 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
     this.marketService.getQuote(symbol).subscribe({
       next: (quote) => {
         this.currentQuote.set(quote);
-        if (quote && quote.price) {
+        if (quote && quote.price && quote.price > 0) {
           this.currentPrice.set(quote.price);
           this.updatePriceLine(quote.price);
+        } else {
+          this.currentPrice.set(0);
         }
       },
-      error: (err) => {
-        console.warn('Failed to load quote:', err);
+      error: () => {
+        this.currentQuote.set(null);
+        this.currentPrice.set(0);
       }
     });
 
@@ -303,6 +629,7 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
     };
     const mappedInterval = intervalMap[timeframe] || '15min';
 
+    this.isMarketDataLoading.set(true);
     this.marketService.getCandles(symbol, mappedInterval, 100).subscribe({
       next: (series) => {
         this.isMarketDataLoading.set(false);
@@ -310,17 +637,23 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
           this.marketDataError.set(null);
           this.renderCandles(series.candles);
           const lastCandle = series.candles[series.candles.length - 1];
-          if (lastCandle && lastCandle.close) {
+          if (lastCandle && lastCandle.close && this.currentPrice() <= 0) {
             this.currentPrice.set(lastCandle.close);
             this.updatePriceLine(lastCandle.close);
           }
         } else {
-          this.marketDataError.set('No candle data available from ' + this.providerName());
+          this.marketDataError.set('Data unavailable');
+          if (this.candleSeries) {
+            this.candleSeries.setData([]);
+          }
         }
       },
-      error: (err) => {
+      error: () => {
         this.isMarketDataLoading.set(false);
-        this.marketDataError.set('Market data unavailable from ' + this.providerName());
+        this.marketDataError.set('Data unavailable');
+        if (this.candleSeries) {
+          this.candleSeries.setData([]);
+        }
       }
     });
   }
@@ -378,10 +711,8 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
             this.algoService.getStrategyTradeLogs(strat.id!).subscribe({ error: () => {} });
             this.algoService.getStrategyPerformance(strat.id!).subscribe({ error: () => {} });
           },
-          error: (err) => {
-            if (err?.status === 503 || err?.status === 404 || err?.status === 500) {
-              this.marketDataError.set('Live market data unavailable');
-            }
+          error: () => {
+            this.marketDataError.set('Data unavailable');
           }
         });
       } else if (strat.id && strat.status === 'PAUSED') {
@@ -391,10 +722,8 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
             this.aiEvaluation.set(res);
             this.marketDataError.set(null);
           },
-          error: (err) => {
-            if (err?.status === 503 || err?.status === 404 || err?.status === 500) {
-              this.marketDataError.set('Live market data unavailable');
-            }
+          error: () => {
+            this.marketDataError.set('Data unavailable');
           }
         });
       } else {
@@ -415,11 +744,9 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
           this.isEvaluating.set(false);
           this.marketDataError.set(null);
         },
-        error: (err) => {
+        error: () => {
           this.isEvaluating.set(false);
-          if (err?.status === 503 || err?.status === 404 || err?.status === 500) {
-            this.marketDataError.set('Live market data unavailable');
-          }
+          this.marketDataError.set('Data unavailable');
         }
       });
     } else {
@@ -429,11 +756,9 @@ export class AlgoTradingComponent implements OnInit, OnDestroy {
           this.isEvaluating.set(false);
           this.marketDataError.set(null);
         },
-        error: (err) => {
+        error: () => {
           this.isEvaluating.set(false);
-          if (err?.status === 503 || err?.status === 404 || err?.status === 500) {
-            this.marketDataError.set('Live market data unavailable');
-          }
+          this.marketDataError.set('Data unavailable');
         }
       });
     }
