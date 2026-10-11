@@ -380,501 +380,1380 @@
       <!-- TRADINGVIEW WORKSPACE: LEFT VERTICAL TOOLBAR + CHART CANVAS VIEWPORT -->
       <div class="tv-chart-viewport-wrapper">
         <!-- 1. LEFT VERTICAL DRAWING TOOLBAR -->
-        <aside class="tv-drawing-toolbar">
-          <!-- Navigation / Cursor Tool -->
+        <aside class="left-vertical-toolbar" (click)="$event.stopPropagation()">
+      <div class="toolbar-scroll-wrap">
+        <!-- 12 MAIN TOOLBAR TOOL GROUPS -->
+        @for (group of drawingToolGroups(); track group.id) {
+          <div class="tool-btn-wrap">
+            <button
+              type="button"
+              class="v-tool-btn"
+              [class.active]="activeToolGroupId() === group.id || openToolGroupId() === group.id"
+              [class.has-active-tool]="activeDrawingTool() !== null && activeToolGroupId() === group.id"
+              (click)="selectToolGroup(group.id, $event)"
+              [title]="group.name">
+              
+              <!-- 1. Cursor -->
+              @if (group.id === 'cursor') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="2" x2="12" y2="22"></line>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
+                </svg>
+              }
+
+              <!-- 2. Lines -->
+              @else if (group.id === 'lines') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="4" y1="20" x2="20" y2="4"></line>
+                  <circle cx="4" cy="20" r="2" fill="currentColor"></circle>
+                  <circle cx="20" cy="4" r="2" fill="currentColor"></circle>
+                </svg>
+              }
+
+              <!-- 3. Fibonacci -->
+              @else if (group.id === 'fibonacci') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="3" y1="5" x2="21" y2="5"></line>
+                  <line x1="3" y1="9" x2="21" y2="9"></line>
+                  <line x1="3" y1="14" x2="21" y2="14"></line>
+                  <line x1="3" y1="19" x2="21" y2="19"></line>
+                  <line x1="4" y1="19" x2="20" y2="5" stroke-dasharray="2 2"></line>
+                </svg>
+              }
+
+              <!-- 4. Gann -->
+              @else if (group.id === 'gann') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="4" y="4" width="16" height="16" rx="1"></rect>
+                  <line x1="4" y1="4" x2="20" y2="20"></line>
+                  <line x1="4" y1="20" x2="20" y2="4"></line>
+                  <line x1="4" y1="12" x2="20" y2="12" stroke-dasharray="2 2"></line>
+                </svg>
+              }
+
+              <!-- 5. Patterns -->
+              @else if (group.id === 'patterns') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 17 8 7 13 15 18 5 22 17"></polyline>
+                  <circle cx="3" cy="17" r="1.5" fill="currentColor"></circle>
+                  <circle cx="8" cy="7" r="1.5" fill="currentColor"></circle>
+                  <circle cx="13" cy="15" r="1.5" fill="currentColor"></circle>
+                  <circle cx="18" cy="5" r="1.5" fill="currentColor"></circle>
+                  <circle cx="22" cy="17" r="1.5" fill="currentColor"></circle>
+                </svg>
+              }
+
+              <!-- 6. Projection & Ranges -->
+              @else if (group.id === 'projection') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="4" y="4" width="16" height="7" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981"></rect>
+                  <rect x="4" y="11" width="16" height="7" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444"></rect>
+                  <line x1="2" y1="11" x2="22" y2="11" stroke-width="2"></line>
+                </svg>
+              }
+
+              <!-- 7. Brushes -->
+              @else if (group.id === 'brushes') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18.37 2.63a2.12 2.12 0 1 1 3 3L7.5 19.5 3 21l1.5-4.5L18.37 2.63z"></path>
+                </svg>
+              }
+
+              <!-- 8. Arrows -->
+              @else if (group.id === 'arrows') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                  <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+              }
+
+              <!-- 9. Shapes -->
+              @else if (group.id === 'shapes') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                  <circle cx="12" cy="12" r="4"></circle>
+                </svg>
+              }
+
+              <!-- 10. Text & Notes -->
+              @else if (group.id === 'text_notes') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="4 7 4 4 20 4 20 7"></polyline>
+                  <line x1="9" y1="20" x2="15" y2="20"></line>
+                  <line x1="12" y1="4" x2="12" y2="20"></line>
+                </svg>
+              }
+
+              <!-- 11. Volume & VWAP -->
+              @else if (group.id === 'volume') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="14" width="3" height="7"></rect>
+                  <rect x="8" y="10" width="3" height="11"></rect>
+                  <rect x="13" y="6" width="3" height="15"></rect>
+                  <rect x="18" y="12" width="3" height="9"></rect>
+                </svg>
+              }
+
+              <!-- 12. Emoji & Stickers -->
+              @else if (group.id === 'emoji_stickers') {
+                <span style="font-size: 16px; line-height: 1;">😀</span>
+              }
+
+              <!-- Submenu indicator arrow -->
+              <span class="v-tool-arrow">›</span>
+            </button>
+          </div>
+        }
+
+        <!-- SEPARATOR -->
+        <div class="toolbar-separator"></div>
+
+        <!-- 1. RULER / MEASURE -->
+        <div class="tool-btn-wrap">
           <button
             type="button"
-            class="tv-tool-btn"
-            [class.active]="selectedDrawingTool() === 'cursor'"
-            (click)="selectDrawingTool('cursor')"
-            title="Crosshair / Cursor (Esc)"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="2" x2="12" y2="22"></line>
-              <line x1="2" y1="12" x2="22" y2="12"></line>
-              <circle cx="12" cy="12" r="3"></circle>
+            class="v-tool-btn"
+            [class.active]="activeDrawingTool()?.id === 'measure'"
+            (click)="activateMeasureTool($event)"
+            title="Measure (Price & Time distance)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.3 8.7 8.7 21.3c-.4.4-1 .4-1.4 0l-6-6c-.4-.4-.4-1 0-1.4L13.9 1.3c.4-.4 1-.4 1.4 0l6 6c.4.4.4 1 0 1.4Z"></path>
+              <path d="m14.5 7.5-2 2"></path>
+              <path d="m11.5 10.5-2 2"></path>
+              <path d="m8.5 13.5-2 2"></path>
+              <path d="m5.5 16.5-2 2"></path>
             </svg>
           </button>
+        </div>
 
-          <div class="tv-tool-divider"></div>
-
-          <!-- Trend Line Tool -->
+        <!-- 2. ZOOM IN -->
+        <div class="tool-btn-wrap">
           <button
             type="button"
-            class="tv-tool-btn"
-            [class.active]="selectedDrawingTool() === 'trendline'"
-            (click)="selectDrawingTool('trendline')"
-            title="Trend Line"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="4" y1="20" x2="20" y2="4"></line>
-              <circle cx="4" cy="20" r="2.5" fill="currentColor"></circle>
-              <circle cx="20" cy="4" r="2.5" fill="currentColor"></circle>
-            </svg>
-          </button>
-
-          <!-- Horizontal Line Tool -->
-          <button
-            type="button"
-            class="tv-tool-btn"
-            [class.active]="selectedDrawingTool() === 'horizontal'"
-            (click)="selectDrawingTool('horizontal')"
-            title="Horizontal Line"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="2" y1="12" x2="22" y2="12"></line>
-              <circle cx="12" cy="12" r="2.5" fill="currentColor"></circle>
-            </svg>
-          </button>
-
-          <!-- Vertical Line Tool -->
-          <button
-            type="button"
-            class="tv-tool-btn"
-            [class.active]="selectedDrawingTool() === 'vertical'"
-            (click)="selectDrawingTool('vertical')"
-            title="Vertical Line"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="2" x2="12" y2="22"></line>
-              <circle cx="12" cy="12" r="2.5" fill="currentColor"></circle>
-            </svg>
-          </button>
-
-          <!-- Ray Tool -->
-          <button
-            type="button"
-            class="tv-tool-btn"
-            [class.active]="selectedDrawingTool() === 'ray'"
-            (click)="selectDrawingTool('ray')"
-            title="Ray Line"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="4" y1="18" x2="21" y2="6"></line>
-              <polyline points="15 6 21 6 21 12"></polyline>
-              <circle cx="4" cy="18" r="2" fill="currentColor"></circle>
-            </svg>
-          </button>
-
-          <!-- Rectangle Box Tool -->
-          <button
-            type="button"
-            class="tv-tool-btn"
-            [class.active]="selectedDrawingTool() === 'rectangle'"
-            (click)="selectDrawingTool('rectangle')"
-            title="Rectangle / Box"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="5" width="18" height="14" rx="2"></rect>
-            </svg>
-          </button>
-
-          <!-- Brush / Freehand Tool -->
-          <button
-            type="button"
-            class="tv-tool-btn"
-            [class.active]="selectedDrawingTool() === 'brush'"
-            (click)="selectDrawingTool('brush')"
-            title="Brush (Freehand Drawing)"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
-              <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
-              <path d="M2 2l7.586 7.586"></path>
-              <circle cx="11" cy="11" r="2"></circle>
-            </svg>
-          </button>
-
-          <!-- Text Annotation Tool -->
-          <button
-            type="button"
-            class="tv-tool-btn"
-            [class.active]="selectedDrawingTool() === 'text'"
-            (click)="selectDrawingTool('text')"
-            title="Text Annotation"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="4 7 4 4 20 4 20 7"></polyline>
-              <line x1="9" y1="20" x2="15" y2="20"></line>
-              <line x1="12" y1="4" x2="12" y2="20"></line>
-            </svg>
-          </button>
-
-          <!-- Measure Tool -->
-          <button
-            type="button"
-            class="tv-tool-btn"
-            [class.active]="selectedDrawingTool() === 'measure'"
-            (click)="selectDrawingTool('measure')"
-            title="Measure (Price & Bars Range)"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M2 12h20M12 2v20"></path>
-              <rect x="5" y="5" width="14" height="14" stroke-dasharray="3 3"></rect>
-            </svg>
-          </button>
-
-          <div class="tv-tool-divider"></div>
-
-          <!-- Zoom In -->
-          <button type="button" class="tv-tool-btn" (click)="zoomIn()" title="Zoom In (+)">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            class="v-tool-btn"
+            (click)="zoomInChart($event)"
+            title="Zoom In Chart">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               <line x1="11" y1="8" x2="11" y2="14"></line>
               <line x1="8" y1="11" x2="14" y2="11"></line>
             </svg>
           </button>
+        </div>
 
-          <!-- Zoom Out -->
-          <button type="button" class="tv-tool-btn" (click)="zoomOut()" title="Zoom Out (-)">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              <line x1="8" y1="11" x2="14" y2="11"></line>
-            </svg>
-          </button>
-
-          <!-- Magnet Mode Toggle -->
+        <!-- 3. MAGNET -->
+        <div class="tool-btn-wrap">
           <button
             type="button"
-            class="tv-tool-btn"
-            [class.active]="isMagnetMode()"
-            (click)="toggleMagnet()"
-            title="Magnet Mode (Snaps points to OHLC)"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M6 15v-5a6 6 0 0 1 12 0v5"></path>
-              <path d="M4 15h4v5H4zM16 15h4v5h-4z"></path>
+            class="v-tool-btn"
+            [class.active]="isMagnetEnabled()"
+            (click)="toggleMagnet($event)"
+            [title]="isMagnetEnabled() ? 'Magnet Mode: ON (Snap to candle OHLC)' : 'Magnet Mode: OFF (Click to enable)'">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m6 15-4-4 6.75-6.77a7.79 7.79 0 0 1 11 11L13 22l-4-4 6.35-6.35a2.14 2.14 0 0 0-3-3L6 15Z"></path>
+              <path d="m5 8 4 4"></path>
+              <path d="m12 15 4 4"></path>
             </svg>
           </button>
+        </div>
 
-          <!-- Lock Drawings Toggle -->
+        <!-- 4. LOCK / UNLOCK DRAWINGS -->
+        <div class="tool-btn-wrap">
           <button
             type="button"
-            class="tv-tool-btn"
-            [class.active]="isDrawingsLocked()"
-            (click)="toggleLockDrawings()"
-            [title]="isDrawingsLocked() ? 'Unlock Drawings' : 'Lock All Drawings'"
-          >
-            @if (isDrawingsLocked()) {
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            class="v-tool-btn"
+            [class.active]="areDrawingsLocked()"
+            (click)="toggleLockDrawings($event)"
+            [title]="areDrawingsLocked() ? 'Unlock All Drawings (Click to enable editing)' : 'Lock All Drawings (Click to prevent moving)'">
+            @if (areDrawingsLocked()) {
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
               </svg>
             } @else {
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
               </svg>
             }
           </button>
+        </div>
 
-          <!-- Hide / Show Drawings Toggle -->
+        <!-- 5. HIDE / SHOW DRAWINGS -->
+        <div class="tool-btn-wrap">
           <button
             type="button"
-            class="tv-tool-btn"
-            [class.active]="isDrawingsHidden()"
-            (click)="toggleHideDrawings()"
-            [title]="isDrawingsHidden() ? 'Show Drawings' : 'Hide Drawings'"
-          >
-            @if (isDrawingsHidden()) {
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                <line x1="1" y1="1" x2="23" y2="23"></line>
+            class="v-tool-btn"
+            [class.active]="areDrawingsHidden()"
+            (click)="toggleHideDrawings($event)"
+            [title]="areDrawingsHidden() ? 'Show All Drawings' : 'Hide All Drawings'">
+            @if (areDrawingsHidden()) {
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
+                <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
+                <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
+                <line x1="2" y1="2" x2="22" y2="22"></line>
               </svg>
             } @else {
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
               </svg>
             }
           </button>
+        </div>
 
-          <!-- Delete Selected Drawing -->
+        <!-- 6. DELETE DRAWINGS -->
+        <div class="tool-btn-wrap">
           <button
             type="button"
-            class="tv-tool-btn tv-tool-danger"
-            [class.active]="selectedDrawingId() !== null"
-            [disabled]="!selectedDrawingId()"
-            (click)="deleteSelectedDrawing()"
-            title="Delete Selected Drawing (Del / Backspace)"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            class="v-tool-btn delete-tool-btn"
+            (click)="confirmClearAllDrawings($event)"
+            title="Delete All Drawings (with confirmation)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18"></path>
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
               <line x1="10" y1="11" x2="10" y2="17"></line>
               <line x1="14" y1="11" x2="14" y2="17"></line>
             </svg>
           </button>
+        </div>
+      </div>
 
-          <!-- Clear All Drawings -->
-          <button
-            type="button"
-            class="tv-tool-btn tv-tool-danger"
-            (click)="clearAllDrawings()"
-            title="Clear All Drawings"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 6h18"></path>
-              <path d="M19 6l-1 14H6L5 6"></path>
-              <path d="M10 11v6"></path>
-              <path d="M14 11v6"></path>
-              <path d="M9 6V4h6v2"></path>
-            </svg>
-          </button>
-        </aside>
-
-        <!-- 2. CHART VIEWPORT & DRAWING CANVAS OVERLAY -->
-        <div class="chart-canvas-viewport" (mousedown)="onViewportMouseDown($event)">
-          <!-- Lightweight Charts div -->
-          <div #chartContainer class="trading-chart-canvas"></div>
-
-          <!-- Drawing Canvas Interactive Layer -->
-          <canvas
-            #drawingCanvas
-            class="tv-drawing-canvas-overlay"
-            [class.drawing-active]="selectedDrawingTool() !== 'cursor' || selectedDrawingId() !== null"
-            (mousedown)="onCanvasMouseDown($event)"
-            (mousemove)="onCanvasMouseMove($event)"
-            (mouseup)="onCanvasMouseUp()"
-          ></canvas>
-
-          <!-- TradingView Floating Drawing Edit Toolbar -->
-          @if (selectedDrawing(); as selectedD) {
-            <div 
-              class="tv-floating-drawing-toolbar"
-              [style.left.px]="floatingToolbarPos().x"
-              [style.top.px]="floatingToolbarPos().y"
-              (mousedown)="$event.stopPropagation()"
-            >
-              <!-- 1. Drag / Move Grip -->
-              <div class="tv-ft-grip" (mousedown)="onToolbarGripMouseDown($event)" title="Drag toolbar">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
-                  <circle cx="9" cy="6" r="1.5"/>
-                  <circle cx="15" cy="6" r="1.5"/>
-                  <circle cx="9" cy="12" r="1.5"/>
-                  <circle cx="15" cy="12" r="1.5"/>
-                  <circle cx="9" cy="18" r="1.5"/>
-                  <circle cx="15" cy="18" r="1.5"/>
-                </svg>
+      <!-- FLOATING FLYOUT SUBMENU (RENDERED AT TOOLBAR ROOT TO PREVENT SCROLL OVERFLOW CLIPPING) -->
+      @if (openToolGroupId(); as curGroupId) {
+        @if (getGroupById(curGroupId); as curGroup) {
+          @if (curGroup.id === 'emoji_stickers') {
+            <div class="tool-popover drawing-category-popover emoji-stickers-popover" (click)="$event.stopPropagation()">
+              <div class="popover-category-header emoji-panel-header">
+                <div class="cat-title-wrap">
+                  <span class="cat-title">Markers & Stickers</span>
+                </div>
+                <button type="button" class="btn-close-popover" (click)="closeFlyout($event)" title="Close">✕</button>
               </div>
 
-              <div class="tv-ft-sep"></div>
-
-              <!-- 2. Color Picker Swatch Button -->
-              <div class="tv-ft-dropdown-anchor">
-                <button 
-                  type="button" 
-                  class="tv-ft-btn tv-ft-color-btn" 
-                  [class.active]="isColorPickerOpen()"
-                  (click)="toggleColorPicker($event)"
-                  title="Drawing Color"
-                >
-                  <span class="color-swatch-circle" [style.backgroundColor]="selectedD.color || '#38bdf8'"></span>
-                </button>
-
-                @if (isColorPickerOpen()) {
-                  <div class="tv-ft-popover tv-color-popover" (mousedown)="$event.stopPropagation()">
-                    <div class="popover-swatches-grid">
-                      @for (c of drawingColorPalette; track c) {
-                        <button 
-                          type="button" 
-                          class="swatch-cell" 
-                          [style.backgroundColor]="c"
-                          [class.selected]="selectedD.color === c"
-                          (click)="setSelectedDrawingColor(c)"
-                        ></button>
-                      }
-                    </div>
-                  </div>
-                }
-              </div>
-
-              <!-- 3. Line Style (Solid, Dashed, Dotted) -->
-              <div class="tv-ft-dropdown-anchor">
-                <button 
-                  type="button" 
-                  class="tv-ft-btn" 
-                  [class.active]="isLineStyleMenuOpen()"
-                  (click)="toggleLineStyleMenu($event)"
-                  title="Line Style"
-                >
-                  @if (selectedD.lineStyle === 'dashed') {
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                      <line x1="2" y1="12" x2="6" y2="12"></line>
-                      <line x1="10" y1="12" x2="14" y2="12"></line>
-                      <line x1="18" y1="12" x2="22" y2="12"></line>
-                    </svg>
-                  } @else if (selectedD.lineStyle === 'dotted') {
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                      <circle cx="4" cy="12" r="1.5"></circle>
-                      <circle cx="10" cy="12" r="1.5"></circle>
-                      <circle cx="16" cy="12" r="1.5"></circle>
-                      <circle cx="22" cy="12" r="1.5"></circle>
-                    </svg>
-                  } @else {
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                      <line x1="2" y1="12" x2="22" y2="12"></line>
-                    </svg>
+              @if (activeEmojiTab() === 'emoji') {
+                <div class="emoji-top-categories-bar">
+                  @for (cat of emojiCategories; track cat.id) {
+                    <button
+                      type="button"
+                      class="emoji-cat-btn"
+                      [class.active]="activeEmojiCategory() === cat.id"
+                      (click)="activeEmojiCategory.set(cat.id)"
+                      [title]="cat.label">
+                      <span class="emoji-cat-icon">{{ cat.icon }}</span>
+                    </button>
                   }
-                </button>
+                </div>
+                <div class="emoji-category-title">
+                  {{ currentCategoryLabel() }}
+                </div>
+              }
 
-                @if (isLineStyleMenuOpen()) {
-                  <div class="tv-ft-popover tv-menu-popover" (mousedown)="$event.stopPropagation()">
-                    <button 
-                      type="button" 
-                      class="tv-popover-item" 
-                      [class.active]="!selectedD.lineStyle || selectedD.lineStyle === 'solid'"
-                      (click)="setSelectedDrawingLineStyle('solid')"
-                    >
-                      <svg viewBox="0 0 24 24" width="20" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="2" y1="7" x2="22" y2="7"></line>
-                      </svg>
-                      <span>Solid</span>
-                    </button>
-                    <button 
-                      type="button" 
-                      class="tv-popover-item" 
-                      [class.active]="selectedD.lineStyle === 'dashed'"
-                      (click)="setSelectedDrawingLineStyle('dashed')"
-                    >
-                      <svg viewBox="0 0 24 24" width="20" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="2" y1="7" x2="6" y2="7"></line>
-                        <line x1="10" y1="7" x2="14" y2="7"></line>
-                        <line x1="18" y1="7" x2="22" y2="7"></line>
-                      </svg>
-                      <span>Dashed</span>
-                    </button>
-                    <button 
-                      type="button" 
-                      class="tv-popover-item" 
-                      [class.active]="selectedD.lineStyle === 'dotted'"
-                      (click)="setSelectedDrawingLineStyle('dotted')"
-                    >
-                      <svg viewBox="0 0 24 24" width="20" height="14" fill="currentColor">
-                        <circle cx="4" cy="7" r="1.5"></circle>
-                        <circle cx="10" cy="7" r="1.5"></circle>
-                        <circle cx="16" cy="7" r="1.5"></circle>
-                        <circle cx="22" cy="7" r="1.5"></circle>
-                      </svg>
-                      <span>Dotted</span>
-                    </button>
+              <div class="emoji-panel-content-area">
+                @if (activeEmojiTab() === 'emoji') {
+                  <div class="emoji-exness-grid">
+                    @for (emoji of currentCategoryEmojis(); track $index) {
+                      <button
+                        type="button"
+                        class="emoji-cell"
+                        [class.active]="activeEmojiMarker().text === emoji"
+                        (click)="selectEmojiMarkerItem(emoji, 'emoji', $event)"
+                        [title]="'Place ' + emoji">
+                        {{ emoji }}
+                      </button>
+                    }
                   </div>
-                }
-              </div>
-
-              <!-- 4. Line Width (1px, 2px, 3px, 4px) -->
-              <div class="tv-ft-dropdown-anchor">
-                <button 
-                  type="button" 
-                  class="tv-ft-btn" 
-                  [class.active]="isLineWidthMenuOpen()"
-                  (click)="toggleLineWidthMenu($event)"
-                  title="Line Width"
-                >
-                  <span class="width-badge-icon">{{ selectedD.lineWidth || 2 }}px</span>
-                </button>
-
-                @if (isLineWidthMenuOpen()) {
-                  <div class="tv-ft-popover tv-menu-popover width-menu" (mousedown)="$event.stopPropagation()">
-                    @for (w of [1, 2, 3, 4]; track w) {
-                      <button 
-                        type="button" 
-                        class="tv-popover-item" 
-                        [class.active]="(selectedD.lineWidth || 2) === w"
-                        (click)="setSelectedDrawingLineWidth(w)"
-                      >
-                        <span class="width-line-preview" [style.height.px]="w"></span>
-                        <span>{{ w }}px</span>
+                } @else if (activeEmojiTab() === 'stickers') {
+                  <div class="stickers-list-wrap-dark">
+                    @for (stk of availableStickers; track stk) {
+                      <button
+                        type="button"
+                        class="sticker-item-btn-dark"
+                        [class.active]="activeEmojiMarker().text === stk"
+                        (click)="selectEmojiMarkerItem(stk, 'sticker', $event)">
+                        <span class="sticker-pill-text-dark">{{ stk }}</span>
+                      </button>
+                    }
+                  </div>
+                } @else if (activeEmojiTab() === 'icons') {
+                  <div class="icons-list-wrap-dark">
+                    @for (ic of availableIcons; track ic.label) {
+                      <button
+                        type="button"
+                        class="icon-item-btn-dark"
+                        [class.active]="activeEmojiMarker().text === ic.icon"
+                        (click)="selectEmojiMarkerItem(ic.icon, 'icon', $event)">
+                        <span class="icon-glyph-dark">{{ ic.icon }}</span>
+                        <span class="icon-lbl-dark">{{ ic.label }}</span>
                       </button>
                     }
                   </div>
                 }
               </div>
 
-              <div class="tv-ft-sep"></div>
-
-              <!-- 5. Lock / Unlock Toggle -->
-              <button 
-                type="button" 
-                class="tv-ft-btn" 
-                [class.active]="selectedD.locked"
-                (click)="toggleSelectedDrawingLock()"
-                [title]="selectedD.locked ? 'Unlock Drawing' : 'Lock Drawing'"
-              >
-                @if (selectedD.locked) {
-                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#ef4444" stroke-width="2">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                  </svg>
-                } @else {
-                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                    <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
-                  </svg>
-                }
-              </button>
-
-              <!-- 6. Delete Selected Drawing -->
-              <button 
-                type="button" 
-                class="tv-ft-btn tv-ft-danger" 
-                (click)="deleteSelectedDrawing()"
-                title="Delete Drawing (Del)"
-              >
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  <line x1="10" y1="11" x2="10" y2="17"></line>
-                  <line x1="14" y1="11" x2="14" y2="17"></line>
-                </svg>
-              </button>
-
-              <!-- 7. More Options -->
-              <div class="tv-ft-dropdown-anchor">
-                <button 
-                  type="button" 
-                  class="tv-ft-btn" 
-                  [class.active]="isMoreOptionsMenuOpen()"
-                  (click)="toggleMoreOptionsMenu($event)"
-                  title="More Options"
-                >
-                  <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
-                    <circle cx="12" cy="12" r="2"></circle>
-                    <circle cx="19" cy="12" r="2"></circle>
-                    <circle cx="5" cy="12" r="2"></circle>
-                  </svg>
+              <div class="emoji-bottom-tabs">
+                <button
+                  type="button"
+                  class="emoji-bottom-tab-btn"
+                  [class.active]="activeEmojiTab() === 'emoji'"
+                  (click)="activeEmojiTab.set('emoji')">
+                  Emojis
                 </button>
-
-                @if (isMoreOptionsMenuOpen()) {
-                  <div class="tv-ft-popover tv-menu-popover more-menu" (mousedown)="$event.stopPropagation()">
-                    <button type="button" class="tv-popover-item" (click)="cloneSelectedDrawing()">
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                      </svg>
-                      <span>Clone</span>
-                    </button>
-                    <button type="button" class="tv-popover-item" (click)="bringSelectedDrawingToFront()">
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="18 15 12 9 6 15"></polyline>
-                      </svg>
-                      <span>Bring to Front</span>
-                    </button>
-                    <button type="button" class="tv-popover-item" (click)="sendSelectedDrawingToBack()">
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                      </svg>
-                      <span>Send to Back</span>
-                    </button>
-                  </div>
+                <button
+                  type="button"
+                  class="emoji-bottom-tab-btn"
+                  [class.active]="activeEmojiTab() === 'stickers'"
+                  (click)="activeEmojiTab.set('stickers')">
+                  Stickers
+                </button>
+                <button
+                  type="button"
+                  class="emoji-bottom-tab-btn"
+                  [class.active]="activeEmojiTab() === 'icons'"
+                  (click)="activeEmojiTab.set('icons')">
+                  Icons
+                </button>
+              </div>
+            </div>
+          } @else {
+            <div class="tool-popover drawing-category-popover" (click)="$event.stopPropagation()">
+              <div class="popover-category-header">
+                <div class="cat-title-wrap">
+                  <span class="cat-title">{{ curGroup.name }}</span>
+                  <span class="cat-subtitle">{{ curGroup.tools.length }} tools</span>
+                </div>
+                <button type="button" class="btn-close-popover" (click)="closeFlyout($event)">✕</button>
+              </div>
+              <div class="popover-tools-list">
+                @for (tool of curGroup.tools; track tool.id) {
+                  <button
+                    type="button"
+                    class="category-tool-item"
+                    [class.active]="activeDrawingTool()?.id === tool.id"
+                    (click)="selectDrawingTool(curGroup, tool, $event)">
+                    <span class="tool-item-icon">{{ tool.icon || '•' }}</span>
+                    <span class="tool-name">{{ tool.name }}</span>
+                    @if (tool.shortcut) {
+                      <span class="tool-shortcut">{{ tool.shortcut }}</span>
+                    } @else if (tool.pointsRequired > 0) {
+                      <span class="tool-pts-badge">{{ tool.pointsRequired }} pt</span>
+                    }
+                  </button>
                 }
               </div>
             </div>
           }
+        }
+      }
+    </aside>
 
-          <!-- Shimmer Loading Overlay -->
+        <!-- 2. CHART VIEWPORT & DRAWING CANVAS OVERLAY -->
+        <div class="chart-canvas-viewport">
+          <!-- Lightweight Charts div -->
+          <div #chartContainer class="trading-chart-canvas"></div>
+
+          <!-- SVG DRAWING OVERLAY LAYER -->
+        <svg
+          #drawingSvg
+          class="drawing-layer-svg"
+          [class.drawing-mode-active]="activeDrawingTool() !== null || selectedDrawingId() !== null"
+          [class.magnet-mode]="isMagnetEnabled()"
+          (mousedown)="onDrawingSvgMouseDown($event)"
+          (mousemove)="onDrawingSvgMouseMove($event)"
+          (mouseup)="onDrawingSvgMouseUp($event)">
+          
+          <defs>
+            <marker id="arrowHead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+              <polygon points="0 0, 8 4, 0 8" [attr.fill]="activeColor()" />
+            </marker>
+          </defs>
+
+          <!-- RENDER PERSISTED DRAWINGS -->
+          @if (!areDrawingsHidden()) {
+            @for (d of drawings(); track d.id) {
+              <g
+                class="drawing-item-group"
+                [class.selected-drawing]="selectedDrawingId() === d.id"
+                [class.locked-drawing]="d.locked || areDrawingsLocked()"
+                (click)="selectDrawing(d, $event)">
+                
+                <!-- 1. Trend Line -->
+                @if (d.toolId === 'trend_line' && d.points.length >= 2) {
+                  <line
+                    [attr.x1]="d.points[0].x"
+                    [attr.y1]="d.points[0].y"
+                    [attr.x2]="d.points[1].x"
+                    [attr.y2]="d.points[1].y"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                }
+
+                <!-- 2. Ray (Infinite in 1 direction) -->
+                @else if (d.toolId === 'ray' && d.points.length >= 2) {
+                  @if (getRayEnd(d.points[0], d.points[1]); as ray) {
+                    <line
+                      [attr.x1]="d.points[0].x"
+                      [attr.y1]="d.points[0].y"
+                      [attr.x2]="ray.x"
+                      [attr.y2]="ray.y"
+                      [attr.stroke]="d.color"
+                      [attr.stroke-width]="d.lineWidth" />
+                  }
+                }
+
+                <!-- 3. Info Line (Line with delta stats) -->
+                @else if (d.toolId === 'info_line' && d.points.length >= 2) {
+                  <line
+                    [attr.x1]="d.points[0].x"
+                    [attr.y1]="d.points[0].y"
+                    [attr.x2]="d.points[1].x"
+                    [attr.y2]="d.points[1].y"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                  <rect
+                    [attr.x]="(d.points[0].x + d.points[1].x) / 2 - 40"
+                    [attr.y]="(d.points[0].y + d.points[1].y) / 2 - 20"
+                    width="80"
+                    height="18"
+                    rx="3"
+                    fill="#ffffff"
+                    stroke="#cbd5e1"
+                    stroke-width="1" />
+                  <text
+                    [attr.x]="(d.points[0].x + d.points[1].x) / 2"
+                    [attr.y]="(d.points[0].y + d.points[1].y) / 2 - 8"
+                    class="svg-drawing-label center"
+                    [attr.fill]="d.color">
+                    Δ {{ Math.round(Math.hypot(d.points[1].x - d.points[0].x, d.points[1].y - d.points[0].y)) }}px
+                  </text>
+                }
+
+                <!-- 4. Extended Line (Infinite both directions) -->
+                @else if (d.toolId === 'extended_line' && d.points.length >= 2) {
+                  @if (getExtendedLinePoints(d.points[0], d.points[1]); as ext) {
+                    <line
+                      [attr.x1]="ext.x1"
+                      [attr.y1]="ext.y1"
+                      [attr.x2]="ext.x2"
+                      [attr.y2]="ext.y2"
+                      [attr.stroke]="d.color"
+                      [attr.stroke-width]="d.lineWidth" />
+                  }
+                }
+
+                <!-- 5. Trend Angle (Line with angle arc/label) -->
+                @else if (d.toolId === 'trend_angle' && d.points.length >= 2) {
+                  <line
+                    [attr.x1]="d.points[0].x"
+                    [attr.y1]="d.points[0].y"
+                    [attr.x2]="d.points[1].x"
+                    [attr.y2]="d.points[1].y"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                  <line
+                    [attr.x1]="d.points[0].x"
+                    [attr.y1]="d.points[0].y"
+                    [attr.x2]="d.points[0].x + 40"
+                    [attr.y2]="d.points[0].y"
+                    [attr.stroke]="d.color"
+                    stroke-width="1"
+                    stroke-dasharray="2 2" />
+                  <text
+                    [attr.x]="d.points[0].x + 44"
+                    [attr.y]="d.points[0].y - 2"
+                    class="svg-drawing-label"
+                    [attr.fill]="d.color">
+                    {{ getTrendAngle(d.points[0], d.points[1]) }}°
+                  </text>
+                }
+
+                <!-- 6. Horizontal Line (Full across width) -->
+                @else if (d.toolId === 'horizontal_line') {
+                  <line
+                    x1="0"
+                    [attr.y1]="d.points[0].y"
+                    x2="3000"
+                    [attr.y2]="d.points[0].y"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                }
+
+                <!-- 7. Horizontal Ray (Starts at Point, goes right) -->
+                @else if (d.toolId === 'horizontal_ray') {
+                  <line
+                    [attr.x1]="d.points[0].x"
+                    [attr.y1]="d.points[0].y"
+                    x2="3000"
+                    [attr.y2]="d.points[0].y"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                }
+
+                <!-- 8. Vertical Line (Full vertical across height) -->
+                @else if (d.toolId === 'vertical_line') {
+                  <line
+                    [attr.x1]="d.points[0].x"
+                    y1="0"
+                    [attr.x2]="d.points[0].x"
+                    y2="3000"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                }
+
+                <!-- 9. Cross Line (Horizontal + Vertical cross) -->
+                @else if (d.toolId === 'cross_line') {
+                  <line x1="0" [attr.y1]="d.points[0].y" x2="3000" [attr.y2]="d.points[0].y" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-dasharray="4 4" />
+                  <line [attr.x1]="d.points[0].x" y1="0" [attr.x2]="d.points[0].x" y2="3000" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-dasharray="4 4" />
+                }
+
+                <!-- 10. Fibonacci Retracement Levels -->
+                @else if (d.toolId === 'fib_retracement' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                  @for (fib of getFibLevels(d); track fib.pct) {
+                    <g class="fib-level-group">
+                      <line [attr.x1]="d.points[0].x" [attr.y1]="fib.y" [attr.x2]="d.points[1].x + 350" [attr.y2]="fib.y" [attr.stroke]="fib.color" stroke-width="1.5" />
+                      <text [attr.x]="d.points[0].x + 4" [attr.y]="fib.y - 3" [attr.fill]="fib.color" class="svg-drawing-label">{{ fib.pct }}</text>
+                    </g>
+                  }
+                }
+
+                <!-- 11. Trend-Based Fib Extension -->
+                @else if (d.toolId === 'trend_fib_extension' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1.5" />
+                  @if (d.points.length >= 3) {
+                    <line [attr.x1]="d.points[1].x" [attr.y1]="d.points[1].y" [attr.x2]="d.points[2].x" [attr.y2]="d.points[2].y" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                    @for (fib of getFibExtensionLevels(d); track fib.pct) {
+                      <g class="fib-level-group">
+                        <line [attr.x1]="d.points[2].x" [attr.y1]="fib.y" [attr.x2]="d.points[2].x + 350" [attr.y2]="fib.y" [attr.stroke]="fib.color" stroke-width="1.5" />
+                        <text [attr.x]="d.points[2].x + 4" [attr.y]="fib.y - 3" [attr.fill]="fib.color" class="svg-drawing-label">{{ fib.pct }}</text>
+                      </g>
+                    }
+                  }
+                }
+
+                <!-- 12. Fib Channel -->
+                @else if (d.toolId === 'fib_channel' && d.points.length >= 2) {
+                  @for (ch of getFibChannelLines(d); track ch.label) {
+                    <line [attr.x1]="ch.p1.x" [attr.y1]="ch.p1.y" [attr.x2]="ch.p2.x" [attr.y2]="ch.p2.y" [attr.stroke]="ch.color" stroke-width="1.5" />
+                    <text [attr.x]="ch.p1.x + 4" [attr.y]="ch.p1.y - 4" [attr.fill]="ch.color" class="svg-drawing-label">{{ ch.label }}</text>
+                  }
+                }
+
+                <!-- 13. Fib Time Zone -->
+                @else if (d.toolId === 'fib_time_zone' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                  @for (tz of getFibTimeZones(d); track tz.label) {
+                    <line [attr.x1]="tz.x" y1="0" [attr.x2]="tz.x" y2="3000" [attr.stroke]="tz.color" stroke-width="1.2" stroke-dasharray="3 3" />
+                    <text [attr.x]="tz.x + 4" [attr.y]="30" [attr.fill]="tz.color" class="svg-drawing-label">{{ tz.label }}</text>
+                  }
+                }
+
+                <!-- 14. Fib Speed Resistance Fan -->
+                @else if (d.toolId === 'fib_speed_fan' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1.5" />
+                  @for (fan of getFibSpeedFans(d); track fan.label) {
+                    <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="fan.x2" [attr.y2]="fan.y2" [attr.stroke]="fan.color" stroke-width="1.2" stroke-dasharray="2 2" />
+                    <text [attr.x]="fan.x2 - 30" [attr.y]="fan.y2" [attr.fill]="fan.color" class="svg-drawing-label">{{ fan.label }}</text>
+                  }
+                }
+
+                <!-- 15. Trend-Based Fib Time -->
+                @else if (d.toolId === 'trend_fib_time' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                  @for (tt of getFibTrendTimes(d); track tt.label) {
+                    <line [attr.x1]="tt.x" y1="0" [attr.x2]="tt.x" y2="3000" [attr.stroke]="tt.color" stroke-width="1.2" stroke-dasharray="3 3" />
+                    <text [attr.x]="tt.x + 4" [attr.y]="45" [attr.fill]="tt.color" class="svg-drawing-label">{{ tt.label }}</text>
+                  }
+                }
+
+                <!-- 16. Fib Circles -->
+                @else if (d.toolId === 'fib_circles' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                  @for (fc of getFibCircles(d); track fc.label) {
+                    <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y" [attr.r]="fc.r" fill="none" [attr.stroke]="fc.color" stroke-width="1.2" />
+                    <text [attr.x]="d.points[0].x + fc.r + 4" [attr.y]="d.points[0].y - 3" [attr.fill]="fc.color" class="svg-drawing-label">{{ fc.label }}</text>
+                  }
+                }
+
+                <!-- 17. Fib Spiral -->
+                @else if (d.toolId === 'fib_spiral' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                  <path [attr.d]="getFibSpiralPath(d)" fill="none" [attr.stroke]="d.color" stroke-width="1.8" />
+                }
+
+                <!-- 18. Fib Speed Resistance Arcs -->
+                @else if (d.toolId === 'fib_speed_arcs' && d.points.length >= 2) {
+                  <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                  @for (arc of getFibArcs(d); track arc.label) {
+                    <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y" [attr.r]="arc.r" fill="none" [attr.stroke]="arc.color" stroke-width="1.2" stroke-dasharray="4 2" />
+                    <text [attr.x]="d.points[0].x + arc.r * 0.7" [attr.y]="d.points[0].y - arc.r * 0.7" [attr.fill]="arc.color" class="svg-drawing-label">{{ arc.label }}</text>
+                  }
+                }
+
+                <!-- 19. Fib Wedge -->
+                @else if (d.toolId === 'fib_wedge' && d.points.length >= 2) {
+                  @for (wd of getFibWedgeLines(d); track wd.color) {
+                    <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="wd.x2" [attr.y2]="wd.y2" [attr.stroke]="wd.color" stroke-width="1.4" />
+                  }
+                }
+
+                <!-- 20. Pitchfan -->
+                @else if (d.toolId === 'pitchfan' && d.points.length >= 2) {
+                  @for (pf of getPitchfanLines(d); track pf.color) {
+                    <line [attr.x1]="pf.x1" [attr.y1]="pf.y1" [attr.x2]="pf.x2" [attr.y2]="pf.y2" [attr.stroke]="pf.color" stroke-width="1.4" />
+                  }
+                }
+
+                <!-- 21. Gann Box -->
+                @else if (d.toolId === 'gann_box' && d.points.length >= 2) {
+                  @if (getGannBox(d); as gb) {
+                    <!-- Gann Box Outer Border & Fill -->
+                    <rect [attr.x]="gb.x" [attr.y]="gb.y" [attr.width]="gb.w" [attr.height]="gb.h" fill="rgba(37, 99, 235, 0.04)" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" />
+                    
+                    <!-- Horizontal Price Levels -->
+                    @for (hl of gb.hLevels; track hl.label) {
+                      <line [attr.x1]="gb.x" [attr.y1]="hl.y" [attr.x2]="gb.x + gb.w" [attr.y2]="hl.y" [attr.stroke]="hl.color" stroke-width="1" stroke-dasharray="2 2" />
+                      <text [attr.x]="gb.x + 4" [attr.y]="hl.y - 2" [attr.fill]="hl.color" class="svg-drawing-label">{{ hl.label }}</text>
+                    }
+
+                    <!-- Vertical Time Levels -->
+                    @for (vl of gb.vLevels; track vl.label) {
+                      <line [attr.x1]="vl.x" [attr.y1]="gb.y" [attr.x2]="vl.x" [attr.y2]="gb.y + gb.h" [attr.stroke]="vl.color" stroke-width="1" stroke-dasharray="2 2" />
+                      <text [attr.x]="vl.x + 2" [attr.y]="gb.y + 12" [attr.fill]="vl.color" class="svg-drawing-label">{{ vl.label }}</text>
+                    }
+
+                    <!-- Diagonals & Harmonic Angles -->
+                    @for (diag of gb.diagonals; track $index) {
+                      <line [attr.x1]="diag.x1" [attr.y1]="diag.y1" [attr.x2]="diag.x2" [attr.y2]="diag.y2" [attr.stroke]="diag.color" stroke-width="1.2" />
+                    }
+                  }
+                }
+
+                <!-- 22. Gann Square Fixed -->
+                @else if (d.toolId === 'gann_square_fixed' && d.points.length >= 2) {
+                  @if (getGannSquareFixed(d); as gsf) {
+                    <!-- Gann Square Fixed Outer Border -->
+                    <rect [attr.x]="gsf.x" [attr.y]="gsf.y" [attr.width]="gsf.size" [attr.height]="gsf.size" fill="rgba(59, 130, 246, 0.03)" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" />
+                    
+                    <!-- Inner Diamond -->
+                    <polygon [attr.points]="gsf.diamond" fill="none" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="3 3" />
+
+                    <!-- Horizontal Grid -->
+                    @for (hl of gsf.hLevels; track hl.label) {
+                      <line [attr.x1]="gsf.x" [attr.y1]="hl.y" [attr.x2]="gsf.x + gsf.size" [attr.y2]="hl.y" [attr.stroke]="hl.color" stroke-width="1" stroke-dasharray="2 2" />
+                      <text [attr.x]="gsf.x + 4" [attr.y]="hl.y - 2" [attr.fill]="hl.color" class="svg-drawing-label">{{ hl.label }}</text>
+                    }
+
+                    <!-- Vertical Grid -->
+                    @for (vl of gsf.vLevels; track vl.label) {
+                      <line [attr.x1]="vl.x" [attr.y1]="gsf.y" [attr.x2]="vl.x" [attr.y2]="gsf.y + gsf.size" [attr.stroke]="vl.color" stroke-width="1" stroke-dasharray="2 2" />
+                    }
+
+                    <!-- Main Diagonals -->
+                    @for (diag of gsf.diagonals; track $index) {
+                      <line [attr.x1]="diag.x1" [attr.y1]="diag.y1" [attr.x2]="diag.x2" [attr.y2]="diag.y2" [attr.stroke]="diag.color" stroke-width="1.4" />
+                    }
+                  }
+                }
+
+                <!-- 23. Gann Square -->
+                @else if (d.toolId === 'gann_square' && d.points.length >= 2) {
+                  @if (getGannSquare(d); as gs) {
+                    <!-- Gann Square Outer Border -->
+                    <rect [attr.x]="gs.x" [attr.y]="gs.y" [attr.width]="gs.w" [attr.height]="gs.h" fill="rgba(16, 185, 129, 0.03)" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" />
+                    
+                    <!-- Horizontal Levels -->
+                    @for (hl of gs.hLevels; track hl.label) {
+                      <line [attr.x1]="gs.x" [attr.y1]="hl.y" [attr.x2]="gs.x + gs.w" [attr.y2]="hl.y" [attr.stroke]="hl.color" stroke-width="1" stroke-dasharray="2 2" />
+                      <text [attr.x]="gs.x + 4" [attr.y]="hl.y - 2" [attr.fill]="hl.color" class="svg-drawing-label">{{ hl.label }}</text>
+                    }
+
+                    <!-- Vertical Levels -->
+                    @for (vl of gs.vLevels; track vl.label) {
+                      <line [attr.x1]="vl.x" [attr.y1]="gs.y" [attr.x2]="vl.x" [attr.y2]="gs.y + gs.h" [attr.stroke]="vl.color" stroke-width="1" stroke-dasharray="2 2" />
+                    }
+
+                    <!-- Harmonic Angle Rays -->
+                    @for (diag of gs.diagonals; track $index) {
+                      <line [attr.x1]="diag.x1" [attr.y1]="diag.y1" [attr.x2]="diag.x2" [attr.y2]="diag.y2" [attr.stroke]="diag.color" stroke-width="1.2" />
+                    }
+                  }
+                }
+
+                <!-- 24. Gann Fan -->
+                @else if (d.toolId === 'gann_fan' && d.points.length >= 2) {
+                  @for (fan of getGannFanLines(d); track fan.label) {
+                    <line
+                      [attr.x1]="fan.x1"
+                      [attr.y1]="fan.y1"
+                      [attr.x2]="fan.x2"
+                      [attr.y2]="fan.y2"
+                      [attr.stroke]="fan.color"
+                      [attr.stroke-width]="fan.isMain ? (d.lineWidth + 0.5) : 1.2"
+                      [attr.stroke-dasharray]="fan.isMain ? 'none' : '3 2'" />
+                    <text
+                      [attr.x]="fan.x2 + 4"
+                      [attr.y]="fan.y2"
+                      [attr.fill]="fan.color"
+                      class="svg-drawing-label font-bold">
+                      {{ fan.label }}
+                    </text>
+                  }
+                }
+
+                <!-- 25. XABCD Pattern -->
+                @else if (d.toolId === 'xabcd_pattern') {
+                  @if (getXabcdPattern(d); as pat) {
+                    <!-- Shaded Harmonic Triangles -->
+                    @if (pat.tri1) {
+                      <polygon [attr.points]="pat.tri1" fill="rgba(37, 99, 235, 0.12)" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" />
+                    }
+                    @if (pat.tri2) {
+                      <polygon [attr.points]="pat.tri2" fill="rgba(16, 185, 129, 0.12)" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" />
+                    }
+
+                    <!-- Connecting Lines (if not fully 5 points yet) -->
+                    @if (!pat.tri1) {
+                      <polyline [attr.points]="pat.polyline" fill="none" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" />
+                    }
+
+                    <!-- Harmonic Dotted Ratio Lines -->
+                    @if (pat.ratioXB) {
+                      <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[2].x" [attr.y2]="d.points[2].y" stroke="#3b82f6" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="pat.midXB.x" [attr.y]="pat.midXB.y - 4" fill="#1d4ed8" class="svg-drawing-label font-bold center">{{ pat.ratioXB }}</text>
+                    }
+                    @if (pat.ratioAC) {
+                      <line [attr.x1]="d.points[1].x" [attr.y1]="d.points[1].y" [attr.x2]="d.points[3].x" [attr.y2]="d.points[3].y" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="pat.midAC.x" [attr.y]="pat.midAC.y - 4" fill="#b45309" class="svg-drawing-label font-bold center">{{ pat.ratioAC }}</text>
+                    }
+                    @if (pat.ratioBD) {
+                      <line [attr.x1]="d.points[2].x" [attr.y1]="d.points[2].y" [attr.x2]="d.points[4].x" [attr.y2]="d.points[4].y" stroke="#10b981" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="pat.midBD.x" [attr.y]="pat.midBD.y - 4" fill="#047857" class="svg-drawing-label font-bold center">{{ pat.ratioBD }}</text>
+                    }
+                    @if (pat.ratioXD) {
+                      <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[4].x" [attr.y2]="d.points[4].y" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="2 2" />
+                      <text [attr.x]="pat.midXD.x" [attr.y]="pat.midXD.y - 4" fill="#6d28d9" class="svg-drawing-label font-bold center">{{ pat.ratioXD }}</text>
+                    }
+
+                    <!-- Vertex Badges -->
+                    @for (item of pat.points; track item.label) {
+                      <circle [attr.cx]="item.pt.x" [attr.cy]="item.pt.y" r="8" fill="#ffffff" [attr.stroke]="d.color" stroke-width="2" />
+                      <text [attr.x]="item.pt.x" [attr.y]="item.pt.y + 3.5" class="svg-drawing-label vertex-badge" text-anchor="middle" [attr.fill]="d.color">{{ item.label }}</text>
+                    }
+                  }
+                }
+
+                <!-- 26. Cypher Pattern -->
+                @else if (d.toolId === 'cypher_pattern') {
+                  @if (getCypherPattern(d); as pat) {
+                    <!-- Shaded Harmonic Triangles -->
+                    @if (pat.tri1) {
+                      <polygon [attr.points]="pat.tri1" fill="rgba(139, 92, 246, 0.12)" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" />
+                    }
+                    @if (pat.tri2) {
+                      <polygon [attr.points]="pat.tri2" fill="rgba(245, 158, 11, 0.12)" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" />
+                    }
+
+                    <!-- Connecting Lines -->
+                    @if (!pat.tri1) {
+                      <polyline [attr.points]="pat.polyline" fill="none" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" />
+                    }
+
+                    <!-- Harmonic Dotted Ratio Lines -->
+                    @if (pat.ratioXB) {
+                      <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[2].x" [attr.y2]="d.points[2].y" stroke="#3b82f6" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="pat.midXB.x" [attr.y]="pat.midXB.y - 4" fill="#1d4ed8" class="svg-drawing-label font-bold center">{{ pat.ratioXB }}</text>
+                    }
+                    @if (pat.ratioXC) {
+                      <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[3].x" [attr.y2]="d.points[3].y" stroke="#8b5cf6" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="pat.midXC.x" [attr.y]="pat.midXC.y - 4" fill="#6d28d9" class="svg-drawing-label font-bold center">{{ pat.ratioXC }}</text>
+                    }
+                    @if (pat.ratioCD) {
+                      <line [attr.x1]="d.points[2].x" [attr.y1]="d.points[2].y" [attr.x2]="d.points[4].x" [attr.y2]="d.points[4].y" stroke="#10b981" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="pat.midCD.x" [attr.y]="pat.midCD.y - 4" fill="#047857" class="svg-drawing-label font-bold center">{{ pat.ratioCD }}</text>
+                    }
+
+                    <!-- Vertex Badges -->
+                    @for (item of pat.points; track item.label) {
+                      <circle [attr.cx]="item.pt.x" [attr.cy]="item.pt.y" r="8" fill="#ffffff" [attr.stroke]="d.color" stroke-width="2" />
+                      <text [attr.x]="item.pt.x" [attr.y]="item.pt.y + 3.5" class="svg-drawing-label vertex-badge" text-anchor="middle" [attr.fill]="d.color">{{ item.label }}</text>
+                    }
+                  }
+                }
+
+                <!-- 27. Head and Shoulders Pattern -->
+                @else if (d.toolId === 'head_and_shoulders') {
+                  @if (getHeadAndShoulders(d); as hs) {
+                    <!-- Shaded Shape Fill -->
+                    @if (hs.fillPolygon) {
+                      <polygon [attr.points]="hs.fillPolygon" fill="rgba(37, 99, 235, 0.08)" />
+                    }
+
+                    <!-- Wave Outline Line -->
+                    <polyline [attr.points]="hs.polyline" fill="none" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" stroke-linecap="round" />
+
+                    <!-- Extended Neckline -->
+                    @if (hs.neckline.x1 !== hs.neckline.x2) {
+                      <line [attr.x1]="hs.neckline.x1" [attr.y1]="hs.neckline.y1" [attr.x2]="hs.neckline.x2" [attr.y2]="hs.neckline.y2" stroke="#ef4444" stroke-width="1.8" stroke-dasharray="4 3" />
+                      <text [attr.x]="hs.neckline.x2 + 4" [attr.y]="hs.neckline.y2 + 3" fill="#b91c1c" class="svg-drawing-label font-bold">Neckline</text>
+                    }
+
+                    <!-- Peak Labels -->
+                    @if (d.points.length >= 2) {
+                      <text [attr.x]="hs.ls.x" [attr.y]="hs.ls.y - 12" fill="#2563eb" class="svg-drawing-label font-bold center" text-anchor="middle">Left Shoulder</text>
+                    }
+                    @if (d.points.length >= 4) {
+                      <text [attr.x]="hs.head.x" [attr.y]="hs.head.y - 12" fill="#2563eb" class="svg-drawing-label font-bold center" text-anchor="middle">Head</text>
+                    }
+                    @if (d.points.length >= 6) {
+                      <text [attr.x]="hs.rs.x" [attr.y]="hs.rs.y - 12" fill="#2563eb" class="svg-drawing-label font-bold center" text-anchor="middle">Right Shoulder</text>
+                    }
+
+                    <!-- Vertex Dots -->
+                    @for (item of hs.points; track item.label) {
+                      <circle [attr.cx]="item.pt.x" [attr.cy]="item.pt.y" r="4.5" fill="#ffffff" [attr.stroke]="d.color" stroke-width="2" />
+                    }
+                  }
+                }
+
+                <!-- 28. ABCD Pattern -->
+                @else if (d.toolId === 'abcd_pattern') {
+                  @if (getAbcdPattern(d); as abcd) {
+                    <!-- Main ABCD Line -->
+                    <polyline [attr.points]="abcd.polyline" fill="none" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" stroke-linecap="round" />
+
+                    <!-- Dotted Measurement Lines -->
+                    @if (abcd.ratioBC) {
+                      <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[2].x" [attr.y2]="d.points[2].y" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="abcd.midAC.x" [attr.y]="abcd.midAC.y - 4" fill="#b45309" class="svg-drawing-label font-bold center">{{ abcd.ratioBC }}</text>
+                    }
+                    @if (abcd.ratioCD) {
+                      <line [attr.x1]="d.points[1].x" [attr.y1]="d.points[1].y" [attr.x2]="d.points[3].x" [attr.y2]="d.points[3].y" stroke="#10b981" stroke-width="1.2" stroke-dasharray="3 3" />
+                      <text [attr.x]="abcd.midBD.x" [attr.y]="abcd.midBD.y - 4" fill="#047857" class="svg-drawing-label font-bold center">{{ abcd.ratioCD }}</text>
+                    }
+
+                    <!-- Vertex Badges -->
+                    @for (item of abcd.points; track item.label) {
+                      <circle [attr.cx]="item.pt.x" [attr.cy]="item.pt.y" r="8" fill="#ffffff" [attr.stroke]="d.color" stroke-width="2" />
+                      <text [attr.x]="item.pt.x" [attr.y]="item.pt.y + 3.5" class="svg-drawing-label vertex-badge" text-anchor="middle" [attr.fill]="d.color">{{ item.label }}</text>
+                    }
+                  }
+                }
+
+                <!-- 29. Triangle Pattern -->
+                @else if (d.toolId === 'triangle_pattern') {
+                  @if (getTrianglePattern(d); as tri) {
+                    <!-- Shaded Triangle Body -->
+                    @if (tri.fillPolygon) {
+                      <polygon [attr.points]="tri.fillPolygon" fill="rgba(59, 130, 246, 0.1)" [attr.stroke]="d.color" stroke-width="1" stroke-dasharray="2 2" />
+                    }
+
+                    <!-- Inner Swing Wave -->
+                    <polyline [attr.points]="tri.polyline" fill="none" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" />
+
+                    <!-- Extended Upper / Lower Trendlines -->
+                    @if (tri.upperLine.x1 !== tri.upperLine.x2) {
+                      <line [attr.x1]="tri.upperLine.x1" [attr.y1]="tri.upperLine.y1" [attr.x2]="tri.upperLine.x2" [attr.y2]="tri.upperLine.y2" stroke="#2563eb" stroke-width="1.8" />
+                      <line [attr.x1]="tri.lowerLine.x1" [attr.y1]="tri.lowerLine.y1" [attr.x2]="tri.lowerLine.x2" [attr.y2]="tri.lowerLine.y2" stroke="#2563eb" stroke-width="1.8" />
+                    }
+
+                    <!-- Vertex Badges -->
+                    @for (item of tri.points; track item.label) {
+                      <circle [attr.cx]="item.pt.x" [attr.cy]="item.pt.y" r="7" fill="#ffffff" [attr.stroke]="d.color" stroke-width="2" />
+                      <text [attr.x]="item.pt.x" [attr.y]="item.pt.y + 3.5" class="svg-drawing-label vertex-badge" text-anchor="middle" [attr.fill]="d.color">{{ item.label }}</text>
+                    }
+                  }
+                }
+
+                <!-- 30. Three Drives Pattern -->
+                @else if (d.toolId === 'three_drives_pattern') {
+                  @if (getThreeDrivesPattern(d); as td) {
+                    <!-- Main Wave Line -->
+                    <polyline [attr.points]="td.polyline" fill="none" [attr.stroke]="d.color" [attr.stroke-width]="d.lineWidth" stroke-linejoin="round" stroke-linecap="round" />
+
+                    <!-- Drive Labels & Ratios -->
+                    @if (d.points.length >= 2) {
+                      <circle [attr.cx]="td.d1.x" [attr.cy]="td.d1.y" r="9" fill="#2563eb" />
+                      <text [attr.x]="td.d1.x" [attr.y]="td.d1.y + 4" fill="#ffffff" class="svg-drawing-label font-bold" text-anchor="middle">1</text>
+                    }
+                    @if (d.points.length >= 4) {
+                      <circle [attr.cx]="td.d2.x" [attr.cy]="td.d2.y" r="9" fill="#2563eb" />
+                      <text [attr.x]="td.d2.x" [attr.y]="td.d2.y + 4" fill="#ffffff" class="svg-drawing-label font-bold" text-anchor="middle">2</text>
+                      @if (td.ratioDrive2) {
+                        <text [attr.x]="td.midD1D2.x" [attr.y]="td.midD1D2.y - 6" fill="#1d4ed8" class="svg-drawing-label font-bold center">{{ td.ratioDrive2 }}</text>
+                      }
+                    }
+                    @if (d.points.length >= 6) {
+                      <circle [attr.cx]="td.d3.x" [attr.cy]="td.d3.y" r="9" fill="#2563eb" />
+                      <text [attr.x]="td.d3.x" [attr.y]="td.d3.y + 4" fill="#ffffff" class="svg-drawing-label font-bold" text-anchor="middle">3</text>
+                      @if (td.ratioDrive3) {
+                        <text [attr.x]="td.midD2D3.x" [attr.y]="td.midD2D3.y - 6" fill="#1d4ed8" class="svg-drawing-label font-bold center">{{ td.ratioDrive3 }}</text>
+                      }
+                    }
+
+                    <!-- Pullback and End Dots -->
+                    @for (item of td.points; track item.label) {
+                      @if (item.label !== 'Drive 1' && item.label !== 'Drive 2' && item.label !== 'Drive 3') {
+                        <circle [attr.cx]="item.pt.x" [attr.cy]="item.pt.y" r="4.5" fill="#ffffff" [attr.stroke]="d.color" stroke-width="2" />
+                      }
+                    }
+                  }
+                }
+
+                <!-- 31. Freehand Highlighter -->
+                @else if (d.toolId === 'highlighter' && d.points.length >= 2) {
+                  <polyline
+                    [attr.points]="getPointsPolyline(d.points)"
+                    [attr.stroke]="d.color"
+                    stroke-width="14"
+                    opacity="0.35"
+                    fill="none"
+                    stroke-linecap="round"
+                    stroke-linejoin="round" />
+                }
+
+                <!-- 32. Freehand Brush & Continuous Path -->
+                @else if ((d.toolId === 'brush' || d.toolId === 'path') && d.points.length >= 2) {
+                  <polyline
+                    [attr.points]="getPointsPolyline(d.points)"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth || 2.5"
+                    fill="none"
+                    stroke-linecap="round"
+                    stroke-linejoin="round" />
+                }
+
+                <!-- 33. Rotated Rectangle -->
+                @else if (d.toolId === 'rotated_rectangle' && d.points.length >= 2) {
+                  <polygon
+                    [attr.points]="getRotatedRectangle(d)"
+                    [attr.fill]="d.fillColor || (d.color + '1a')"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth"
+                    stroke-linejoin="round" />
+                }
+
+                <!-- 34. Triangle Shape -->
+                @else if (d.toolId === 'triangle' && d.points.length >= 2) {
+                  <polygon
+                    [attr.points]="getTrianglePoints(d)"
+                    [attr.fill]="d.fillColor || (d.color + '1a')"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth"
+                    stroke-linejoin="round" />
+                }
+
+                <!-- 35. Arc Shape -->
+                @else if (d.toolId === 'arc' && d.points.length >= 2) {
+                  <path
+                    [attr.d]="getArcPath(d)"
+                    fill="none"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                }
+
+                <!-- 36. Curve Shape -->
+                @else if (d.toolId === 'curve' && d.points.length >= 2) {
+                  <path
+                    [attr.d]="getCurvePath(d)"
+                    fill="none"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                }
+
+                <!-- 37. Ellipse Shape -->
+                @else if (d.toolId === 'ellipse' && d.points.length >= 2) {
+                  @if (getEllipseData(d); as el) {
+                    <ellipse
+                      [attr.cx]="el.cx"
+                      [attr.cy]="el.cy"
+                      [attr.rx]="el.rx"
+                      [attr.ry]="el.ry"
+                      [attr.fill]="d.fillColor || (d.color + '1a')"
+                      [attr.stroke]="d.color"
+                      [attr.stroke-width]="d.lineWidth" />
+                  }
+                }
+
+                <!-- 38. Arrow Markers & Directions (Single Click Markers) -->
+                @else if (d.toolId === 'arrow_marker' && d.points.length >= 1) {
+                  <g class="arrow-marker-group">
+                    <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y" r="8" [attr.fill]="d.color" opacity="0.25" />
+                    <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y" r="3.5" [attr.fill]="d.color" />
+                    <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y - 20" [attr.x2]="d.points[0].x" [attr.y2]="d.points[0].y - 4" [attr.stroke]="d.color" stroke-width="2" marker-end="url(#arrowHead)" />
+                  </g>
+                }
+                @else if (d.toolId === 'arrow_up' && d.points.length >= 1) {
+                  <g class="arrow-up-badge">
+                    <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y + 12" r="11" fill="#10b981" stroke="#ffffff" stroke-width="1.5" />
+                    <path [attr.d]="'M ' + (d.points[0].x - 4.5) + ' ' + (d.points[0].y + 15) + ' L ' + d.points[0].x + ' ' + (d.points[0].y + 7.5) + ' L ' + (d.points[0].x + 4.5) + ' ' + (d.points[0].y + 15)" stroke="#ffffff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                  </g>
+                }
+                @else if (d.toolId === 'arrow_down' && d.points.length >= 1) {
+                  <g class="arrow-down-badge">
+                    <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y - 12" r="11" fill="#ef4444" stroke="#ffffff" stroke-width="1.5" />
+                    <path [attr.d]="'M ' + (d.points[0].x - 4.5) + ' ' + (d.points[0].y - 15) + ' L ' + d.points[0].x + ' ' + (d.points[0].y - 7.5) + ' L ' + (d.points[0].x + 4.5) + ' ' + (d.points[0].y - 15)" stroke="#ffffff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                  </g>
+                }
+                @else if (d.toolId === 'arrow_left' && d.points.length >= 1) {
+                  <g class="arrow-left-badge">
+                    <circle [attr.cx]="d.points[0].x + 12" [attr.cy]="d.points[0].y" r="11" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5" />
+                    <path [attr.d]="'M ' + (d.points[0].x + 15) + ' ' + (d.points[0].y - 4.5) + ' L ' + (d.points[0].x + 7.5) + ' ' + d.points[0].y + ' L ' + (d.points[0].x + 15) + ' ' + (d.points[0].y + 4.5)" stroke="#ffffff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                  </g>
+                }
+                @else if (d.toolId === 'arrow_right' && d.points.length >= 1) {
+                  <g class="arrow-right-badge">
+                    <circle [attr.cx]="d.points[0].x - 12" [attr.cy]="d.points[0].y" r="11" fill="#3b82f6" stroke="#ffffff" stroke-width="1.5" />
+                    <path [attr.d]="'M ' + (d.points[0].x - 15) + ' ' + (d.points[0].y - 4.5) + ' L ' + (d.points[0].x - 7.5) + ' ' + d.points[0].y + ' L ' + (d.points[0].x - 15) + ' ' + (d.points[0].y + 4.5)" stroke="#ffffff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                  </g>
+                }
+
+                <!-- 6. Geometric Rectangle & Measure Box -->
+                @else if (d.toolId === 'rectangle') {
+                  @if (getMeasureBox(d); as mb) {
+                    <rect
+                      [attr.x]="mb.x"
+                      [attr.y]="mb.y"
+                      [attr.width]="mb.w"
+                      [attr.height]="mb.h"
+                      [attr.fill]="d.fillColor || (d.color + '1a')"
+                      [attr.stroke]="d.color"
+                      [attr.stroke-width]="d.lineWidth" />
+                  }
+                }
+
+                <!-- Date Range -->
+                @else if (d.toolId === 'date_range' && d.points.length >= 2) {
+                  @if (getDateRange(d); as dr) {
+                    <rect [attr.x]="dr.x" y="0" [attr.width]="dr.w" height="3000" fill="rgba(37, 99, 235, 0.08)" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="3 3" />
+                    <rect [attr.x]="dr.x + dr.w/2 - 40" y="50" width="80" height="22" rx="4" fill="#1e293b" />
+                    <text [attr.x]="dr.x + dr.w/2" y="65" fill="#ffffff" class="svg-drawing-label center font-bold" text-anchor="middle">{{ dr.timeText }}</text>
+                  }
+                }
+
+                <!-- Price Range -->
+                @else if (d.toolId === 'price_range' && d.points.length >= 2) {
+                  @if (getPriceRange(d); as pr) {
+                    <rect x="0" [attr.y]="pr.y" width="3000" [attr.height]="pr.h" [attr.fill]="pr.isPositive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'" [attr.stroke]="pr.isPositive ? '#10b981' : '#ef4444'" stroke-width="1.5" stroke-dasharray="3 3" />
+                    <rect x="120" [attr.y]="pr.y + pr.h/2 - 12" width="110" height="24" rx="4" [attr.fill]="pr.isPositive ? '#047857' : '#b91c1c'" />
+                    <text x="175" [attr.y]="pr.y + pr.h/2 + 4" fill="#ffffff" class="svg-drawing-label center font-bold" text-anchor="middle">{{ pr.deltaPrice }} ({{ pr.deltaPct }})</text>
+                  }
+                }
+
+                <!-- Date and Price Range -->
+                @else if (d.toolId === 'date_price_range' && d.points.length >= 2) {
+                  @if (getDatePriceRange(d); as dpr) {
+                    <rect [attr.x]="dpr.x" [attr.y]="dpr.y" [attr.width]="dpr.w" [attr.height]="dpr.h" [attr.fill]="dpr.isPositive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)'" [attr.stroke]="dpr.isPositive ? '#10b981' : '#ef4444'" stroke-width="1.5" />
+                    <rect [attr.x]="dpr.x + dpr.w/2 - 60" [attr.y]="dpr.y + dpr.h/2 - 14" width="120" height="28" rx="4" fill="#0f172a" />
+                    <text [attr.x]="dpr.x + dpr.w/2" [attr.y]="dpr.y + dpr.h/2" fill="#ffffff" class="svg-drawing-label center font-bold" text-anchor="middle">{{ dpr.deltaPrice }} ({{ dpr.deltaPct }})</text>
+                    <text [attr.x]="dpr.x + dpr.w/2" [attr.y]="dpr.y + dpr.h/2 + 10" fill="#94a3b8" class="svg-drawing-label center" text-anchor="middle" font-size="8">{{ dpr.bars }} bars</text>
+                  }
+                }
+
+                <!-- Forecast Tool -->
+                @else if (d.toolId === 'forecast' && d.points.length >= 2) {
+                  @if (getForecast(d); as fc) {
+                    <polygon [attr.points]="fc.cone" fill="rgba(37, 99, 235, 0.1)" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 3" />
+                    <line [attr.x1]="fc.x1" [attr.y1]="fc.y1" [attr.x2]="fc.x2" [attr.y2]="fc.y2" stroke="#2563eb" stroke-width="2" stroke-dasharray="4 2" />
+                    <circle [attr.cx]="fc.x2" [attr.cy]="fc.y2" r="5" fill="#2563eb" />
+                    <rect [attr.x]="fc.x2 + 8" [attr.y]="fc.y2 - 16" width="90" height="24" rx="4" fill="#1e293b" />
+                    <text [attr.x]="fc.x2 + 14" [attr.y]="fc.y2 - 1" fill="#ffffff" class="svg-drawing-label font-bold">{{ fc.changePct }}</text>
+                  }
+                }
+
+                <!-- Bars Pattern, Ghost Feed & Projection -->
+                @else if ((d.toolId === 'bars_pattern' || d.toolId === 'ghost_feed' || d.toolId === 'projection') && d.points.length >= 2) {
+                  <polyline [attr.points]="getPointsPolyline(d.points)" fill="none" [attr.stroke]="d.color" stroke-width="2" stroke-dasharray="3 3" />
+                  <circle [attr.cx]="d.points[d.points.length - 1].x" [attr.cy]="d.points[d.points.length - 1].y" r="5" [attr.fill]="d.color" />
+                }
+
+                <!-- Volume Profile & Fixed Range Volume -->
+                @else if ((d.toolId === 'fixed_range_volume' || d.toolId === 'volume_profile') && d.points.length >= 2) {
+                  @if (getVolumeProfile(d); as vp) {
+                    <rect [attr.x]="vp.x" [attr.y]="vp.y" [attr.width]="vp.w" [attr.height]="vp.h" fill="rgba(241, 245, 249, 0.4)" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="2 2" />
+                    @for (b of vp.bars; track $index) {
+                      <rect [attr.x]="vp.x" [attr.y]="b.y" [attr.width]="b.w1" height="8" fill="rgba(37, 99, 235, 0.45)" />
+                      <rect [attr.x]="vp.x + b.w1" [attr.y]="b.y" [attr.width]="b.w2" height="8" fill="rgba(245, 158, 11, 0.45)" />
+                    }
+                    <!-- Point of Control (POC Line) -->
+                    <line [attr.x1]="vp.x" [attr.y1]="vp.pocY" [attr.x2]="vp.x + vp.w" [attr.y2]="vp.pocY" stroke="#ef4444" stroke-width="2" />
+                    <text [attr.x]="vp.x + vp.w + 4" [attr.y]="vp.pocY + 3" fill="#ef4444" class="svg-drawing-label font-bold">POC</text>
+                  }
+                }
+
+                <!-- Anchored VWAP -->
+                @else if (d.toolId === 'anchored_vwap' && d.points.length >= 1) {
+                  @if (getAnchoredVwap(d); as vwap) {
+                    <circle [attr.cx]="vwap.x1" [attr.cy]="vwap.y1" r="5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5" />
+                    <path [attr.d]="vwap.path" fill="none" stroke="#f59e0b" stroke-width="2.2" />
+                    <text [attr.x]="vwap.x1 + 10" [attr.y]="vwap.y1 - 6" fill="#b45309" class="svg-drawing-label font-bold">{{ vwap.label }}</text>
+                  }
+                }
+
+                <!-- Measure Tool -->
+                @else if (d.toolId === 'measure' && d.points.length >= 2) {
+                  @if (getMeasureData(d); as md) {
+                    <rect [attr.x]="md.x" [attr.y]="md.y" [attr.width]="md.w" [attr.height]="md.h" fill="rgba(37, 99, 235, 0.12)" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="3 3" />
+                    <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[1].x" [attr.y2]="d.points[1].y" stroke="#2563eb" stroke-width="1.5" />
+                    <rect [attr.x]="md.x + md.w / 2 - 55" [attr.y]="md.y + md.h / 2 - 18" width="110" height="36" rx="5" fill="#0f172a" opacity="0.95" />
+                    <text [attr.x]="md.x + md.w / 2" [attr.y]="md.y + md.h / 2 - 2" fill="#ffffff" class="svg-drawing-label center font-bold" text-anchor="middle">{{ md.deltaPrice }} ({{ md.deltaPct }})</text>
+                    <text [attr.x]="md.x + md.w / 2" [attr.y]="md.y + md.h / 2 + 10" fill="#94a3b8" class="svg-drawing-label center" text-anchor="middle" font-size="8">{{ md.bars }} bars, {{ md.pxDist }}px</text>
+                  }
+                }
+
+                <!-- Emoji Marker / Sticker / Icon -->
+                @else if (d.toolId === 'emoji_marker' && d.points.length >= 1) {
+                  @if (d.extraStats === 'emoji' || !d.extraStats) {
+                    <text
+                      [attr.x]="d.points[0].x"
+                      [attr.y]="d.points[0].y + 2"
+                      font-size="28"
+                      text-anchor="middle"
+                      dominant-baseline="central"
+                      style="user-select: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)); cursor: pointer;">
+                      {{ d.text || '🚀' }}
+                    </text>
+                  } @else if (d.extraStats === 'sticker') {
+                    <g class="annotation-sticker" (dblclick)="onDrawingDoubleClick(d, $event)">
+                      <rect [attr.x]="d.points[0].x - 60" [attr.y]="d.points[0].y - 18" width="120" height="34" rx="17" fill="#ffffff" stroke="#2563eb" stroke-width="2" style="filter: drop-shadow(0 3px 6px rgba(37,99,235,0.2));" />
+                      <text [attr.x]="d.points[0].x" [attr.y]="d.points[0].y + 4" class="svg-drawing-label font-bold" text-anchor="middle" fill="#1d4ed8" font-size="11">{{ d.text || 'Bullish' }}</text>
+                    </g>
+                  } @else if (d.extraStats === 'icon') {
+                    <g class="annotation-icon" (dblclick)="onDrawingDoubleClick(d, $event)">
+                      <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y" r="16" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5" />
+                      <text [attr.x]="d.points[0].x" [attr.y]="d.points[0].y + 2" font-size="16" text-anchor="middle" dominant-baseline="central">{{ d.text || '⭐' }}</text>
+                    </g>
+                  }
+                }
+
+                <!-- 7. Position Projection Overlay (Long / Short Risk-Reward) -->
+                @else if (d.toolId === 'long_position' || d.toolId === 'short_position') {
+                  @if (getPositionBox(d); as pb) {
+                    <g class="projection-box-group">
+                      <!-- Profit Target Zone (Green) -->
+                      <rect [attr.x]="pb.x" [attr.y]="d.toolId === 'long_position' ? pb.targetY : pb.entryY" [attr.width]="pb.w" [attr.height]="Math.abs(pb.targetY - pb.entryY)" fill="rgba(16, 185, 129, 0.25)" stroke="#10b981" stroke-width="1.5" />
+                      <!-- Stop Loss Zone (Red) -->
+                      <rect [attr.x]="pb.x" [attr.y]="d.toolId === 'long_position' ? pb.entryY : pb.slY" [attr.width]="pb.w" [attr.height]="Math.abs(pb.slY - pb.entryY)" fill="rgba(239, 68, 68, 0.25)" stroke="#ef4444" stroke-width="1.5" />
+                      <!-- Center Entry Line -->
+                      <line [attr.x1]="pb.x" [attr.y1]="pb.entryY" [attr.x2]="pb.x + pb.w" [attr.y2]="pb.entryY" stroke="#3b82f6" stroke-width="2" />
+                      <text [attr.x]="pb.x + 8" [attr.y]="pb.entryY - 4" fill="#1d4ed8" class="svg-drawing-label font-bold">ENTRY</text>
+                      <text [attr.x]="pb.x + 8" [attr.y]="pb.targetY - 4" fill="#047857" class="svg-drawing-label font-bold">TARGET (2.0 R:R)</text>
+                      <text [attr.x]="pb.x + 8" [attr.y]="pb.slY - 4" fill="#b91c1c" class="svg-drawing-label font-bold">STOP LOSS</text>
+                    </g>
+                  }
+                }
+
+                <!-- 8. Circles -->
+                @else if (d.toolId === 'circle' && d.points.length >= 2) {
+                  <circle
+                    [attr.cx]="d.points[0].x"
+                    [attr.cy]="d.points[0].y"
+                    [attr.r]="Math.hypot(d.points[1].x - d.points[0].x, d.points[1].y - d.points[0].y)"
+                    [attr.fill]="d.fillColor || (d.color + '1a')"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth" />
+                }
+
+                <!-- 9. Arrow Line -->
+                @else if (d.toolId === 'arrow' && d.points.length >= 2) {
+                  <line
+                    [attr.x1]="d.points[0].x"
+                    [attr.y1]="d.points[0].y"
+                    [attr.x2]="d.points[1].x"
+                    [attr.y2]="d.points[1].y"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth"
+                    marker-end="url(#arrowHead)" />
+                }
+
+                <!-- 10. Polyline, Patterns, Elliott Waves & Freehand Brush -->
+                @else if (d.points.length >= 2) {
+                  <polyline
+                    [attr.points]="getPointsPolyline(d.points)"
+                    [attr.stroke]="d.color"
+                    [attr.stroke-width]="d.lineWidth"
+                    fill="none"
+                    stroke-linecap="round"
+                    stroke-linejoin="round" />
+                }
+
+                <!-- 39. Text & Notes Group Tools -->
+                @else if (d.toolId === 'text' && d.points.length >= 1) {
+                  <g class="annotation-text-group" (dblclick)="onDrawingDoubleClick(d, $event)">
+                    <rect [attr.x]="d.points[0].x - 4" [attr.y]="d.points[0].y - 20" [attr.width]="Math.max(60, (d.text?.length || 10) * 8 + 16)" height="26" rx="4" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" />
+                    <text [attr.x]="d.points[0].x + 4" [attr.y]="d.points[0].y - 3" class="svg-text-note" [attr.fill]="d.color">{{ d.text || 'Annotation Text' }}</text>
+                  </g>
+                }
+
+                @else if (d.toolId === 'anchored_text' && d.points.length >= 1) {
+                  <g class="annotation-anchored-text" (dblclick)="onDrawingDoubleClick(d, $event)">
+                    <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y" r="4" [attr.fill]="d.color" />
+                    <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[0].x + 16" [attr.y2]="d.points[0].y - 22" [attr.stroke]="d.color" stroke-width="1.5" stroke-dasharray="2 2" />
+                    <rect [attr.x]="d.points[0].x + 16" [attr.y]="d.points[0].y - 34" [attr.width]="Math.max(70, (d.text?.length || 10) * 8 + 16)" height="24" rx="4" fill="#ffffff" [attr.stroke]="d.color" stroke-width="1.2" />
+                    <text [attr.x]="d.points[0].x + 22" [attr.y]="d.points[0].y - 18" class="svg-text-note" [attr.fill]="d.color">⚓ {{ d.text || 'Anchored Note' }}</text>
+                  </g>
+                }
+
+                @else if (d.toolId === 'note' && d.points.length >= 1) {
+                  <g class="annotation-note-card" (dblclick)="onDrawingDoubleClick(d, $event)">
+                    <rect [attr.x]="d.points[0].x" [attr.y]="d.points[0].y - 48" [attr.width]="Math.max(110, (d.text?.length || 10) * 8 + 20)" height="44" rx="6" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.2" />
+                    <rect [attr.x]="d.points[0].x" [attr.y]="d.points[0].y - 48" [attr.width]="Math.max(110, (d.text?.length || 10) * 8 + 20)" height="14" rx="6" [attr.fill]="d.color" />
+                    <text [attr.x]="d.points[0].x + 6" [attr.y]="d.points[0].y - 38" fill="#ffffff" font-size="9" font-weight="bold">NOTE</text>
+                    <text [attr.x]="d.points[0].x + 8" [attr.y]="d.points[0].y - 14" class="svg-text-note" fill="#1e293b">{{ d.text || 'Memo Note' }}</text>
+                  </g>
+                }
+
+                @else if (d.toolId === 'price_note' && d.points.length >= 1) {
+                  <g class="annotation-price-note" (dblclick)="onDrawingDoubleClick(d, $event)">
+                    <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[0].x + 15" [attr.y2]="d.points[0].y - 15" stroke="#f59e0b" stroke-width="1.5" />
+                    <rect [attr.x]="d.points[0].x + 15" [attr.y]="d.points[0].y - 28" [attr.width]="Math.max(100, (d.text?.length || 12) * 7.5 + 20)" height="26" rx="4" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5" />
+                    <text [attr.x]="d.points[0].x + 22" [attr.y]="d.points[0].y - 11" class="svg-text-note font-bold" fill="#b45309">🏷 {{ d.text || 'Price Note' }}</text>
+                  </g>
+                }
+
+                @else if (d.toolId === 'pin' && d.points.length >= 1) {
+                  <g class="annotation-pin" (dblclick)="onDrawingDoubleClick(d, $event)">
+                    <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[0].x + 10" [attr.y2]="d.points[0].y - 24" stroke="#ef4444" stroke-width="2" />
+                    <circle [attr.cx]="d.points[0].x + 10" [attr.cy]="d.points[0].y - 24" r="7" fill="#ef4444" stroke="#ffffff" stroke-width="1.5" />
+                    <circle [attr.cx]="d.points[0].x" [attr.cy]="d.points[0].y" r="3.5" fill="#ef4444" />
+                    <rect [attr.x]="d.points[0].x + 20" [attr.y]="d.points[0].y - 34" [attr.width]="Math.max(60, (d.text?.length || 8) * 8 + 14)" height="20" rx="3" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" />
+                    <text [attr.x]="d.points[0].x + 26" [attr.y]="d.points[0].y - 20" class="svg-text-note" fill="#0f172a">{{ d.text || 'Pin' }}</text>
+                  </g>
+                }
+
+                @else if (d.toolId === 'table' && d.points.length >= 1) {
+                  <g class="annotation-table-card" (dblclick)="onDrawingDoubleClick(d, $event)">
+                    @if (getTableRows(d); as rows) {
+                      <rect [attr.x]="d.points[0].x" [attr.y]="d.points[0].y" width="160" [attr.height]="24 + rows.length * 20" rx="4" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" />
+                      <rect [attr.x]="d.points[0].x" [attr.y]="d.points[0].y" width="160" height="22" rx="4" [attr.fill]="d.color" />
+                      <text [attr.x]="d.points[0].x + 8" [attr.y]="d.points[0].y + 15" fill="#ffffff" font-size="10" font-weight="bold">DATA TABLE</text>
+                      @for (r of rows; track $index) {
+                        <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y + 22 + ($index * 20)" [attr.x2]="d.points[0].x + 160" [attr.y2]="d.points[0].y + 22 + ($index * 20)" stroke="#f1f5f9" stroke-width="1" />
+                        <text [attr.x]="d.points[0].x + 8" [attr.y]="d.points[0].y + 36 + ($index * 20)" class="svg-drawing-label" fill="#64748b">{{ r.metric }}</text>
+                        <text [attr.x]="d.points[0].x + 152" [attr.y]="d.points[0].y + 36 + ($index * 20)" class="svg-drawing-label font-bold text-right" text-anchor="end" fill="#0f172a">{{ r.val }}</text>
+                      }
+                    }
+                  </g>
+                }
+
+                @else if (d.toolId === 'callout') {
+                  @if (getCalloutPath(d); as cp) {
+                    <g class="annotation-callout" (dblclick)="onDrawingDoubleClick(d, $event)">
+                      @if (cp.pointer) {
+                        <path [attr.d]="cp.pointer" [attr.fill]="d.fillColor || '#eff6ff'" [attr.stroke]="d.color" stroke-width="1.2" />
+                      }
+                      <rect [attr.x]="cp.bubble.x" [attr.y]="cp.bubble.y" [attr.width]="cp.bubble.w" [attr.height]="cp.bubble.h" rx="6" [attr.fill]="d.fillColor || '#ffffff'" [attr.stroke]="d.color" stroke-width="1.5" />
+                      <text [attr.x]="cp.bubble.x + 10" [attr.y]="cp.bubble.y + 23" class="svg-text-note" [attr.fill]="d.color">{{ d.text || 'Callout Note' }}</text>
+                    </g>
+                  }
+                }
+
+                @else if (d.toolId === 'comment' && d.points.length >= 1) {
+                  <g class="annotation-comment" (dblclick)="onDrawingDoubleClick(d, $event)">
+                    <path [attr.d]="'M ' + d.points[0].x + ' ' + d.points[0].y + ' L ' + (d.points[0].x + 10) + ' ' + (d.points[0].y - 12) + ' L ' + (d.points[0].x + 20) + ' ' + (d.points[0].y - 12) + ' Z'" [attr.fill]="d.color" />
+                    <rect [attr.x]="d.points[0].x + 10" [attr.y]="d.points[0].y - 36" [attr.width]="Math.max(70, (d.text?.length || 8) * 8 + 18)" height="26" rx="5" fill="#ffffff" [attr.stroke]="d.color" stroke-width="1.5" />
+                    <text [attr.x]="d.points[0].x + 18" [attr.y]="d.points[0].y - 19" class="svg-text-note" [attr.fill]="d.color">💬 {{ d.text || 'Comment' }}</text>
+                  </g>
+                }
+
+                @else if (d.toolId === 'price_label' && d.points.length >= 1) {
+                  <g class="annotation-price-label" (dblclick)="onDrawingDoubleClick(d, $event)">
+                    <polygon [attr.points]="d.points[0].x + ',' + d.points[0].y + ' ' + (d.points[0].x + 8) + ',' + (d.points[0].y - 11) + ' ' + (d.points[0].x + 75) + ',' + (d.points[0].y - 11) + ' ' + (d.points[0].x + 75) + ',' + (d.points[0].y + 11) + ' ' + (d.points[0].x + 8) + ',' + (d.points[0].y + 11)" [attr.fill]="d.color" stroke="#ffffff" stroke-width="1" />
+                    <text [attr.x]="d.points[0].x + 12" [attr.y]="d.points[0].y + 4" fill="#ffffff" class="svg-drawing-label font-bold">{{ d.text || (d.price ? d.price.toFixed(2) : '0.00') }}</text>
+                  </g>
+                }
+
+                @else if (d.toolId === 'signpost' && d.points.length >= 1) {
+                  <g class="annotation-signpost" (dblclick)="onDrawingDoubleClick(d, $event)">
+                    <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[0].x" [attr.y2]="d.points[0].y - 28" stroke="#64748b" stroke-width="2.5" />
+                    <polygon [attr.points]="(d.points[0].x - 4) + ',' + (d.points[0].y - 28) + ' ' + (d.points[0].x + Math.max(60, (d.text?.length || 8) * 8 + 10)) + ',' + (d.points[0].y - 28) + ' ' + (d.points[0].x + Math.max(70, (d.text?.length || 8) * 8 + 20)) + ',' + (d.points[0].y - 18) + ' ' + (d.points[0].x + Math.max(60, (d.text?.length || 8) * 8 + 10)) + ',' + (d.points[0].y - 8) + ' ' + (d.points[0].x - 4) + ',' + (d.points[0].y - 8)" [attr.fill]="d.color" stroke="#ffffff" stroke-width="1" />
+                    <text [attr.x]="d.points[0].x + 4" [attr.y]="d.points[0].y - 14.5" fill="#ffffff" class="svg-drawing-label font-bold">{{ d.text || 'Signpost' }}</text>
+                  </g>
+                }
+
+                @else if (d.toolId === 'flag_mark' && d.points.length >= 1) {
+                  <g class="annotation-flag-mark" (dblclick)="onDrawingDoubleClick(d, $event)">
+                    <line [attr.x1]="d.points[0].x" [attr.y1]="d.points[0].y" [attr.x2]="d.points[0].x" [attr.y2]="d.points[0].y - 32" stroke="#475569" stroke-width="2" />
+                    <polygon [attr.points]="d.points[0].x + ',' + (d.points[0].y - 32) + ' ' + (d.points[0].x + Math.max(50, (d.text?.length || 6) * 8 + 12)) + ',' + (d.points[0].y - 22) + ' ' + d.points[0].x + ',' + (d.points[0].y - 12)" [attr.fill]="d.color" stroke="#ffffff" stroke-width="1" />
+                    <text [attr.x]="d.points[0].x + 6" [attr.y]="d.points[0].y - 19" fill="#ffffff" class="svg-drawing-label font-bold">{{ d.text || 'Flag' }}</text>
+                  </g>
+                }
+
+                <!-- Selection Handles (When Drawing Item is Selected) -->
+                @if (selectedDrawingId() === d.id) {
+                  @for (pt of d.points; track $index) {
+                    <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="5" fill="#ffffff" stroke="#2563eb" stroke-width="2" class="selection-handle" />
+                  }
+                }
+              </g>
+            }
+          }
+
+          <!-- RENDER IN-PROGRESS DRAWING PREVIEW -->
+          @if (isDrawingActive() && inProgressPoints().length >= 2) {
+            <g class="in-progress-preview">
+              <polyline
+                [attr.points]="getPointsPolyline(inProgressPoints())"
+                [attr.stroke]="activeColor()"
+                [attr.stroke-width]="activeLineWidth()"
+                stroke-dasharray="4 4"
+                fill="none" />
+              @for (pt of inProgressPoints(); track $index) {
+                <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="4" [attr.fill]="activeColor()" opacity="0.7" />
+              }
+            </g>
+          }
+        </svg>
+
+        <!-- FLOATING DRAWING PROPERTIES TOOLBAR (WHEN DRAWING IS SELECTED) -->
+        @if (selectedDrawingId()) {
+          <div class="floating-drawing-props-bar" (click)="$event.stopPropagation()">
+            <div class="prop-colors-row">
+              @for (c of availableColors; track c) {
+                <button
+                  type="button"
+                  class="color-swatch-btn"
+                  [style.background]="c"
+                  [class.active]="activeColor() === c"
+                  (click)="setDrawingColor(c)">
+                </button>
+              }
+            </div>
+
+            <div class="prop-divider"></div>
+
+            <div class="prop-width-row">
+              <button type="button" class="btn-width-select" [class.active]="activeLineWidth() === 1" (click)="setDrawingLineWidth(1)">1px</button>
+              <button type="button" class="btn-width-select" [class.active]="activeLineWidth() === 2" (click)="setDrawingLineWidth(2)">2px</button>
+              <button type="button" class="btn-width-select" [class.active]="activeLineWidth() === 4" (click)="setDrawingLineWidth(4)">4px</button>
+            </div>
+
+            @if (selectedDrawing()?.text !== undefined) {
+              <div class="prop-divider"></div>
+              <input
+                type="text"
+                class="prop-text-input"
+                [value]="selectedDrawing()?.text || ''"
+                (input)="updateSelectedDrawingText($any($event.target).value)"
+                placeholder="Edit text / note..." />
+            }
+
+            <div class="prop-divider"></div>
+
+            <button type="button" class="btn-prop-icon btn-delete-drawing" (click)="deleteSelectedDrawing()" title="Delete Selected Drawing">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </div>
+        }
+
+        <!-- Shimmer Loading Overlay -->
           @if (isLoadingCandles()) {
             <div class="terminal-chart-loader">
               <div class="spinner-core"></div>

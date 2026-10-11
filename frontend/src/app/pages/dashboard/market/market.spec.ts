@@ -685,7 +685,247 @@ describe('MarketComponent', () => {
       }
     });
   });
+
+  describe('Synced Chart Toolbar & SVG Drawing Engine (Stock Details Parity)', () => {
+    it('should have all 12 tool groups matching Stock Details toolbar', () => {
+      const fixture = TestBed.createComponent(MarketComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const groups = component.drawingToolGroups();
+      expect(groups.length).toBe(12);
+
+      const expectedGroupIds = [
+        'cursor',
+        'lines',
+        'fibonacci',
+        'gann',
+        'patterns',
+        'projection',
+        'brushes',
+        'arrows',
+        'shapes',
+        'text_notes',
+        'volume',
+        'emoji_stickers'
+      ];
+      expect(groups.map(g => g.id)).toEqual(expectedGroupIds);
+    });
+
+    it('should render the left-vertical-toolbar and utility buttons in DOM', () => {
+      const fixture = TestBed.createComponent(MarketComponent);
+      fixture.detectChanges();
+
+      const compiled = fixture.nativeElement as HTMLElement;
+      expect(compiled.querySelector('.left-vertical-toolbar')).toBeTruthy();
+
+      const toolButtons = compiled.querySelectorAll('.v-tool-btn');
+      expect(toolButtons.length).toBeGreaterThanOrEqual(18); // 12 groups + 6 bottom utilities
+
+      expect(compiled.querySelector('.toolbar-separator')).toBeTruthy();
+      expect(compiled.querySelector('.delete-tool-btn')).toBeTruthy();
+    });
+
+    it('should open and close submenus when tool groups are selected', () => {
+      const fixture = TestBed.createComponent(MarketComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      expect(component.openToolGroupId()).toBeNull();
+
+      component.selectToolGroup('lines');
+      expect(component.openToolGroupId()).toBe('lines');
+
+      // Toggling same group closes it
+      component.selectToolGroup('lines');
+      expect(component.openToolGroupId()).toBeNull();
+
+      // Opening a different group
+      component.selectToolGroup('fibonacci');
+      expect(component.openToolGroupId()).toBe('fibonacci');
+
+      component.closeFlyout();
+      expect(component.openToolGroupId()).toBeNull();
+    });
+
+    it('should activate drawing tools and set activeToolGroupId', () => {
+      const fixture = TestBed.createComponent(MarketComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const linesGroup = component.getGroupById('lines')!;
+      const trendLineTool = linesGroup.tools.find(t => t.id === 'trend_line')!;
+
+      component.selectDrawingTool(linesGroup, trendLineTool);
+      expect(component.activeDrawingTool()?.id).toBe('trend_line');
+      expect(component.activeToolGroupId()).toBe('lines');
+      expect(component.openToolGroupId()).toBeNull();
+    });
+
+    it('should support Emoji, Stickers and Icon selection', () => {
+      const fixture = TestBed.createComponent(MarketComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      component.selectEmojiMarkerItem('🚀', 'emoji');
+      expect(component.activeEmojiMarker().text).toBe('🚀');
+      expect(component.activeDrawingTool()?.id).toBe('emoji_marker');
+      expect(component.activeToolGroupId()).toBe('emoji_stickers');
+
+      component.selectEmojiMarkerItem('Bullish Trend 🐂', 'sticker');
+      expect(component.activeEmojiMarker().text).toBe('Bullish Trend 🐂');
+      expect(component.activeEmojiMarker().type).toBe('sticker');
+    });
+
+    it('should toggle toolbar utility buttons: Measure, Magnet, Lock, Hide, Clear', () => {
+      const fixture = TestBed.createComponent(MarketComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      // Measure
+      component.activateMeasureTool();
+      expect(component.activeDrawingTool()?.id).toBe('measure');
+      expect(component.activeToolGroupId()).toBe('measure');
+
+      // Magnet
+      expect(component.isMagnetEnabled()).toBe(false);
+      component.toggleMagnet();
+      expect(component.isMagnetEnabled()).toBe(true);
+
+      // Lock
+      expect(component.areDrawingsLocked()).toBe(false);
+      component.toggleLockDrawings();
+      expect(component.areDrawingsLocked()).toBe(true);
+
+      // Hide
+      expect(component.areDrawingsHidden()).toBe(false);
+      component.toggleHideDrawings();
+      expect(component.areDrawingsHidden()).toBe(true);
+
+      // Add dummy drawing and clear
+      component.drawings.set([{
+        id: 'draw_test_1',
+        toolId: 'trend_line',
+        category: 'lines',
+        name: 'Trend Line',
+        points: [{ x: 10, y: 10 }, { x: 50, y: 50 }],
+        color: '#3b82f6',
+        fillColor: 'transparent',
+        lineWidth: 2,
+        lineStyle: 'solid' as const
+      }]);
+      expect(component.drawings().length).toBe(1);
+
+      component.clearAllDrawings();
+      expect(component.drawings().length).toBe(0);
+    });
+
+    it('should persist drawings per symbol in localStorage under market_drawings_<SYMBOL>', () => {
+      const fixture = TestBed.createComponent(MarketComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      component.selectedSymbol.set('AAPL');
+
+      component.drawings.set([{
+        id: 'draw_aapl_1',
+        toolId: 'horizontal_line',
+        category: 'lines',
+        name: 'Horizontal Line',
+        points: [{ x: 0, y: 150, price: 150 }],
+        color: '#10b981',
+        fillColor: 'transparent',
+        lineWidth: 2,
+        lineStyle: 'solid' as const
+      }]);
+
+      component.saveDrawingsForSymbol('AAPL');
+      const saved = localStorage.getItem('market_drawings_AAPL');
+      expect(saved).toBeTruthy();
+      expect(saved).toContain('draw_aapl_1');
+      expect(localStorage.getItem('stock_drawings_AAPL')).toBeNull(); // independent from Stock Details
+
+      // Test loadDrawingsForSymbol
+      component.drawings.set([]);
+      component.loadDrawingsForSymbol('AAPL');
+      expect(component.drawings().length).toBe(1);
+      expect(component.drawings()[0].id).toBe('draw_aapl_1');
+    });
+
+    it('should support selection, editing color, width, text and deletion', () => {
+      const fixture = TestBed.createComponent(MarketComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const item = {
+        id: 'draw_edit_1',
+        toolId: 'text',
+        category: 'text_notes',
+        name: 'Text Annotation',
+        points: [{ x: 100, y: 100 }],
+        color: '#3b82f6',
+        fillColor: '#3b82f622',
+        lineWidth: 2,
+        lineStyle: 'solid' as const,
+        text: 'Initial Note'
+      };
+      component.drawings.set([item]);
+
+      component.selectDrawing(item);
+      expect(component.selectedDrawingId()).toBe('draw_edit_1');
+      expect(component.selectedDrawing()?.text).toBe('Initial Note');
+
+      // Edit color
+      component.setDrawingColor('#ef4444');
+      expect(component.drawings()[0].color).toBe('#ef4444');
+
+      // Edit line width
+      component.setDrawingLineWidth(4);
+      expect(component.drawings()[0].lineWidth).toBe(4);
+
+      // Edit text
+      component.updateSelectedDrawingText('Updated Note');
+      expect(component.drawings()[0].text).toBe('Updated Note');
+
+      // Delete selected
+      component.deleteSelectedDrawing();
+      expect(component.drawings().length).toBe(0);
+      expect(component.selectedDrawingId()).toBeNull();
+    });
+
+    it('should cancel drawing and handle keyboard shortcuts', () => {
+      const fixture = TestBed.createComponent(MarketComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      component.activeDrawingTool.set({ id: 'ray', name: 'Ray', pointsRequired: 2, icon: '➡️' });
+      component.isDrawingActive.set(true);
+
+      component.onWindowKeyDown(new KeyboardEvent('keydown', { key: 'Escape' }));
+      expect(component.activeDrawingTool()).toBeNull();
+      expect(component.isDrawingActive()).toBe(false);
+
+      // Delete key with selected drawing
+      const testItem = {
+        id: 'draw_key_del',
+        toolId: 'line',
+        category: 'lines',
+        name: 'Line',
+        points: [{ x: 0, y: 0 }],
+        color: '#fff',
+        fillColor: 'transparent',
+        lineWidth: 1,
+        lineStyle: 'solid' as const
+      };
+      component.drawings.set([testItem]);
+      component.selectedDrawingId.set('draw_key_del');
+
+      component.onWindowKeyDown(new KeyboardEvent('keydown', { key: 'Delete' }));
+      expect(component.drawings().length).toBe(0);
+    });
+  });
 });
+
 
 
 
