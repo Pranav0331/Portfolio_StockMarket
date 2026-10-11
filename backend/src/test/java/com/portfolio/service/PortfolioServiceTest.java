@@ -36,6 +36,9 @@ class PortfolioServiceTest {
     @Mock
     private TradingService tradingService;
 
+    @Mock
+    private com.portfolio.repository.TransactionRepository transactionRepository;
+
     @InjectMocks
     private PortfolioService portfolioService;
 

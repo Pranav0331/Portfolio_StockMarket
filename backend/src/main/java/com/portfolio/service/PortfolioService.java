@@ -5,8 +5,12 @@ import com.portfolio.dto.portfolio.PortfolioSummaryDto;
 import com.portfolio.dto.trading.UserHoldingDto;
 import com.portfolio.entity.Holding;
 import com.portfolio.entity.Stock;
+import com.portfolio.entity.Transaction;
+import com.portfolio.entity.enums.TransactionStatus;
+import com.portfolio.entity.enums.TransactionType;
 import com.portfolio.repository.HoldingRepository;
 import com.portfolio.repository.StockRepository;
+import com.portfolio.repository.TransactionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -25,15 +29,18 @@ public class PortfolioService {
     private final HoldingRepository holdingRepository;
     private final StockRepository stockRepository;
     private final TradingService tradingService;
+    private final TransactionRepository transactionRepository;
 
     public PortfolioService(
             HoldingRepository holdingRepository,
             StockRepository stockRepository,
-            TradingService tradingService
+            TradingService tradingService,
+            TransactionRepository transactionRepository
     ) {
         this.holdingRepository = holdingRepository;
         this.stockRepository = stockRepository;
         this.tradingService = tradingService;
+        this.transactionRepository = transactionRepository;
     }
 
     @Transactional
@@ -169,6 +176,53 @@ public class PortfolioService {
             ));
         }
 
+        // -------------------------------------------------------------------------
+        // REALIZED P&L FROM COMPLETED EXIT TRADES & OVERALL TOTAL P&L CALCULATION
+        // -------------------------------------------------------------------------
+        BigDecimal totalRealizedPnL = BigDecimal.ZERO;
+        BigDecimal closedTradesCostBasis = BigDecimal.ZERO;
+
+        List<Transaction> transactions = transactionRepository.findByUserId(userId);
+        if (transactions != null) {
+            for (Transaction tx : transactions) {
+                if (tx.getStatus() != null && tx.getStatus() != TransactionStatus.SUCCESS) {
+                    continue;
+                }
+
+                if (tx.getPnl() != null) {
+                    totalRealizedPnL = totalRealizedPnL.add(tx.getPnl());
+                    if (tx.getAvgBuyPrice() != null && tx.getQuantity() != null) {
+                        closedTradesCostBasis = closedTradesCostBasis.add(
+                                tx.getAvgBuyPrice().multiply(tx.getQuantity()).setScale(4, RoundingMode.HALF_UP)
+                        );
+                    } else if (tx.getMarginUsed() != null && tx.getMarginUsed().compareTo(BigDecimal.ZERO) > 0) {
+                        closedTradesCostBasis = closedTradesCostBasis.add(tx.getMarginUsed());
+                    }
+                } else if (tx.getTransactionType() == TransactionType.SELL) {
+                    if (tx.getPricePerUnit() != null && tx.getAvgBuyPrice() != null && tx.getQuantity() != null) {
+                        BigDecimal pnl = tx.getPricePerUnit().subtract(tx.getAvgBuyPrice())
+                                .multiply(tx.getQuantity()).setScale(4, RoundingMode.HALF_UP);
+                        totalRealizedPnL = totalRealizedPnL.add(pnl);
+                        closedTradesCostBasis = closedTradesCostBasis.add(
+                                tx.getAvgBuyPrice().multiply(tx.getQuantity()).setScale(4, RoundingMode.HALF_UP)
+                        );
+                    }
+                }
+            }
+        }
+
+        // All-Time Total Profit/Loss = Realized P&L + Unrealized P&L
+        BigDecimal totalPnL = totalRealizedPnL.add(totalUnrealizedPnL).setScale(4, RoundingMode.HALF_UP);
+
+        // Denominator for total percentage return: cumulative cost basis across current holdings and closed trades
+        BigDecimal totalCostBasis = totalInvested.add(closedTradesCostBasis);
+        BigDecimal totalPnLPercent = BigDecimal.ZERO;
+        if (totalCostBasis.compareTo(BigDecimal.ZERO) > 0) {
+            totalPnLPercent = totalPnL.divide(totalCostBasis, 4, RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal("100"))
+                    .setScale(2, RoundingMode.HALF_UP);
+        }
+
         return new PortfolioSummaryDto(
                 cashBalance.setScale(2, RoundingMode.HALF_UP),
                 totalInvested.setScale(2, RoundingMode.HALF_UP),
@@ -180,7 +234,10 @@ public class PortfolioService {
                 cashAllocationPercent,
                 holdingDtos,
                 totalTodayPnL.setScale(2, RoundingMode.HALF_UP),
-                totalTodayPnLPercent
+                totalTodayPnLPercent,
+                totalRealizedPnL.setScale(2, RoundingMode.HALF_UP),
+                totalPnL.setScale(2, RoundingMode.HALF_UP),
+                totalPnLPercent
         );
     }
 

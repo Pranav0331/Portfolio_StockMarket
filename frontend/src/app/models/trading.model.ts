@@ -103,6 +103,9 @@ export interface PortfolioSummary {
   holdings: UserHolding[];
   todayPnL?: number;
   todayPnLPercent?: number;
+  totalRealizedPnL?: number;
+  totalPnL?: number;
+  totalPnLPercent?: number;
 }
 
 export interface TransactionItem {

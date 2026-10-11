@@ -95,7 +95,7 @@
     <div class="metric-card">
       <div class="metric-card-header">
         <span class="metric-label">Total Profit / Loss</span>
-        <div class="metric-icon-box icon-emerald">
+        <div class="metric-icon-box" [ngClass]="(portfolio()?.totalPnL != null ? portfolio()!.totalPnL! : (portfolio()?.totalUnrealizedPnL || 0)) >= 0 ? 'icon-emerald' : 'icon-rose'">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
             <polyline points="16 7 22 7 22 13"></polyline>
@@ -103,15 +103,15 @@
         </div>
       </div>
       <div class="metric-value-row">
-        <span class="metric-value font-mono" [ngClass]="(portfolio()?.totalUnrealizedPnL || 0) >= 0 ? 'cost-inflow' : 'cost-outflow'">
-          {{ (portfolio()?.totalUnrealizedPnL || 0) >= 0 ? '+' : '' }}${{ (portfolio()?.totalUnrealizedPnL || 0) | number:'1.2-2' }}
+        <span class="metric-value font-mono" [ngClass]="(portfolio()?.totalPnL != null ? portfolio()!.totalPnL! : (portfolio()?.totalUnrealizedPnL || 0)) >= 0 ? 'cost-inflow' : 'cost-outflow'">
+          {{ (portfolio()?.totalPnL != null ? portfolio()!.totalPnL! : (portfolio()?.totalUnrealizedPnL || 0)) >= 0 ? '+' : '' }}${{ (portfolio()?.totalPnL != null ? portfolio()!.totalPnL! : (portfolio()?.totalUnrealizedPnL || 0)) | number:'1.2-2' }}
         </span>
-        <span class="metric-change font-mono" [ngClass]="(portfolio()?.totalUnrealizedPnLPercent || 0) >= 0 ? 'bullish' : 'bearish'">
-          {{ (portfolio()?.totalUnrealizedPnLPercent || 0) >= 0 ? '+' : '' }}{{ (portfolio()?.totalUnrealizedPnLPercent || 0) | number:'1.2-2' }}%
+        <span class="metric-change font-mono" [ngClass]="(portfolio()?.totalPnLPercent != null ? portfolio()!.totalPnLPercent! : (portfolio()?.totalUnrealizedPnLPercent || 0)) >= 0 ? 'bullish' : 'bearish'">
+          {{ (portfolio()?.totalPnLPercent != null ? portfolio()!.totalPnLPercent! : (portfolio()?.totalUnrealizedPnLPercent || 0)) >= 0 ? '+' : '' }}{{ (portfolio()?.totalPnLPercent != null ? portfolio()!.totalPnLPercent! : (portfolio()?.totalUnrealizedPnLPercent || 0)) | number:'1.2-2' }}%
         </span>
       </div>
       <div class="metric-footer-row">
-        <span class="metric-subtext">All-time unrealized P&L</span>
+        <span class="metric-subtext">All-time realized & unrealized</span>
       </div>
     </div>
 

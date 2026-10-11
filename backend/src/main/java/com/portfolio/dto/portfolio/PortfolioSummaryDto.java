@@ -17,7 +17,10 @@ public record PortfolioSummaryDto(
         BigDecimal cashAllocationPercent,
         List<UserHoldingDto> holdings,
         BigDecimal todayPnL,
-        BigDecimal todayPnLPercent
+        BigDecimal todayPnLPercent,
+        BigDecimal totalRealizedPnL,
+        BigDecimal totalPnL,
+        BigDecimal totalPnLPercent
 ) {
     public PortfolioSummaryDto(
             BigDecimal cashBalance,
@@ -30,6 +33,26 @@ public record PortfolioSummaryDto(
             BigDecimal cashAllocationPercent,
             List<UserHoldingDto> holdings
     ) {
-        this(cashBalance, totalInvested, totalHoldingsMarketValue, totalPortfolioValue, totalUnrealizedPnL, totalUnrealizedPnLPercent, totalHoldingsCount, cashAllocationPercent, holdings, BigDecimal.ZERO, BigDecimal.ZERO);
+        this(cashBalance, totalInvested, totalHoldingsMarketValue, totalPortfolioValue,
+                totalUnrealizedPnL, totalUnrealizedPnLPercent, totalHoldingsCount, cashAllocationPercent,
+                holdings, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, totalUnrealizedPnL, totalUnrealizedPnLPercent);
+    }
+
+    public PortfolioSummaryDto(
+            BigDecimal cashBalance,
+            BigDecimal totalInvested,
+            BigDecimal totalHoldingsMarketValue,
+            BigDecimal totalPortfolioValue,
+            BigDecimal totalUnrealizedPnL,
+            BigDecimal totalUnrealizedPnLPercent,
+            int totalHoldingsCount,
+            BigDecimal cashAllocationPercent,
+            List<UserHoldingDto> holdings,
+            BigDecimal todayPnL,
+            BigDecimal todayPnLPercent
+    ) {
+        this(cashBalance, totalInvested, totalHoldingsMarketValue, totalPortfolioValue,
+                totalUnrealizedPnL, totalUnrealizedPnLPercent, totalHoldingsCount, cashAllocationPercent,
+                holdings, todayPnL, todayPnLPercent, BigDecimal.ZERO, totalUnrealizedPnL, totalUnrealizedPnLPercent);
     }
 }
