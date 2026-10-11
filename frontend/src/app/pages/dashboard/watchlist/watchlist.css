@@ -10,6 +10,7 @@
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
+  box-sizing: border-box;
 }
 
 /* Glass Card Base */
@@ -22,6 +23,8 @@
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
   padding: 1.5rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .glass-card:hover {
@@ -143,21 +146,21 @@
 .toolbar-card {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
   padding: 1.25rem 1.5rem;
 }
 
 .add-symbol-section {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   align-items: center;
-  flex-wrap: wrap;
+  width: 100%;
 }
 
 .search-input-wrapper {
   position: relative;
-  flex: 1;
-  min-width: 280px;
+  flex: 1 1 auto;
+  min-width: 220px;
 }
 
 .search-icon {
@@ -171,10 +174,12 @@
 
 .add-input {
   width: 100%;
+  height: 42px;
+  box-sizing: border-box;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.6rem;
-  padding: 0.65rem 1rem 0.65rem 2.6rem;
+  padding: 0 1rem 0 2.6rem;
   color: var(--text-primary, #f8fafc);
   font-size: 0.875rem;
   outline: none;
@@ -265,19 +270,23 @@
 
 .add-controls {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.65rem;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .category-select {
+  height: 42px;
+  box-sizing: border-box;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.6rem;
-  padding: 0.65rem 0.85rem;
+  padding: 0 0.85rem;
   color: var(--text-primary, #f8fafc);
   font-size: 0.85rem;
   outline: none;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .category-select option {
@@ -286,13 +295,15 @@
 }
 
 .btn-add-symbol {
+  height: 42px;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
   background: #10b981;
   color: #ffffff;
   border: none;
-  padding: 0.65rem 1.1rem;
+  padding: 0 1.15rem;
   border-radius: 0.6rem;
   font-size: 0.85rem;
   font-weight: 600;
@@ -336,26 +347,35 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
   gap: 1rem;
+  width: 100%;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .category-tabs {
   display: flex;
   gap: 0.4rem;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .tab-btn {
+  height: 34px;
+  box-sizing: border-box;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text-secondary, #94a3b8);
-  padding: 0.4rem 0.85rem;
+  padding: 0 0.85rem;
   border-radius: 0.5rem;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .tab-btn:hover {
@@ -371,7 +391,8 @@
 
 .filter-input-wrap {
   position: relative;
-  min-width: 220px;
+  width: 240px;
+  flex-shrink: 0;
 }
 
 .filter-icon {
@@ -385,10 +406,12 @@
 
 .filter-input {
   width: 100%;
+  height: 34px;
+  box-sizing: border-box;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0.5rem;
-  padding: 0.45rem 0.75rem 0.45rem 2.2rem;
+  padding: 0 0.75rem 0 2.2rem;
   color: var(--text-primary, #f8fafc);
   font-size: 0.8rem;
   outline: none;
@@ -513,17 +536,21 @@
   transform: translateY(-1px);
 }
 
-/* WATCHLIST GROUPS */
+/* WATCHLIST GROUPS & CATEGORIES */
 .watchlist-groups-container {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  width: 100%;
 }
 
 .category-section {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 1.25rem 1.5rem;
 }
 
 .section-header {
@@ -532,8 +559,9 @@
   align-items: center;
   cursor: pointer;
   user-select: none;
-  padding-bottom: 0.75rem;
+  padding-bottom: 0.85rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  width: 100%;
 }
 
 .section-title-wrap {
@@ -543,12 +571,13 @@
 }
 
 .category-icon {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .category-icon.indices { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
@@ -561,14 +590,18 @@
   font-weight: 700;
   color: var(--text-primary, #f8fafc);
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 .section-count {
   font-size: 0.75rem;
+  font-weight: 600;
   color: var(--text-muted, #64748b);
   background: rgba(255, 255, 255, 0.05);
-  padding: 0.15rem 0.5rem;
-  border-radius: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  margin-left: 0.25rem;
 }
 
 .btn-collapse {
@@ -579,7 +612,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.25rem;
+  padding: 0.35rem;
+  border-radius: 0.4rem;
+  transition: all 0.15s ease;
+}
+
+.btn-collapse:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary, #f8fafc);
 }
 
 .btn-collapse svg {
@@ -597,30 +637,33 @@
   font-size: 0.85rem;
 }
 
-/* WATCHLIST ITEMS GRID */
+/* ==========================================================================
+   WATCHLIST ITEMS GRID & ASSET CARDS
+   ========================================================================== */
 .watchlist-items-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
   gap: 1rem;
-}
-
-@media (max-width: 640px) {
-  .watchlist-items-grid {
-    grid-template-columns: 1fr;
-  }
+  align-items: stretch;
+  width: 100%;
 }
 
 .watchlist-card {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 0.75rem;
-  padding: 1rem 1.25rem;
+  padding: 0.95rem 1.15rem;
   display: flex;
-  align-items: center;
-  gap: 0.85rem;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.65rem;
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
+  container-type: inline-size;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
 }
 
 .watchlist-card:hover {
@@ -636,6 +679,24 @@
   border-color: #38bdf8;
 }
 
+/* Card Main Horizontal Bar */
+.card-main-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+/* Left Section: Drag Handle, Symbol, Badges, Company */
+.card-left-col {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .drag-handle {
   color: var(--text-muted, #64748b);
   cursor: grab;
@@ -645,6 +706,7 @@
   justify-content: center;
   opacity: 0.4;
   transition: opacity 0.15s ease;
+  flex-shrink: 0;
 }
 
 .watchlist-card:hover .drag-handle {
@@ -656,39 +718,45 @@
 }
 
 .item-primary-info {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
   min-width: 0;
+  overflow: hidden;
 }
 
 .sym-badge-row {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
+  flex-wrap: wrap;
 }
 
 .symbol-tag {
   font-weight: 700;
   font-size: 0.95rem;
   color: #38bdf8;
+  white-space: nowrap;
 }
 
 .exchange-tag {
   font-size: 0.675rem;
+  font-weight: 600;
   background: rgba(255, 255, 255, 0.06);
   color: var(--text-secondary, #94a3b8);
-  padding: 0.1rem 0.35rem;
+  padding: 0.12rem 0.38rem;
   border-radius: 0.25rem;
+  white-space: nowrap;
 }
 
 .provider-pill {
   font-size: 0.625rem;
+  font-weight: 500;
   background: rgba(59, 130, 246, 0.12);
   color: #60a5fa;
-  padding: 0.1rem 0.35rem;
+  padding: 0.12rem 0.38rem;
   border-radius: 0.25rem;
+  white-space: nowrap;
 }
 
 .company-title {
@@ -697,14 +765,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
 }
 
+/* Pricing Section: Live Price & Percentage Change */
 .item-pricing-info {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.2rem;
-  margin-right: 0.5rem;
+  justify-content: center;
+  gap: 0.15rem;
+  flex: 0 0 auto;
+  text-align: right;
+  min-width: 85px;
+  white-space: nowrap;
 }
 
 .price-val {
@@ -712,13 +786,17 @@
   font-weight: 700;
   color: var(--text-primary, #f8fafc);
   font-feature-settings: 'tnum';
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
 }
 
 .change-val {
   font-size: 0.75rem;
   font-weight: 600;
   display: flex;
+  align-items: center;
   gap: 0.2rem;
+  line-height: 1.2;
 }
 
 .change-val.profit { color: #10b981; }
@@ -730,22 +808,73 @@
   font-style: italic;
 }
 
+/* Actions Section: Analyze Button & Delete Icon */
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.btn-action-view {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 0 0.65rem;
+  height: 32px;
+  border-radius: 0.45rem;
+  font-size: 0.775rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.btn-action-view:hover {
+  background: #38bdf8;
+  color: #ffffff;
+}
+
+.btn-action-remove {
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  border: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 0.45rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.btn-action-remove:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
 /* LIVE HOLDING POSITION IN WATCHLIST CARD */
 .item-holding-info {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.4rem 0.6rem;
-  padding: 0.28rem 0.65rem;
+  padding: 0.35rem 0.65rem;
   border-radius: 6px;
   font-size: 0.70rem;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-[data-theme='light'] .item-holding-info {
-  background: rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .item-holding-info.pnl-pos {
@@ -773,48 +902,112 @@
   font-weight: 700;
 }
 
-.item-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
+/* Container query for narrow card layouts to prevent overlap */
+@container (max-width: 470px) {
+  .card-main-content {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 0.65rem 0.75rem;
+    align-items: center;
+  }
+
+  .card-left-col {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .item-pricing-info {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .item-actions {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 0.5rem;
+    margin-top: 0.1rem;
+    width: 100%;
+  }
 }
 
-.btn-action-view {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  background: rgba(56, 189, 248, 0.1);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  padding: 0.35rem 0.65rem;
-  border-radius: 0.4rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
+/* ==========================================================================
+   RESPONSIVE MEDIA QUERIES (DESKTOP, TABLET, MOBILE)
+   ========================================================================== */
+@media (max-width: 900px) {
+  .watchlist-items-grid {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
 }
 
-.btn-action-view:hover {
-  background: #38bdf8;
-  color: #ffffff;
-}
+@media (max-width: 640px) {
+  .watchlist-container {
+    padding: 1rem 0.75rem;
+    gap: 1rem;
+  }
 
-.btn-action-remove {
-  background: transparent;
-  color: var(--text-muted, #64748b);
-  border: none;
-  padding: 0.4rem;
-  border-radius: 0.4rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.15s ease, background 0.15s ease;
-}
+  .watchlist-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
 
-.btn-action-remove:hover {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.1);
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .toolbar-card {
+    padding: 1rem;
+  }
+
+  .add-symbol-section {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+
+  .search-input-wrapper {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .add-controls {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .category-select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .btn-add-symbol {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .filter-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .filter-input-wrap {
+    width: 100%;
+  }
+
+  .category-section {
+    padding: 1rem;
+  }
 }
 
 /* ==========================================================================
@@ -822,6 +1015,7 @@
    ========================================================================== */
 :host-context([data-theme="light"]) .glass-card,
 :host-context([data-theme="light"]) .toolbar-card,
+:host-context([data-theme="light"]) .category-section,
 :host-context([data-theme="light"]) .empty-watchlist-card {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
@@ -861,7 +1055,7 @@
 :host-context([data-theme="light"]) .empty-desc,
 :host-context([data-theme="light"]) .res-name,
 :host-context([data-theme="light"]) .company-title {
-  color: #334155 !important;
+  color: #475569 !important;
 }
 
 :host-context([data-theme="light"]) .time-lbl,
@@ -874,11 +1068,19 @@
 :host-context([data-theme="light"]) .empty-category-msg,
 :host-context([data-theme="light"]) .price-unavailable,
 :host-context([data-theme="light"]) .drag-handle {
-  color: #475569 !important;
+  color: #64748b !important;
 }
 
 :host-context([data-theme="light"]) .section-header {
   border-bottom: 1px solid #e2e8f0 !important;
+}
+
+:host-context([data-theme="light"]) .filter-row {
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+:host-context([data-theme="light"]) .card-main-content .item-actions {
+  border-top-color: #f1f5f9;
 }
 
 :host-context([data-theme="light"]) .add-input,
@@ -953,6 +1155,12 @@
   color: #475569 !important;
 }
 
+:host-context([data-theme="light"]) .provider-pill {
+  background: rgba(2, 132, 199, 0.08) !important;
+  border: 1px solid rgba(2, 132, 199, 0.2) !important;
+  color: #0284c7 !important;
+}
+
 :host-context([data-theme="light"]) .section-count {
   background: #f1f5f9 !important;
   border: 1px solid #e2e8f0 !important;
@@ -960,7 +1168,7 @@
 }
 
 :host-context([data-theme="light"]) .btn-action-view {
-  background: rgba(2, 132, 199, 0.1) !important;
+  background: rgba(2, 132, 199, 0.08) !important;
   color: #0284c7 !important;
   border-color: rgba(2, 132, 199, 0.3) !important;
 }
@@ -979,3 +1187,7 @@
   background: rgba(220, 38, 38, 0.1) !important;
 }
 
+:host-context([data-theme="light"]) .item-holding-info {
+  background: rgba(15, 23, 42, 0.03) !important;
+  border: 1px solid #e2e8f0 !important;
+}

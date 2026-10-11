@@ -261,41 +261,71 @@
                       (dragend)="onDragEnd()"
                       (click)="navigateToStock(item.symbol)"
                     >
-                      <!-- Drag Handle -->
-                      <div class="drag-handle" title="Drag to reorder" (click)="$event.stopPropagation()">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-                          <circle cx="9" cy="6" r="1.5"></circle>
-                          <circle cx="15" cy="6" r="1.5"></circle>
-                          <circle cx="9" cy="12" r="1.5"></circle>
-                          <circle cx="15" cy="12" r="1.5"></circle>
-                          <circle cx="9" cy="18" r="1.5"></circle>
-                          <circle cx="15" cy="18" r="1.5"></circle>
-                        </svg>
-                      </div>
+                      <div class="card-main-content">
+                        <!-- Left: Drag Handle, Symbol & Badges, Company -->
+                        <div class="card-left-col">
+                          <div class="drag-handle" title="Drag to reorder" (click)="$event.stopPropagation()">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                              <circle cx="9" cy="6" r="1.5"></circle>
+                              <circle cx="15" cy="6" r="1.5"></circle>
+                              <circle cx="9" cy="12" r="1.5"></circle>
+                              <circle cx="15" cy="12" r="1.5"></circle>
+                              <circle cx="9" cy="18" r="1.5"></circle>
+                              <circle cx="15" cy="18" r="1.5"></circle>
+                            </svg>
+                          </div>
 
-                      <!-- Symbol & Company Info -->
-                      <div class="item-primary-info">
-                        <div class="sym-badge-row">
-                          <span class="symbol-tag">{{ item.symbol }}</span>
-                          <span class="exchange-tag">{{ item.exchange }}</span>
-                          <span class="provider-pill">{{ item.provider }}</span>
+                          <div class="item-primary-info">
+                            <div class="sym-badge-row">
+                              <span class="symbol-tag">{{ item.symbol }}</span>
+                              <span class="exchange-tag">{{ item.exchange }}</span>
+                              <span class="provider-pill">{{ item.provider }}</span>
+                            </div>
+                            <span class="company-title" [title]="item.companyName">{{ item.companyName }}</span>
+                          </div>
                         </div>
-                        <span class="company-title" [title]="item.companyName">{{ item.companyName }}</span>
-                      </div>
 
-                      <!-- Price & Performance Metrics -->
-                      <div class="item-pricing-info">
-                        @if (item.priceAvailable && item.currentPrice !== null) {
-                          <div class="price-val">
-                            {{ getCurrencySymbol(item.currency) }}{{ item.currentPrice | number:'1.2-4' }}
-                          </div>
-                          <div class="change-val" [class.profit]="isPositiveChange(item.changePercent)" [class.loss]="isNegativeChange(item.changePercent)">
-                            <span>{{ item.change && item.change > 0 ? '+' : '' }}{{ item.change ? (item.change | number:'1.2-2') : '0.00' }}</span>
-                            <span class="pct">({{ item.changePercent || '0.00%' }})</span>
-                          </div>
-                        } @else {
-                          <span class="price-unavailable">Data unavailable</span>
-                        }
+                        <!-- Separate Aligned Pricing Section -->
+                        <div class="item-pricing-info">
+                          @if (item.priceAvailable && item.currentPrice !== null) {
+                            <div class="price-val">
+                              {{ getCurrencySymbol(item.currency) }}{{ item.currentPrice | number:'1.2-4' }}
+                            </div>
+                            <div class="change-val" [class.profit]="isPositiveChange(item.changePercent)" [class.loss]="isNegativeChange(item.changePercent)">
+                              <span>{{ item.change && item.change > 0 ? '+' : '' }}{{ item.change ? (item.change | number:'1.2-2') : '0.00' }}</span>
+                              <span class="pct">({{ item.changePercent || '0.00%' }})</span>
+                            </div>
+                          } @else {
+                            <span class="price-unavailable">Data unavailable</span>
+                          }
+                        </div>
+
+                        <!-- Right Aligned Actions -->
+                        <div class="item-actions" (click)="$event.stopPropagation()">
+                          <button 
+                            type="button" 
+                            class="btn-action-view" 
+                            (click)="navigateToStock(item.symbol)"
+                            title="View Technical Chart & Details"
+                          >
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                            </svg>
+                            <span>Analyze</span>
+                          </button>
+
+                          <button 
+                            type="button" 
+                            class="btn-action-remove" 
+                            (click)="removeItem(item, $event)"
+                            title="Remove from watchlist"
+                          >
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                          </button>
+                        </div>
                       </div>
 
                       <!-- Live Holding & P&L Info (If Owned) -->
@@ -306,33 +336,6 @@
                           <span class="h-pnl-tag">P&L: {{ (holding.unrealizedPnL || 0) >= 0 ? '+' : '' }}{{ getCurrencySymbol(item.currency) }}{{ holding.unrealizedPnL | number:'1.2-2' }} ({{ (holding.unrealizedPnLPercent || 0) >= 0 ? '+' : '' }}{{ holding.unrealizedPnLPercent | number:'1.2-2' }}%)</span>
                         </div>
                       }
-
-                      <!-- Actions -->
-                      <div class="item-actions" (click)="$event.stopPropagation()">
-                        <button 
-                          type="button" 
-                          class="btn-action-view" 
-                          (click)="navigateToStock(item.symbol)"
-                          title="View Technical Chart & Details"
-                        >
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                          </svg>
-                          <span>Analyze</span>
-                        </button>
-
-                        <button 
-                          type="button" 
-                          class="btn-action-remove" 
-                          (click)="removeItem(item, $event)"
-                          title="Remove from watchlist"
-                        >
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                          </svg>
-                        </button>
-                      </div>
                     </div>
                   }
                 </div>
