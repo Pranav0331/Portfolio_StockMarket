@@ -474,3 +474,316 @@ a {
   color: #991b1b !important;
 }
 
+/* ==========================================================================
+   MARKET CHART DRAWING TOOLS & SUBMENUS (LIGHT THEME GLOBAL OVERRIDES)
+   ========================================================================== */
+[data-theme="light"] app-market .left-vertical-toolbar {
+  background: #FFFFFF !important;
+  border-right: 1px solid #E2E8F0 !important;
+}
+
+[data-theme="light"] app-market .v-tool-btn {
+  background: transparent !important;
+  color: #475569 !important;
+  border-color: transparent !important;
+}
+
+[data-theme="light"] app-market .v-tool-btn svg {
+  stroke: #475569 !important;
+}
+
+[data-theme="light"] app-market .v-tool-btn:hover {
+  background: #F1F5F9 !important;
+  color: #1F2937 !important;
+  border-color: #E2E8F0 !important;
+}
+
+[data-theme="light"] app-market .v-tool-btn:hover svg {
+  stroke: #2563EB !important;
+}
+
+[data-theme="light"] app-market .v-tool-btn.active {
+  background: #DBEAFE !important;
+  border-color: #93C5FD !important;
+  color: #2563EB !important;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.15) !important;
+}
+
+[data-theme="light"] app-market .v-tool-btn.active svg {
+  stroke: #2563EB !important;
+}
+
+[data-theme="light"] app-market .v-tool-btn.has-active-tool {
+  background: #EFF6FF !important;
+  border-color: #93C5FD !important;
+}
+
+[data-theme="light"] app-market .v-tool-btn.has-active-tool svg {
+  stroke: #2563EB !important;
+}
+
+[data-theme="light"] app-market .toolbar-separator {
+  background: #E2E8F0 !important;
+}
+
+[data-theme="light"] app-market .v-tool-arrow {
+  color: #64748B !important;
+}
+
+[data-theme="light"] app-market .tool-popover {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] app-market .popover-category-header {
+  border-bottom: 1px solid #E2E8F0 !important;
+}
+
+[data-theme="light"] app-market .cat-title {
+  color: #1F2937 !important;
+}
+
+[data-theme="light"] app-market .cat-subtitle {
+  background: #F1F5F9 !important;
+  color: #64748B !important;
+}
+
+[data-theme="light"] app-market .btn-close-popover {
+  color: #64748B !important;
+}
+
+[data-theme="light"] app-market .btn-close-popover:hover {
+  background: #F1F5F9 !important;
+  color: #1F2937 !important;
+}
+
+[data-theme="light"] app-market .category-tool-item {
+  background: transparent !important;
+  color: #1F2937 !important;
+  border-color: transparent !important;
+}
+
+[data-theme="light"] app-market .tool-item-icon {
+  color: #475569 !important;
+}
+
+[data-theme="light"] app-market .category-tool-item:hover {
+  background: #F1F5F9 !important;
+  color: #1F2937 !important;
+  border-color: #E2E8F0 !important;
+}
+
+[data-theme="light"] app-market .category-tool-item:hover .tool-item-icon {
+  color: #2563EB !important;
+}
+
+[data-theme="light"] app-market .category-tool-item.active {
+  background: #DBEAFE !important;
+  color: #2563EB !important;
+  border-color: #BFDBFE !important;
+}
+
+[data-theme="light"] app-market .category-tool-item.active .tool-item-icon {
+  color: #2563EB !important;
+}
+
+[data-theme="light"] app-market .tool-shortcut {
+  background: #F1F5F9 !important;
+  color: #64748B !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+[data-theme="light"] app-market .category-tool-item.active .tool-shortcut {
+  background: #DBEAFE !important;
+  color: #1D4ED8 !important;
+  border-color: #BFDBFE !important;
+}
+
+[data-theme="light"] app-market .tool-pts-badge {
+  background: #EFF6FF !important;
+  color: #2563EB !important;
+  border: 1px solid #DBEAFE !important;
+}
+
+[data-theme="light"] app-market .category-tool-item.active .tool-pts-badge {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="light"] app-market .emoji-stickers-popover {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] app-market .emoji-stickers-popover .popover-category-header.emoji-panel-header {
+  background: #FFFFFF !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+}
+
+[data-theme="light"] app-market .emoji-stickers-popover .popover-category-header .cat-title {
+  color: #1F2937 !important;
+}
+
+[data-theme="light"] app-market .emoji-top-categories-bar {
+  background: #F8FAFC !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+}
+
+[data-theme="light"] app-market .emoji-cat-btn:hover {
+  background: #F1F5F9 !important;
+}
+
+[data-theme="light"] app-market .emoji-cat-btn.active {
+  background: #DBEAFE !important;
+  box-shadow: inset 0 0 0 1px #BFDBFE !important;
+}
+
+[data-theme="light"] app-market .emoji-category-title {
+  background: #FFFFFF !important;
+  color: #64748B !important;
+}
+
+[data-theme="light"] app-market .emoji-panel-content-area {
+  background: #FFFFFF !important;
+}
+
+[data-theme="light"] app-market .emoji-panel-content-area::-webkit-scrollbar-track {
+  background: #F8FAFC !important;
+}
+
+[data-theme="light"] app-market .emoji-panel-content-area::-webkit-scrollbar-thumb {
+  background: #CBD5E1 !important;
+}
+
+[data-theme="light"] app-market .emoji-cell:hover {
+  background: #F1F5F9 !important;
+}
+
+[data-theme="light"] app-market .emoji-cell.active {
+  background: #DBEAFE !important;
+}
+
+[data-theme="light"] app-market .sticker-item-btn-dark {
+  background: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+[data-theme="light"] app-market .sticker-item-btn-dark:hover {
+  background: #F1F5F9 !important;
+  border-color: #BFDBFE !important;
+}
+
+[data-theme="light"] app-market .sticker-item-btn-dark.active {
+  background: #DBEAFE !important;
+  border-color: #2563EB !important;
+}
+
+[data-theme="light"] app-market .sticker-pill-text-dark {
+  color: #1F2937 !important;
+}
+
+[data-theme="light"] app-market .sticker-item-btn-dark.active .sticker-pill-text-dark {
+  color: #2563EB !important;
+}
+
+[data-theme="light"] app-market .icon-item-btn-dark {
+  background: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+[data-theme="light"] app-market .icon-item-btn-dark:hover {
+  background: #F1F5F9 !important;
+  border-color: #BFDBFE !important;
+}
+
+[data-theme="light"] app-market .icon-item-btn-dark.active {
+  background: #DBEAFE !important;
+  border-color: #2563EB !important;
+}
+
+[data-theme="light"] app-market .icon-glyph-dark {
+  color: #475569 !important;
+}
+
+[data-theme="light"] app-market .icon-item-btn-dark:hover .icon-glyph-dark,
+[data-theme="light"] app-market .icon-item-btn-dark.active .icon-glyph-dark {
+  color: #2563EB !important;
+}
+
+[data-theme="light"] app-market .icon-lbl-dark {
+  color: #1F2937 !important;
+}
+
+[data-theme="light"] app-market .icon-item-btn-dark:hover .icon-lbl-dark,
+[data-theme="light"] app-market .icon-item-btn-dark.active .icon-lbl-dark {
+  color: #2563EB !important;
+}
+
+[data-theme="light"] app-market .emoji-bottom-tabs {
+  background: #F8FAFC !important;
+  border-top: 1px solid #E2E8F0 !important;
+}
+
+[data-theme="light"] app-market .emoji-bottom-tab-btn {
+  color: #64748B !important;
+}
+
+[data-theme="light"] app-market .emoji-bottom-tab-btn:hover {
+  color: #1F2937 !important;
+  background: #F1F5F9 !important;
+}
+
+[data-theme="light"] app-market .emoji-bottom-tab-btn.active {
+  color: #2563EB !important;
+  border-bottom-color: #2563EB !important;
+  background: #DBEAFE !important;
+}
+
+[data-theme="light"] app-market .floating-drawing-props-bar {
+  background: #FFFFFF !important;
+  border: 1px solid #CBD5E1 !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12) !important;
+}
+
+[data-theme="light"] app-market .prop-divider {
+  background: #E2E8F0 !important;
+}
+
+[data-theme="light"] app-market .btn-width-select {
+  background: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #475569 !important;
+}
+
+[data-theme="light"] app-market .btn-width-select:hover {
+  background: #F1F5F9 !important;
+  color: #1F2937 !important;
+}
+
+[data-theme="light"] app-market .btn-width-select.active {
+  background: #DBEAFE !important;
+  border-color: #3B82F6 !important;
+  color: #2563EB !important;
+}
+
+[data-theme="light"] app-market .prop-text-input {
+  background: #F8FAFC !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #1F2937 !important;
+}
+
+[data-theme="light"] app-market .prop-text-input:focus {
+  background: #FFFFFF !important;
+  border-color: #3B82F6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
+}
+
+[data-theme="light"] app-market .btn-prop-icon {
+  background: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #475569 !important;
+}
+
+

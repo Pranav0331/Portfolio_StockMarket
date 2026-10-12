@@ -923,6 +923,78 @@ describe('MarketComponent', () => {
       component.onWindowKeyDown(new KeyboardEvent('keydown', { key: 'Delete' }));
       expect(component.drawings().length).toBe(0);
     });
+
+    it('should correctly render all drawing tool submenus in both light and dark modes with complete metadata', () => {
+      const fixture = TestBed.createComponent(MarketComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const allGroups = [
+        'cursor',
+        'lines',
+        'fibonacci',
+        'gann',
+        'patterns',
+        'projection',
+        'brushes',
+        'arrows',
+        'shapes',
+        'text_notes',
+        'volume',
+        'emoji_stickers'
+      ];
+
+      // Test in light mode
+      document.documentElement.setAttribute('data-theme', 'light');
+
+      for (const groupId of allGroups) {
+        component.openToolGroupId.set(groupId);
+        fixture.detectChanges();
+
+        const compiled = fixture.nativeElement as HTMLElement;
+        const popover = compiled.querySelector('.tool-popover');
+        expect(popover).toBeTruthy();
+
+        const header = popover?.querySelector('.popover-category-header');
+        expect(header).toBeTruthy();
+
+        const title = header?.querySelector('.cat-title');
+        expect(title).toBeTruthy();
+        expect(title?.textContent?.trim().length).toBeGreaterThan(0);
+
+        const closeBtn = header?.querySelector('.btn-close-popover');
+        expect(closeBtn).toBeTruthy();
+
+        if (groupId === 'emoji_stickers') {
+          expect(popover?.classList.contains('emoji-stickers-popover')).toBe(true);
+          const tabs = popover?.querySelectorAll('.emoji-bottom-tab-btn');
+          expect(tabs?.length).toBe(3); // Emojis, Stickers, Icons
+        } else {
+          const toolItems = popover?.querySelectorAll('.category-tool-item');
+          expect(toolItems?.length).toBeGreaterThan(0);
+          const firstIcon = toolItems?.[0].querySelector('.tool-item-icon');
+          expect(firstIcon).toBeTruthy();
+          const firstName = toolItems?.[0].querySelector('.tool-name');
+          expect(firstName?.textContent?.trim().length).toBeGreaterThan(0);
+        }
+      }
+
+      // Switch to dark mode and verify
+      document.documentElement.setAttribute('data-theme', 'dark');
+
+      for (const groupId of allGroups) {
+        component.openToolGroupId.set(groupId);
+        fixture.detectChanges();
+
+        const compiled = fixture.nativeElement as HTMLElement;
+        const popover = compiled.querySelector('.tool-popover');
+        expect(popover).toBeTruthy();
+      }
+
+      // Cleanup
+      component.openToolGroupId.set(null);
+      fixture.detectChanges();
+    });
   });
 });
 
