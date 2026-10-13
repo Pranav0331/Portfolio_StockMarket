@@ -1,6 +1,7 @@
 package com.portfolio.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.portfolio.dto.trading.ResetBalanceRequestDto;
 import com.portfolio.dto.trading.TradeRequestDto;
 import com.portfolio.dto.trading.TradeResponseDto;
 import com.portfolio.dto.trading.UserHoldingDto;
@@ -31,6 +32,7 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -188,7 +190,53 @@ class TradingControllerTest {
     }
 
     @Test
-    @DisplayName("6. Unauthenticated requests to /api/trading endpoints return HTTP 401 Unauthorized")
+    @DisplayName("6. POST /api/trading/wallet/reset resets paper trading account with requested target balance")
+    void testResetBalanceEndpointWithTarget() throws Exception {
+        ResetBalanceRequestDto request = new ResetBalanceRequestDto(new BigDecimal("150000"));
+        VirtualWalletDto resetWallet = new VirtualWalletDto(
+                new BigDecimal("150000.00"),
+                BigDecimal.ZERO,
+                new BigDecimal("150000.00"),
+                "USD"
+        );
+
+        when(tradingService.resetCashBalance(eq(testUser.getId()), eq(new BigDecimal("150000"))))
+                .thenReturn(resetWallet);
+
+        mockMvc.perform(post("/api/trading/wallet/reset")
+                        .header("Authorization", "Bearer " + jwtToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cashBalance").value(150000.00))
+                .andExpect(jsonPath("$.totalInvested").value(0))
+                .andExpect(jsonPath("$.totalPortfolioValue").value(150000.00));
+    }
+
+    @Test
+    @DisplayName("7. POST /api/trading/wallet/reset resets paper trading account with default balance when body is empty")
+    void testResetBalanceEndpointDefaultBalance() throws Exception {
+        VirtualWalletDto resetWallet = new VirtualWalletDto(
+                new BigDecimal("100000.00"),
+                BigDecimal.ZERO,
+                new BigDecimal("100000.00"),
+                "USD"
+        );
+
+        when(tradingService.resetCashBalance(eq(testUser.getId()), isNull()))
+                .thenReturn(resetWallet);
+
+        mockMvc.perform(post("/api/trading/wallet/reset")
+                        .header("Authorization", "Bearer " + jwtToken)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cashBalance").value(100000.00))
+                .andExpect(jsonPath("$.totalInvested").value(0))
+                .andExpect(jsonPath("$.totalPortfolioValue").value(100000.00));
+    }
+
+    @Test
+    @DisplayName("8. Unauthenticated requests to /api/trading endpoints return HTTP 401 Unauthorized")
     void testUnauthenticatedTradingRejected() throws Exception {
         TradeRequestDto request = new TradeRequestDto("RELIANCE", new BigDecimal("10"));
 
@@ -201,6 +249,10 @@ class TradingControllerTest {
                 .andExpect(status().isUnauthorized());
 
         mockMvc.perform(get("/api/trading/holdings"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/trading/wallet/reset")
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
     }
 }

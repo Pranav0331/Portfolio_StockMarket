@@ -172,6 +172,11 @@ export class TradingService {
     return this.http.post<VirtualWallet>(`${this.baseUrl}/trading/wallet/reset`, body).pipe(
       tap(wallet => {
         this.wallet.set(wallet);
+        this.currentHolding.set(null);
+        this.holdings.set([]);
+        this.holdingsMap.set(new Map());
+        this.openPositions.set([]);
+        this.portfolio.set(null);
         this.getPortfolio().subscribe({ error: () => {} });
       })
     );

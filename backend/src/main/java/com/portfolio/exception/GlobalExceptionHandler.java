@@ -192,13 +192,16 @@ public class GlobalExceptionHandler {
             Exception ex,
             HttpServletRequest request
     ) {
-
         log.error("Unhandled server exception on path {}", request.getRequestURI(), ex);
+
+        String message = (ex.getMessage() != null && !ex.getMessage().isBlank())
+                ? ex.getMessage()
+                : "An unexpected internal error occurred";
 
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
-                "An unexpected internal error occurred",
+                message,
                 request.getRequestURI()
         );
 

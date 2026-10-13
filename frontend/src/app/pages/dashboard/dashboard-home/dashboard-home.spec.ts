@@ -271,5 +271,76 @@ describe('DashboardHomeComponent', () => {
     comp.navigateToStock('AAPL');
     expect(navigateSpy).toHaveBeenCalledWith(['/dashboard/stock', 'AAPL']);
   });
+
+  it('should not navigate to stock details for non-stock cash transactions', () => {
+    const navigateSpy = vi.spyOn(router, 'navigate');
+
+    const fixture = TestBed.createComponent(DashboardHomeComponent);
+    const comp = fixture.componentInstance;
+
+    comp.navigateToStock('WITHDRAWAL');
+    comp.navigateToStock('DEPOSIT');
+    comp.navigateToStock('CASH');
+    comp.navigateToStock('UNKNOWN');
+    expect(navigateSpy).not.toHaveBeenCalled();
+  });
+
+  it('should correctly classify amount outflows and inflows for transaction display', () => {
+    const fixture = TestBed.createComponent(DashboardHomeComponent);
+    const comp = fixture.componentInstance;
+
+    expect(comp.isAmountOutflow('BUY')).toBe(true);
+    expect(comp.isAmountOutflow('WITHDRAWAL')).toBe(true);
+    expect(comp.isAmountOutflow('SELL')).toBe(false);
+    expect(comp.isAmountOutflow('DEPOSIT')).toBe(false);
+    expect(comp.isAmountOutflow('DIVIDEND')).toBe(false);
+  });
+
+  it('should return correct badge classes for transaction types', () => {
+    const fixture = TestBed.createComponent(DashboardHomeComponent);
+    const comp = fixture.componentInstance;
+
+    expect(comp.getTransactionBadgeClass('BUY')).toBe('badge-buy');
+    expect(comp.getTransactionBadgeClass('SELL')).toBe('badge-sell');
+    expect(comp.getTransactionBadgeClass('DEPOSIT')).toBe('badge-deposit');
+    expect(comp.getTransactionBadgeClass('WITHDRAWAL')).toBe('badge-withdrawal');
+  });
+
+  it('should render meaningful symbols and subtitles, never UNKNOWN, and display WITHDRAWAL as outflow with negative sign', () => {
+    const withdrawalTx: any = {
+      transactionId: 111,
+      symbol: 'WITHDRAWAL',
+      companyName: 'Cash Withdrawal',
+      exchange: 'CASH',
+      currency: 'USD',
+      type: 'WITHDRAWAL',
+      status: 'EXECUTED',
+      quantity: 1,
+      executionPrice: 99000.0,
+      totalAmount: 99000.0,
+      executedAt: '2026-10-13T10:00:00Z'
+    };
+
+    const fixture = TestBed.createComponent(DashboardHomeComponent);
+    const comp = fixture.componentInstance;
+
+    expect(comp.getTransactionDisplaySymbol(withdrawalTx)).toBe('Cash Withdrawal');
+    expect(comp.getTransactionSubtitle(withdrawalTx)).toBe('Withdrawal from virtual balance');
+    expect(comp.isAmountOutflow(withdrawalTx.type)).toBe(true);
+
+    // Set recent transactions to include withdrawal
+    comp.recentTransactions.set([withdrawalTx]);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const amountSpan = compiled.querySelector('.recent-amount');
+    expect(amountSpan).not.toBeNull();
+    expect(amountSpan?.textContent).toContain('-$99,000.00');
+    expect(amountSpan?.classList.contains('cost-outflow')).toBe(true);
+    expect(amountSpan?.classList.contains('cost-inflow')).toBe(false);
+
+    const badge = compiled.querySelector('.tx-badge');
+    expect(badge?.classList.contains('badge-withdrawal')).toBe(true);
+  });
 });
 

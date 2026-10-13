@@ -328,16 +328,33 @@ class TradingServiceTest {
         VirtualWalletDto wallet = tradingService.resetCashBalance(1L, new BigDecimal("150000"));
 
         assertThat(wallet).isNotNull();
+        assertThat(wallet.cashBalance()).isEqualByComparingTo(new BigDecimal("150000"));
         verify(algoTradeLogRepository).deleteByUserId(1L);
         verify(transactionRepository).deleteByUserId(1L);
         verify(orderRepository).deleteByUserId(1L);
         verify(positionRepository).deleteByUserId(1L);
         verify(holdingRepository).deleteByUserId(1L);
         verify(algoStrategyRepository).findByUserIdOrderByCreatedAtDesc(1L);
-        verify(transactionRepository).save(argThat(tx ->
-                tx.getTransactionType() == TransactionType.DEPOSIT &&
-                tx.getTotalAmount().compareTo(new BigDecimal("50000")) == 0
-        ));
+        // Must NEVER create synthetic deposits or withdrawals
+        verify(transactionRepository, never()).save(any(Transaction.class));
+        verify(userRepository).save(argThat(u -> u.getVirtualBalance().compareTo(new BigDecimal("150000")) == 0));
+    }
+
+    @Test
+    @DisplayName("RESET BALANCE - Resetting to lower amount ($1,000) does not create synthetic WITHDRAWAL transaction")
+    void testResetCashBalanceToLowerAmountDoesNotCreateSyntheticWithdrawal() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(transactionRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
+        when(holdingRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
+        when(positionRepository.findByUserIdAndStatus(1L, PositionStatus.OPEN)).thenReturn(Collections.emptyList());
+        when(algoStrategyRepository.findByUserIdOrderByCreatedAtDesc(1L)).thenReturn(Collections.emptyList());
+
+        VirtualWalletDto wallet = tradingService.resetCashBalance(1L, new BigDecimal("1000"));
+
+        assertThat(wallet).isNotNull();
+        assertThat(wallet.cashBalance()).isEqualByComparingTo(new BigDecimal("1000"));
+        verify(transactionRepository, never()).save(any(Transaction.class));
+        verify(userRepository).save(argThat(u -> u.getVirtualBalance().compareTo(new BigDecimal("1000")) == 0));
     }
 
     @Test
@@ -392,5 +409,86 @@ class TradingServiceTest {
 
         assertThat(holdingsA).isEmpty();
         assertThat(holdingsB).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("RESET USER ISOLATION - Resetting user A never deletes or modifies user B data")
+    void testResetAccountUserIsolationDoesNotAffectOtherUserData() {
+        Long userA = 1L;
+        Long userB = 2L;
+
+        when(userRepository.findById(userA)).thenReturn(Optional.of(testUser));
+        when(transactionRepository.findByUserId(userA)).thenReturn(Collections.emptyList());
+        when(holdingRepository.findByUserId(userA)).thenReturn(Collections.emptyList());
+        when(positionRepository.findByUserIdAndStatus(userA, PositionStatus.OPEN)).thenReturn(Collections.emptyList());
+        when(algoStrategyRepository.findByUserIdOrderByCreatedAtDesc(userA)).thenReturn(Collections.emptyList());
+
+        VirtualWalletDto wallet = tradingService.resetCashBalance(userA, TradingService.DEFAULT_INITIAL_BALANCE);
+
+        assertThat(wallet).isNotNull();
+
+        // Must delete for user A
+        verify(algoTradeLogRepository).deleteByUserId(userA);
+        verify(transactionRepository).deleteByUserId(userA);
+        verify(orderRepository).deleteByUserId(userA);
+        verify(positionRepository).deleteByUserId(userA);
+        verify(holdingRepository).deleteByUserId(userA);
+
+        // Must NEVER delete for user B
+        verify(algoTradeLogRepository, never()).deleteByUserId(userB);
+        verify(transactionRepository, never()).deleteByUserId(userB);
+        verify(orderRepository, never()).deleteByUserId(userB);
+        verify(positionRepository, never()).deleteByUserId(userB);
+        verify(holdingRepository, never()).deleteByUserId(userB);
+    }
+
+    @Test
+    @DisplayName("RESET ROLLBACK ON FAILURE - Exception during purge propagates to trigger transaction rollback")
+    void testResetAccountRollbackOnFailure() {
+        Long userA = 1L;
+        when(userRepository.findById(userA)).thenReturn(Optional.of(testUser));
+        doThrow(new RuntimeException("Database foreign key or deadlock error"))
+                .when(positionRepository).deleteByUserId(userA);
+
+        assertThatThrownBy(() -> tradingService.resetCashBalance(userA, TradingService.DEFAULT_INITIAL_BALANCE))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Database foreign key or deadlock error");
+
+        // Subsequent steps must never execute
+        verify(holdingRepository, never()).deleteByUserId(userA);
+        verify(algoStrategyRepository, never()).findByUserIdOrderByCreatedAtDesc(anyLong());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("REGRESSION - Reset balance does not invoke detached lazy collections or trigger LazyInitializationException")
+    void testResetCashBalanceDoesNotTriggerLazyInitializationException() {
+        User lazyUser = spy(new User("lazy@example.com", "Lazy User"));
+        lazyUser.setId(1L);
+        lenient().doThrow(new org.hibernate.LazyInitializationException("failed to lazily initialize a collection of role: com.portfolio.entity.User.holdings: could not initialize proxy - no Session"))
+                .when(lazyUser).getHoldings();
+        lenient().doThrow(new org.hibernate.LazyInitializationException("failed to lazily initialize a collection of role: com.portfolio.entity.User.orders: could not initialize proxy - no Session"))
+                .when(lazyUser).getOrders();
+        lenient().doThrow(new org.hibernate.LazyInitializationException("failed to lazily initialize a collection of role: com.portfolio.entity.User.transactions: could not initialize proxy - no Session"))
+                .when(lazyUser).getTransactions();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(lazyUser));
+        when(transactionRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
+        when(holdingRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
+        when(positionRepository.findByUserIdAndStatus(1L, PositionStatus.OPEN)).thenReturn(Collections.emptyList());
+        when(algoStrategyRepository.findByUserIdOrderByCreatedAtDesc(1L)).thenReturn(Collections.emptyList());
+
+        VirtualWalletDto wallet = tradingService.resetCashBalance(1L, TradingService.DEFAULT_INITIAL_BALANCE);
+
+        assertThat(wallet).isNotNull();
+        assertThat(wallet.cashBalance()).isEqualByComparingTo(new BigDecimal("100000.00"));
+        verify(lazyUser, never()).getHoldings();
+        verify(lazyUser, never()).getOrders();
+        verify(lazyUser, never()).getTransactions();
+        verify(holdingRepository).deleteByUserId(1L);
+        verify(positionRepository).deleteByUserId(1L);
+        verify(orderRepository).deleteByUserId(1L);
+        verify(transactionRepository).deleteByUserId(1L);
+        verify(algoTradeLogRepository).deleteByUserId(1L);
     }
 }

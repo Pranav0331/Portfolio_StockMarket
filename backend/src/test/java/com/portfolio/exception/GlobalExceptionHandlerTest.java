@@ -43,6 +43,11 @@ class GlobalExceptionHandlerTest {
         public void triggerNotFound() {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Entity not found");
         }
+
+        @GetMapping("/generic-error")
+        public void triggerGenericError() {
+            throw new RuntimeException("Custom error description for debugging");
+        }
     }
 
     @Test
@@ -68,6 +73,17 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.error").value("Not Found"))
                 .andExpect(jsonPath("$.message").value("Entity not found"))
                 .andExpect(jsonPath("$.path").value("/test/not-found"));
+    }
+
+    @Test
+    @DisplayName("Unhandled Exception returns HTTP 500 with descriptive error message")
+    void testGenericException() throws Exception {
+        mockMvc.perform(get("/test/generic-error"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.error").value("Internal Server Error"))
+                .andExpect(jsonPath("$.message").value("Custom error description for debugging"))
+                .andExpect(jsonPath("$.path").value("/test/generic-error"));
     }
 
     @Test

@@ -116,7 +116,7 @@ export interface TransactionItem {
   companyName: string;
   exchange: string;
   currency: string;
-  type: 'BUY' | 'SELL';
+  type: 'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAWAL' | 'DIVIDEND' | string;
   status: string;
   tradingMode?: TradingMode | string;
   positionSide?: PositionSide | string;

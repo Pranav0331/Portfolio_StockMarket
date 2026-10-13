@@ -175,7 +175,7 @@ describe('TradingService', () => {
     req.flush(mockHolding);
   });
 
-  it('should reset paper trading account balance and update wallet', () => {
+  it('should reset paper trading account balance and update wallet and clear in-memory caches', () => {
     const mockWallet: VirtualWallet = {
       cashBalance: 150000,
       totalInvested: 0,
@@ -183,9 +183,29 @@ describe('TradingService', () => {
       currency: 'USD'
     };
 
+    // Pre-populate signals
+    service.currentHolding.set({
+      holdingId: 1,
+      symbol: 'BTC/USD',
+      companyName: 'Bitcoin',
+      exchange: 'CRYPTO',
+      currency: 'USD',
+      quantity: 0.01,
+      averageBuyPrice: 65000,
+      totalInvested: 650,
+      currentPrice: 68000,
+      currentValue: 680,
+      unrealizedPnL: 30,
+      unrealizedPnLPercent: 4.62
+    });
+    service.holdings.set([service.currentHolding()!]);
+
     service.resetCashBalance(150000).subscribe((res) => {
       expect(res.cashBalance).toBe(150000);
       expect(service.wallet()?.cashBalance).toBe(150000);
+      expect(service.currentHolding()).toBeNull();
+      expect(service.holdings()).toEqual([]);
+      expect(service.openPositions()).toEqual([]);
     });
 
     const resetReq = httpMock.expectOne('http://localhost:8080/api/trading/wallet/reset');

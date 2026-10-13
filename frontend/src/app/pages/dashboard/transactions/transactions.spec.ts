@@ -240,4 +240,83 @@ describe('TransactionsComponent', () => {
     expect(component.error()).toBeNull();
     expect(component.transactions().length).toBe(2);
   });
+
+  it('should correctly format transaction outflow signs and badge classes', () => {
+    const fixture = TestBed.createComponent(TransactionsComponent);
+    const component = fixture.componentInstance;
+
+    expect(component.isAmountOutflow('BUY')).toBe(true);
+    expect(component.isAmountOutflow('WITHDRAWAL')).toBe(true);
+    expect(component.isAmountOutflow('SELL')).toBe(false);
+    expect(component.isAmountOutflow('DEPOSIT')).toBe(false);
+
+    expect(component.getTransactionBadgeClass('BUY')).toBe('badge-buy');
+    expect(component.getTransactionBadgeClass('SELL')).toBe('badge-sell');
+    expect(component.getTransactionBadgeClass('DEPOSIT')).toBe('badge-deposit');
+    expect(component.getTransactionBadgeClass('WITHDRAWAL')).toBe('badge-withdrawal');
+  });
+
+  it('should guard navigateToStock against cash transactions and UNKNOWN symbols', () => {
+    const navigateSpy = vi.spyOn(router, 'navigate');
+    const fixture = TestBed.createComponent(TransactionsComponent);
+    const component = fixture.componentInstance;
+
+    expect(component.isTradeableStock('AAPL')).toBe(true);
+    expect(component.isTradeableStock('WITHDRAWAL')).toBe(false);
+    expect(component.isTradeableStock('DEPOSIT')).toBe(false);
+    expect(component.isTradeableStock('UNKNOWN')).toBe(false);
+
+    component.navigateToStock('WITHDRAWAL');
+    component.navigateToStock('UNKNOWN');
+    expect(navigateSpy).not.toHaveBeenCalled();
+
+    component.navigateToStock('AAPL');
+    expect(navigateSpy).toHaveBeenCalledWith(['/dashboard/stock', 'AAPL']);
+  });
+
+  it('should render WITHDRAWAL transaction with negative sign, cost-outflow, and no Trade link', () => {
+    const withdrawalTxResponse: TransactionPageResponse = {
+      content: [
+        {
+          transactionId: 201,
+          symbol: 'WITHDRAWAL',
+          companyName: 'Cash Withdrawal',
+          exchange: 'CASH',
+          currency: 'USD',
+          type: 'WITHDRAWAL',
+          status: 'EXECUTED',
+          quantity: 1,
+          executionPrice: 99000.0,
+          totalAmount: 99000.0,
+          fees: 0,
+          executedAt: '2026-10-13T10:00:00Z'
+        }
+      ],
+      page: 0,
+      size: 15,
+      totalElements: 1,
+      totalPages: 1,
+      first: true,
+      last: true
+    };
+
+    vi.spyOn(transactionService, 'getTransactions').mockReturnValue(of(withdrawalTxResponse));
+
+    const fixture = TestBed.createComponent(TransactionsComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const amountSpan = compiled.querySelector('.total-amount');
+    expect(amountSpan).not.toBeNull();
+    expect(amountSpan?.textContent).toContain('-$99,000.00');
+    expect(amountSpan?.classList.contains('cost-outflow')).toBe(true);
+    expect(amountSpan?.classList.contains('cost-inflow')).toBe(false);
+
+    const typeBadge = compiled.querySelector('.type-badge');
+    expect(typeBadge?.classList.contains('badge-withdrawal')).toBe(true);
+
+    const tradeLink = compiled.querySelector('.btn-stock-link');
+    expect(tradeLink).toBeNull(); // No trade link for cash transaction
+  });
 });

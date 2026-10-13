@@ -8,6 +8,7 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +50,9 @@ public class User {
 
     @Column(name = "provider_id")
     private String providerId;
+
+    @Column(name = "virtual_balance", nullable = false, precision = 19, scale = 4)
+    private BigDecimal virtualBalance = new BigDecimal("100000.0000");
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -203,5 +207,13 @@ public class User {
 
     public void setAlerts(List<Alert> alerts) {
         this.alerts = alerts;
+    }
+
+    public BigDecimal getVirtualBalance() {
+        return virtualBalance;
+    }
+
+    public void setVirtualBalance(BigDecimal virtualBalance) {
+        this.virtualBalance = virtualBalance;
     }
 }

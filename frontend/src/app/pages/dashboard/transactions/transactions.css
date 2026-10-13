@@ -351,9 +351,13 @@
 }
 
 .tx-row {
-  cursor: pointer;
+  cursor: default;
   transition: background 0.15s ease;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.tx-row.cursor-pointer {
+  cursor: pointer;
 }
 
 .tx-row:hover {
@@ -412,6 +416,18 @@
   background: rgba(239, 68, 68, 0.15);
   color: #f87171;
   border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-deposit {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.badge-withdrawal {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
 /* Type cluster */

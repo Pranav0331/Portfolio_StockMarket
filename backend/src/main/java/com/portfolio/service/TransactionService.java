@@ -146,10 +146,37 @@ public class TransactionService {
 
     private TransactionDto mapToDto(Transaction t, Map<String, BigDecimal> currentPricesCache) {
         Stock stock = t.getStock();
-        String symbol = stock != null ? stock.getSymbol() : "UNKNOWN";
-        String companyName = stock != null && stock.getCompanyName() != null ? stock.getCompanyName() : symbol;
-        String exchange = stock != null && stock.getExchange() != null ? stock.getExchange() : "NSE";
-        String currency = stock != null && stock.getCurrency() != null ? stock.getCurrency() : "USD";
+        String symbol;
+        String companyName;
+        String exchange;
+        String currency;
+
+        if (stock != null) {
+            symbol = (stock.getSymbol() != null && !stock.getSymbol().isBlank()) ? stock.getSymbol() : "ASSET";
+            companyName = (stock.getCompanyName() != null && !stock.getCompanyName().isBlank()) ? stock.getCompanyName() : symbol;
+            exchange = (stock.getExchange() != null && !stock.getExchange().isBlank()) ? stock.getExchange() : "NSE";
+            currency = (stock.getCurrency() != null && !stock.getCurrency().isBlank()) ? stock.getCurrency() : "USD";
+        } else {
+            exchange = "CASH";
+            currency = "USD";
+            TransactionType type = t.getTransactionType();
+            if (type == TransactionType.DEPOSIT) {
+                symbol = "DEPOSIT";
+                companyName = "Cash Deposit";
+            } else if (type == TransactionType.WITHDRAWAL) {
+                symbol = "WITHDRAWAL";
+                companyName = "Cash Withdrawal";
+            } else if (type == TransactionType.DIVIDEND) {
+                symbol = "DIVIDEND";
+                companyName = "Cash Dividend";
+            } else if (type != null) {
+                symbol = type.name();
+                companyName = type.name().replace("_", " ");
+            } else {
+                symbol = "CASH";
+                companyName = "Cash Adjustment";
+            }
+        }
 
         Long orderId = t.getOrder() != null ? t.getOrder().getId() : null;
 
@@ -171,11 +198,14 @@ public class TransactionService {
         if (executionPrice == null && t.getOrder() != null) {
             executionPrice = t.getOrder().getExecutedPrice();
         }
+        if (executionPrice == null && t.getTotalAmount() != null) {
+            executionPrice = t.getTotalAmount();
+        }
         if (executionPrice == null) {
             executionPrice = BigDecimal.ZERO;
         }
 
-        BigDecimal quantity = t.getQuantity() != null ? t.getQuantity() : BigDecimal.ZERO;
+        BigDecimal quantity = t.getQuantity() != null ? t.getQuantity() : (stock == null ? BigDecimal.ONE : BigDecimal.ZERO);
         BigDecimal totalAmount = t.getTotalAmount() != null ? t.getTotalAmount() : executionPrice.multiply(quantity).setScale(4, RoundingMode.HALF_UP);
         BigDecimal fees = t.getFees() != null ? t.getFees() : BigDecimal.ZERO;
 
@@ -255,7 +285,12 @@ public class TransactionService {
     }
 
     private BigDecimal getRealCurrentPrice(String symbol, Stock stock, Map<String, BigDecimal> cache) {
-        if (symbol == null || symbol.isBlank() || "UNKNOWN".equalsIgnoreCase(symbol)) {
+        if (symbol == null || symbol.isBlank()
+                || "UNKNOWN".equalsIgnoreCase(symbol)
+                || "CASH".equalsIgnoreCase(symbol)
+                || "DEPOSIT".equalsIgnoreCase(symbol)
+                || "WITHDRAWAL".equalsIgnoreCase(symbol)
+                || "DIVIDEND".equalsIgnoreCase(symbol)) {
             return stock != null ? stock.getCurrentPrice() : null;
         }
 

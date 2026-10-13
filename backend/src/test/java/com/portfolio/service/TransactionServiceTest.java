@@ -197,4 +197,67 @@ class TransactionServiceTest {
                 null, null, null, null, null, null, 0, 10, "desc"
         )).isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    @DisplayName("7. Cash transactions with null stock map to meaningful symbols and descriptions, never UNKNOWN")
+    void testMapCashTransactionsDoNotShowUnknown() {
+        Transaction txDeposit = new Transaction();
+        txDeposit.setId(201L);
+        txDeposit.setUser(testUser);
+        txDeposit.setStock(null);
+        txDeposit.setTransactionType(TransactionType.DEPOSIT);
+        txDeposit.setStatus(TransactionStatus.SUCCESS);
+        txDeposit.setTotalAmount(new BigDecimal("10000.00"));
+        txDeposit.setCreatedAt(Instant.now());
+
+        Transaction txWithdrawal = new Transaction();
+        txWithdrawal.setId(202L);
+        txWithdrawal.setUser(testUser);
+        txWithdrawal.setStock(null);
+        txWithdrawal.setTransactionType(TransactionType.WITHDRAWAL);
+        txWithdrawal.setStatus(TransactionStatus.SUCCESS);
+        txWithdrawal.setTotalAmount(new BigDecimal("500.00"));
+        txWithdrawal.setCreatedAt(Instant.now());
+
+        Transaction txDividend = new Transaction();
+        txDividend.setId(203L);
+        txDividend.setUser(testUser);
+        txDividend.setStock(null);
+        txDividend.setTransactionType(TransactionType.DIVIDEND);
+        txDividend.setStatus(TransactionStatus.SUCCESS);
+        txDividend.setTotalAmount(new BigDecimal("75.50"));
+        txDividend.setCreatedAt(Instant.now());
+
+        when(transactionRepository.findUserTransactions(
+                eq(10L), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of(txDeposit, txWithdrawal, txDividend)));
+
+        PageResponseDto<TransactionDto> result = transactionService.getUserTransactions(
+                10L, null, null, null, null, null, 0, 10, "desc"
+        );
+
+        assertThat(result.content()).hasSize(3);
+
+        TransactionDto depositDto = result.content().get(0);
+        assertThat(depositDto.symbol()).isEqualTo("DEPOSIT");
+        assertThat(depositDto.companyName()).isEqualTo("Cash Deposit");
+        assertThat(depositDto.exchange()).isEqualTo("CASH");
+        assertThat(depositDto.totalAmount()).isEqualByComparingTo("10000.00");
+        assertThat(depositDto.executionPrice()).isEqualByComparingTo("10000.00");
+        assertThat(depositDto.type()).isEqualTo("DEPOSIT");
+
+        TransactionDto withdrawalDto = result.content().get(1);
+        assertThat(withdrawalDto.symbol()).isEqualTo("WITHDRAWAL");
+        assertThat(withdrawalDto.companyName()).isEqualTo("Cash Withdrawal");
+        assertThat(withdrawalDto.exchange()).isEqualTo("CASH");
+        assertThat(withdrawalDto.totalAmount()).isEqualByComparingTo("500.00");
+        assertThat(withdrawalDto.type()).isEqualTo("WITHDRAWAL");
+
+        TransactionDto dividendDto = result.content().get(2);
+        assertThat(dividendDto.symbol()).isEqualTo("DIVIDEND");
+        assertThat(dividendDto.companyName()).isEqualTo("Cash Dividend");
+        assertThat(dividendDto.exchange()).isEqualTo("CASH");
+        assertThat(dividendDto.totalAmount()).isEqualByComparingTo("75.50");
+        assertThat(dividendDto.type()).isEqualTo("DIVIDEND");
+    }
 }

@@ -242,7 +242,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let tx of transactions()" class="tx-row" (click)="navigateToStock(tx.symbol)">
+          <tr *ngFor="let tx of transactions()" class="tx-row" [class.cursor-pointer]="isTradeableStock(tx.symbol)" (click)="navigateToStock(tx.symbol)">
             <!-- Date & Time -->
             <td class="td-date">
               <div class="date-wrap">
@@ -254,7 +254,7 @@
             <!-- BUY / SELL Type + Side -->
             <td class="td-type">
               <div class="type-cluster">
-                <span class="type-badge" [ngClass]="tx.type === 'BUY' ? 'badge-buy' : 'badge-sell'">
+                <span class="type-badge" [ngClass]="getTransactionBadgeClass(tx.type)">
                   {{ tx.type }}
                 </span>
                 <span *ngIf="tx.positionSide" class="side-mini-tag" [ngClass]="tx.positionSide === 'LONG' ? 'side-long' : 'side-short'">
@@ -279,7 +279,7 @@
             <td class="td-symbol">
               <div class="symbol-info">
                 <div class="symbol-line">
-                  <span class="symbol-code">{{ tx.symbol }}</span>
+                  <span class="symbol-code">{{ getTransactionDisplaySymbol(tx) }}</span>
                   <span class="exchange-tag">{{ tx.exchange }}</span>
                 </div>
                 <span class="company-name" [title]="tx.companyName">{{ tx.companyName }}</span>
@@ -316,8 +316,8 @@
 
             <!-- Total Amount -->
             <td class="td-num font-mono">
-              <span class="total-amount" [ngClass]="tx.type === 'BUY' ? 'cost-outflow' : 'cost-inflow'">
-                {{ tx.type === 'BUY' ? '-' : '+' }}{{ getCurrencySymbol(tx.currency) }}{{ tx.totalAmount | number:'1.2-2' }}
+              <span class="total-amount" [ngClass]="isAmountOutflow(tx.type) ? 'cost-outflow' : 'cost-inflow'">
+                {{ isAmountOutflow(tx.type) ? '-' : '+' }}{{ getCurrencySymbol(tx.currency) }}{{ tx.totalAmount | number:'1.2-2' }}
               </span>
             </td>
 
@@ -343,9 +343,10 @@
 
             <!-- Trade / View Action -->
             <td class="td-action" (click)="$event.stopPropagation()">
-              <a [routerLink]="['/dashboard/stock', tx.symbol]" class="btn-stock-link" title="View details and trade chart">
+              <a *ngIf="isTradeableStock(tx.symbol)" [routerLink]="['/dashboard/stock', tx.symbol]" class="btn-stock-link" title="View details and trade chart">
                 Trade
               </a>
+              <span *ngIf="!isTradeableStock(tx.symbol)" class="text-dim">—</span>
             </td>
           </tr>
         </tbody>

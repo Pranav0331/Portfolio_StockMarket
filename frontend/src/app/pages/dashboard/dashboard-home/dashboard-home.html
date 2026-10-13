@@ -273,22 +273,22 @@
       } @else {
         <div class="recent-list">
           @for (tx of recentTransactions(); track tx.transactionId) {
-            <div class="recent-row" (click)="navigateToStock(tx.symbol)">
+            <div class="recent-row" [class.cursor-pointer]="isTradeableStock(tx.symbol)" (click)="navigateToStock(tx.symbol)">
               <div class="recent-left">
-                <span class="tx-badge" [ngClass]="tx.type === 'BUY' ? 'badge-buy' : 'badge-sell'">
+                <span class="tx-badge" [ngClass]="getTransactionBadgeClass(tx.type)">
                   {{ tx.type }}
                 </span>
                 <div class="recent-info">
                   <div class="recent-sym-line">
-                    <span class="sym-name">{{ tx.symbol }}</span>
+                    <span class="sym-name">{{ getTransactionDisplaySymbol(tx) }}</span>
                     <span class="recent-date">{{ tx.executedAt | date:'MMM d, hh:mm a' }}</span>
                   </div>
-                  <span class="recent-sub">Qty: {{ tx.quantity | number:'1.0-4' }} @ ${{ tx.executionPrice | number:'1.2-4' }}</span>
+                  <span class="recent-sub">{{ getTransactionSubtitle(tx) }}</span>
                 </div>
               </div>
               <div class="recent-right font-mono">
-                <span class="recent-amount" [ngClass]="tx.type === 'BUY' ? 'cost-outflow' : 'cost-inflow'">
-                  {{ tx.type === 'BUY' ? '-' : '+' }}${{ tx.totalAmount | number:'1.2-2' }}
+                <span class="recent-amount" [ngClass]="isAmountOutflow(tx.type) ? 'cost-outflow' : 'cost-inflow'">
+                  {{ isAmountOutflow(tx.type) ? '-' : '+' }}${{ tx.totalAmount | number:'1.2-2' }}
                 </span>
                 <span class="recent-status">{{ tx.status }}</span>
               </div>

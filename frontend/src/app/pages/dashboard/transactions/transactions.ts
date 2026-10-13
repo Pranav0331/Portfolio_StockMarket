@@ -155,8 +155,48 @@ export class TransactionsComponent implements OnInit {
   }
 
   navigateToStock(symbol: string): void {
-    if (!symbol) return;
+    if (!symbol || !this.isTradeableStock(symbol)) return;
     this.router.navigate(['/dashboard/stock', symbol]);
+  }
+
+  isTradeableStock(symbol?: string): boolean {
+    if (!symbol) return false;
+    const s = symbol.trim().toUpperCase();
+    return s !== 'UNKNOWN' && s !== 'CASH' && s !== 'DEPOSIT' && s !== 'WITHDRAWAL' && s !== 'DIVIDEND';
+  }
+
+  isAmountOutflow(type?: string): boolean {
+    if (!type) return false;
+    const t = type.trim().toUpperCase();
+    return t === 'BUY' || t === 'WITHDRAWAL';
+  }
+
+  getTransactionBadgeClass(type?: string): string {
+    if (!type) return 'badge-sell';
+    const t = type.trim().toUpperCase();
+    if (t === 'BUY') return 'badge-buy';
+    if (t === 'SELL') return 'badge-sell';
+    if (t === 'DEPOSIT') return 'badge-deposit';
+    if (t === 'WITHDRAWAL') return 'badge-withdrawal';
+    if (t === 'DIVIDEND') return 'badge-deposit';
+    return 'badge-sell';
+  }
+
+  getTransactionDisplaySymbol(tx: TransactionItem): string {
+    if (tx.symbol && this.isTradeableStock(tx.symbol)) {
+      return tx.symbol;
+    }
+    if (tx.companyName && tx.companyName !== 'UNKNOWN') {
+      return tx.companyName;
+    }
+    if (tx.type) {
+      const t = tx.type.toUpperCase();
+      if (t === 'DEPOSIT') return 'Cash Deposit';
+      if (t === 'WITHDRAWAL') return 'Cash Withdrawal';
+      if (t === 'DIVIDEND') return 'Cash Dividend';
+      return t;
+    }
+    return 'Cash Transaction';
   }
 
   getCurrencySymbol(currency?: string): string {

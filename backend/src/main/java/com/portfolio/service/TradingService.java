@@ -1057,7 +1057,10 @@ public class TradingService {
     }
 
     public BigDecimal calculateCashBalance(Long userId) {
-        BigDecimal balance = DEFAULT_INITIAL_BALANCE;
+        User user = userRepository.findById(userId).orElse(null);
+        BigDecimal balance = (user != null && user.getVirtualBalance() != null)
+                ? user.getVirtualBalance()
+                : DEFAULT_INITIAL_BALANCE;
         List<Transaction> transactions = transactionRepository.findByUserId(userId);
 
         for (Transaction t : transactions) {
@@ -1163,34 +1166,11 @@ public class TradingService {
             }
             algoStrategyRepository.saveAll(strategies);
 
-            // 7. Clear user's entity collections in memory so Hibernate doesn't re-save them
-            if (user.getHoldings() != null) user.getHoldings().clear();
-            if (user.getOrders() != null) user.getOrders().clear();
-            if (user.getTransactions() != null) user.getTransactions().clear();
-
-            // 8. Reconcile target balance against DEFAULT_INITIAL_BALANCE
-            BigDecimal diff = targetBalance.subtract(DEFAULT_INITIAL_BALANCE).setScale(4, RoundingMode.HALF_UP);
-            if (diff.compareTo(BigDecimal.ZERO) > 0) {
-                Transaction tx = new Transaction();
-                tx.setUser(user);
-                tx.setTransactionType(TransactionType.DEPOSIT);
-                tx.setStatus(TransactionStatus.SUCCESS);
-                tx.setTotalAmount(diff);
-                tx.setFees(BigDecimal.ZERO);
-                tx.setPnl(BigDecimal.ZERO);
-                tx.setPnlPercent(BigDecimal.ZERO);
-                transactionRepository.save(tx);
-            } else if (diff.compareTo(BigDecimal.ZERO) < 0) {
-                Transaction tx = new Transaction();
-                tx.setUser(user);
-                tx.setTransactionType(TransactionType.WITHDRAWAL);
-                tx.setStatus(TransactionStatus.SUCCESS);
-                tx.setTotalAmount(diff.abs());
-                tx.setFees(BigDecimal.ZERO);
-                tx.setPnl(BigDecimal.ZERO);
-                tx.setPnlPercent(BigDecimal.ZERO);
-                transactionRepository.save(tx);
-            }
+            // 7. Update user's baseline virtual cash balance directly on user entity — NO synthetic transactions!
+            User managedUser = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + userId));
+            managedUser.setVirtualBalance(targetBalance);
+            userRepository.save(managedUser);
 
             log.info("Complete paper trading account reset executed for user {}. Target balance: {}", userId, targetBalance);
 
