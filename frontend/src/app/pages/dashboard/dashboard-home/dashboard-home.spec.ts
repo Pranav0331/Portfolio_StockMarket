@@ -236,6 +236,32 @@ describe('DashboardHomeComponent', () => {
     expect(resetSpy).toHaveBeenCalledWith(100000);
   });
 
+  it('should display paper trading account reset confirmation dialog', () => {
+    const resetSpy = vi.spyOn(tradingService, 'resetCashBalance').mockReturnValue(of(mockWallet));
+
+    const fixture = TestBed.createComponent(DashboardHomeComponent);
+    const comp = fixture.componentInstance;
+    fixture.detectChanges();
+
+    comp.openManageBalanceModal('reset');
+    comp.resetTargetAmount.set(250000);
+    expect(comp.showResetConfirmation()).toBe(false);
+
+    comp.requestResetConfirmation();
+    expect(comp.showResetConfirmation()).toBe(true);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('This permanently deletes your trading history and positions. This cannot be undone.');
+
+    comp.cancelResetConfirmation();
+    expect(comp.showResetConfirmation()).toBe(false);
+
+    comp.requestResetConfirmation();
+    comp.confirmFullReset();
+    expect(resetSpy).toHaveBeenCalledWith(250000);
+  });
+
   it('should navigate to stock details on symbol click', () => {
     const navigateSpy = vi.spyOn(router, 'navigate');
 
@@ -246,3 +272,4 @@ describe('DashboardHomeComponent', () => {
     expect(navigateSpy).toHaveBeenCalledWith(['/dashboard/stock', 'AAPL']);
   });
 });
+

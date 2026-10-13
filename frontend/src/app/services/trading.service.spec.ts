@@ -174,5 +174,28 @@ describe('TradingService', () => {
     expect(req.request.method).toBe('GET');
     req.flush(mockHolding);
   });
+
+  it('should reset paper trading account balance and update wallet', () => {
+    const mockWallet: VirtualWallet = {
+      cashBalance: 150000,
+      totalInvested: 0,
+      totalPortfolioValue: 150000,
+      currency: 'USD'
+    };
+
+    service.resetCashBalance(150000).subscribe((res) => {
+      expect(res.cashBalance).toBe(150000);
+      expect(service.wallet()?.cashBalance).toBe(150000);
+    });
+
+    const resetReq = httpMock.expectOne('http://localhost:8080/api/trading/wallet/reset');
+    expect(resetReq.request.method).toBe('POST');
+    expect(resetReq.request.body).toEqual({ targetBalance: 150000 });
+    resetReq.flush(mockWallet);
+
+    const portfolioReq = httpMock.expectOne('http://localhost:8080/api/portfolio');
+    portfolioReq.flush({ cashBalance: 150000, totalInvested: 0, totalHoldingsMarketValue: 0, totalPortfolioValue: 150000, holdings: [] });
+  });
 });
+
 

@@ -38,4 +38,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("endDate") Instant endDate,
             Pageable pageable
     );
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("DELETE FROM Transaction t WHERE t.user.id = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
 }
+

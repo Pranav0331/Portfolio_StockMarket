@@ -474,6 +474,34 @@ a {
   color: #991b1b !important;
 }
 
+[data-theme="light"] .btn-danger {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .btn-danger:hover:not(:disabled) {
+  background: #b91c1c !important;
+}
+
+[data-theme="light"] .reset-confirm-box {
+  background: #fef2f2 !important;
+  border: 1px solid #fecaca !important;
+}
+
+[data-theme="light"] .reset-confirm-header {
+  color: #dc2626 !important;
+}
+
+[data-theme="light"] .reset-confirm-warning {
+  background: #fee2e2 !important;
+  border-left-color: #dc2626 !important;
+  color: #991b1b !important;
+}
+
+[data-theme="light"] .reset-confirm-list {
+  color: #475569 !important;
+}
+
 /* ==========================================================================
    MARKET CHART DRAWING TOOLS & SUBMENUS (LIGHT THEME GLOBAL OVERRIDES)
    ========================================================================== */

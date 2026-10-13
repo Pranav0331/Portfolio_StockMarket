@@ -13,4 +13,9 @@ public interface HoldingRepository extends JpaRepository<Holding, Long> {
     Optional<Holding> findByIdAndUserId(Long id, Long userId);
     Optional<Holding> findByUserIdAndStockId(Long userId, Long stockId);
     Optional<Holding> findByUserIdAndStock_Symbol(Long userId, String symbol);
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("DELETE FROM Holding h WHERE h.user.id = :userId")
+    void deleteByUserId(@org.springframework.data.repository.query.Param("userId") Long userId);
 }
+

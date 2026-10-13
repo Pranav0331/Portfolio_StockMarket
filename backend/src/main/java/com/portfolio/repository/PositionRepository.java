@@ -29,4 +29,9 @@ public interface PositionRepository extends JpaRepository<Position, Long> {
             @Param("symbol") String symbol,
             @Param("status") PositionStatus status
     );
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("DELETE FROM Position p WHERE p.user.id = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
 }
+

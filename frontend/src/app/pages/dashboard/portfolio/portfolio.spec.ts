@@ -244,4 +244,37 @@ describe('PortfolioComponent', () => {
     component.submitReset();
     expect(resetSpy).toHaveBeenCalledWith(100000);
   });
+
+  it('should manage paper trading account reset confirmation dialog', () => {
+    const tradingService = TestBed.inject(TradingService);
+    const resetSpy = vi.spyOn(tradingService, 'resetCashBalance').mockReturnValue(of({
+      cashBalance: 50000,
+      totalInvested: 0,
+      totalPortfolioValue: 50000,
+      currency: 'USD'
+    }));
+
+    const fixture = TestBed.createComponent(PortfolioComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    component.openManageBalanceModal('reset');
+    component.resetTargetAmount.set(50000);
+    expect(component.showResetConfirmation()).toBe(false);
+
+    component.requestResetConfirmation();
+    expect(component.showResetConfirmation()).toBe(true);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('This permanently deletes your trading history and positions. This cannot be undone.');
+
+    component.cancelResetConfirmation();
+    expect(component.showResetConfirmation()).toBe(false);
+
+    component.requestResetConfirmation();
+    component.confirmFullReset();
+    expect(resetSpy).toHaveBeenCalledWith(50000);
+  });
 });
+

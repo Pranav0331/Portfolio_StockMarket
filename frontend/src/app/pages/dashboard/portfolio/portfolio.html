@@ -490,7 +490,7 @@
             class="modal-tab-btn" 
             [class.active]="balanceActionTab() === 'reset'"
             (click)="balanceActionTab.set('reset')">
-            Reset Balance
+            Reset Account
           </button>
         </div>
 
@@ -559,47 +559,109 @@
             </div>
           }
 
-          <!-- TAB 2: RESET BALANCE -->
+          <!-- TAB 2: RESET PAPER TRADING ACCOUNT -->
           @if (balanceActionTab() === 'reset') {
             <div class="tab-content">
-              <label class="input-label" for="port-reset-target-input">Target Cash Balance ($)</label>
-              <div class="input-prefix-wrap">
-                <span class="input-prefix">$</span>
-                <input 
-                  id="port-reset-target-input"
-                  type="number" 
-                  class="modal-input" 
-                  min="1" 
-                  step="10000"
-                  [ngModel]="resetTargetAmount()" 
-                  (ngModelChange)="resetTargetAmount.set($event)">
-              </div>
+              @if (!showResetConfirmation()) {
+                <label class="input-label" for="port-reset-target-input">Target Starting Cash Balance ($)</label>
+                <div class="input-prefix-wrap">
+                  <span class="input-prefix">$</span>
+                  <input 
+                    id="port-reset-target-input"
+                    type="number" 
+                    class="modal-input" 
+                    min="1" 
+                    step="10000"
+                    [ngModel]="resetTargetAmount()" 
+                    (ngModelChange)="resetTargetAmount.set($event)">
+                </div>
 
-              <!-- Reset Presets -->
-              <div class="preset-chips">
-                <button type="button" class="preset-chip" (click)="setResetPreset(10000)">$10,000</button>
-                <button type="button" class="preset-chip" (click)="setResetPreset(50000)">$50,000</button>
-                <button type="button" class="preset-chip highlight" (click)="setResetPreset(100000)">$100,000 (Default)</button>
-                <button type="button" class="preset-chip" (click)="setResetPreset(250000)">$250,000</button>
-                <button type="button" class="preset-chip" (click)="setResetPreset(500000)">$500,000</button>
-              </div>
+                <!-- Reset Presets -->
+                <div class="preset-chips">
+                  <button type="button" class="preset-chip" (click)="setResetPreset(10000)">$10,000</button>
+                  <button type="button" class="preset-chip" (click)="setResetPreset(50000)">$50,000</button>
+                  <button type="button" class="preset-chip highlight" (click)="setResetPreset(100000)">$100,000 (Default)</button>
+                  <button type="button" class="preset-chip" (click)="setResetPreset(250000)">$250,000</button>
+                  <button type="button" class="preset-chip" (click)="setResetPreset(500000)">$500,000</button>
+                </div>
 
-              <p class="modal-note warning-text">
-                Note: Resetting your cash balance will adjust your available liquidity. Your existing stock holdings will remain untouched.
-              </p>
+                <p class="modal-note warning-text">
+                  ⚠️ Complete Account Reset: This will reset virtual cash, close all holdings & margin positions, and wipe old paper trading orders & history. Your login profile and account settings will remain intact.
+                </p>
 
-              <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" (click)="closeManageBalanceModal()">Cancel</button>
-                <button 
-                  type="button" 
-                  class="btn btn-primary" 
-                  [disabled]="isManagingBalance()" 
-                  (click)="submitReset()">
-                  {{ isManagingBalance() ? 'Resetting...' : 'Reset Cash Balance' }}
-                </button>
-              </div>
+                <div class="modal-actions">
+                  <button type="button" class="btn btn-secondary" (click)="closeManageBalanceModal()">Cancel</button>
+                  <button 
+                    type="button" 
+                    id="port-btn-request-reset"
+                    class="btn btn-primary" 
+                    [disabled]="isManagingBalance()" 
+                    (click)="requestResetConfirmation()">
+                    Reset Paper Account...
+                  </button>
+                </div>
+              } @else {
+                <!-- CONFIRMATION DIALOG -->
+                <div class="reset-confirm-box" id="port-reset-confirm-dialog">
+                  <div class="reset-confirm-header">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                      <line x1="12" y1="9" x2="12" y2="13"></line>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <span>Confirm Paper Trading Account Reset</span>
+                  </div>
+
+                  <div class="reset-confirm-warning">
+                    <strong>This permanently deletes your trading history and positions. This cannot be undone.</strong>
+                  </div>
+
+                  <ul class="reset-confirm-list">
+                    <li>
+                      <span class="bullet-icon">💵</span>
+                      <span>Virtual cash will be reset to <strong>${{ resetTargetAmount() | number }}</strong>.</span>
+                    </li>
+                    <li>
+                      <span class="bullet-icon">📊</span>
+                      <span>All current paper holdings and open/closed positions will be removed.</span>
+                    </li>
+                    <li>
+                      <span class="bullet-icon">🗑️</span>
+                      <span>Old orders, executions, transactions, and trade logs will be permanently deleted.</span>
+                    </li>
+                    <li>
+                      <span class="bullet-icon">📈</span>
+                      <span>Performance history, statistics, and P&L summaries will be reset to 0.</span>
+                    </li>
+                    <li>
+                      <span class="bullet-icon">🔒</span>
+                      <span>Your user profile, login credentials, and account settings remain completely intact.</span>
+                    </li>
+                  </ul>
+
+                  <div class="modal-actions">
+                    <button 
+                      type="button" 
+                      id="port-btn-cancel-reset"
+                      class="btn btn-secondary" 
+                      [disabled]="isManagingBalance()" 
+                      (click)="cancelResetConfirmation()">
+                      Cancel
+                    </button>
+                    <button 
+                      type="button" 
+                      id="port-btn-confirm-reset"
+                      class="btn btn-danger" 
+                      [disabled]="isManagingBalance()" 
+                      (click)="confirmFullReset()">
+                      {{ isManagingBalance() ? 'Resetting Account...' : 'Yes, Reset My Account' }}
+                    </button>
+                  </div>
+                </div>
+              }
             </div>
           }
+
         </div>
       </div>
     </div>

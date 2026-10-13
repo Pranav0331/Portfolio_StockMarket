@@ -52,6 +52,12 @@ class TradingServiceTest {
     @Mock
     private UpstoxService upstoxService;
 
+    @Mock
+    private AlgoTradeLogRepository algoTradeLogRepository;
+
+    @Mock
+    private AlgoStrategyRepository algoStrategyRepository;
+
     @InjectMocks
     private TradingService tradingService;
 
@@ -311,20 +317,65 @@ class TradingServiceTest {
     }
 
     @Test
-    @DisplayName("RESET BALANCE - Adjusts virtual cash to target amount")
+    @DisplayName("RESET BALANCE - Complete Paper Trading Account Reset with target amount")
     void testResetCashBalance() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
         when(transactionRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
         when(holdingRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
         when(positionRepository.findByUserIdAndStatus(1L, PositionStatus.OPEN)).thenReturn(Collections.emptyList());
+        when(algoStrategyRepository.findByUserIdOrderByCreatedAtDesc(1L)).thenReturn(Collections.emptyList());
 
         VirtualWalletDto wallet = tradingService.resetCashBalance(1L, new BigDecimal("150000"));
 
         assertThat(wallet).isNotNull();
+        verify(algoTradeLogRepository).deleteByUserId(1L);
+        verify(transactionRepository).deleteByUserId(1L);
+        verify(orderRepository).deleteByUserId(1L);
+        verify(positionRepository).deleteByUserId(1L);
+        verify(holdingRepository).deleteByUserId(1L);
+        verify(algoStrategyRepository).findByUserIdOrderByCreatedAtDesc(1L);
         verify(transactionRepository).save(argThat(tx ->
                 tx.getTransactionType() == TransactionType.DEPOSIT &&
                 tx.getTotalAmount().compareTo(new BigDecimal("50000")) == 0
         ));
+    }
+
+    @Test
+    @DisplayName("FULL RESET - Permanently clears trading history and positions while keeping user profile intact")
+    void testCompletePaperTradingAccountResetDeletesAllTradingDataAndPreservesUserAccount() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(transactionRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
+        when(holdingRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
+        when(positionRepository.findByUserIdAndStatus(1L, PositionStatus.OPEN)).thenReturn(Collections.emptyList());
+
+        AlgoStrategy strategy = new AlgoStrategy();
+        strategy.setStatus(StrategyStatus.RUNNING);
+        strategy.setTotalTrades(15);
+        strategy.setTotalPnl(new BigDecimal("4200.50"));
+        when(algoStrategyRepository.findByUserIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(strategy));
+
+        VirtualWalletDto wallet = tradingService.resetCashBalance(1L, TradingService.DEFAULT_INITIAL_BALANCE);
+
+        assertThat(wallet).isNotNull();
+        assertThat(wallet.cashBalance()).isEqualByComparingTo(new BigDecimal("100000.00"));
+
+        // Verify trading data deleted
+        verify(algoTradeLogRepository).deleteByUserId(1L);
+        verify(transactionRepository).deleteByUserId(1L);
+        verify(orderRepository).deleteByUserId(1L);
+        verify(positionRepository).deleteByUserId(1L);
+        verify(holdingRepository).deleteByUserId(1L);
+
+        // Verify strategy metrics reset and status stopped
+        assertThat(strategy.getStatus()).isEqualTo(StrategyStatus.STOPPED);
+        assertThat(strategy.getTotalTrades()).isEqualTo(0);
+        assertThat(strategy.getTotalPnl()).isEqualTo(BigDecimal.ZERO);
+        verify(algoStrategyRepository).saveAll(any());
+
+        // Verify user account identity intact
+        assertThat(testUser.getEmail()).isEqualTo("investor@example.com");
+        assertThat(testUser.getFullName()).isEqualTo("John Doe");
+        assertThat(testUser.getId()).isEqualTo(1L);
     }
 
     @Test

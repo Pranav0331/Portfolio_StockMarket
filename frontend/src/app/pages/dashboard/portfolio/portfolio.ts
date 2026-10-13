@@ -30,6 +30,7 @@ export class PortfolioComponent implements OnInit {
   readonly balanceActionTab = signal<'deposit' | 'reset'>('deposit');
   readonly depositAmount = signal<number>(10000);
   readonly resetTargetAmount = signal<number>(100000);
+  readonly showResetConfirmation = signal<boolean>(false);
   readonly isManagingBalance = signal<boolean>(false);
   readonly manageBalanceSuccess = signal<string | null>(null);
   readonly manageBalanceError = signal<string | null>(null);
@@ -105,6 +106,7 @@ export class PortfolioComponent implements OnInit {
 
   closeManageBalanceModal(): void {
     this.showManageBalanceModal.set(false);
+    this.showResetConfirmation.set(false);
     this.manageBalanceError.set(null);
     this.manageBalanceSuccess.set(null);
   }
@@ -115,6 +117,24 @@ export class PortfolioComponent implements OnInit {
 
   setResetPreset(amount: number): void {
     this.resetTargetAmount.set(amount);
+  }
+
+  requestResetConfirmation(): void {
+    const target = Number(this.resetTargetAmount());
+    if (!target || target <= 0) {
+      this.manageBalanceError.set('Please enter a valid target balance greater than 0.');
+      return;
+    }
+    this.manageBalanceError.set(null);
+    this.showResetConfirmation.set(true);
+  }
+
+  cancelResetConfirmation(): void {
+    this.showResetConfirmation.set(false);
+  }
+
+  confirmFullReset(): void {
+    this.submitReset();
   }
 
   submitDeposit(): void {
@@ -151,6 +171,7 @@ export class PortfolioComponent implements OnInit {
       return;
     }
 
+    this.showResetConfirmation.set(false);
     this.isManagingBalance.set(true);
     this.manageBalanceError.set(null);
     this.manageBalanceSuccess.set(null);
@@ -158,7 +179,7 @@ export class PortfolioComponent implements OnInit {
     this.tradingService.resetCashBalance(target).subscribe({
       next: (wallet) => {
         this.isManagingBalance.set(false);
-        this.manageBalanceSuccess.set(`Successfully reset balance to $${target.toLocaleString()}!`);
+        this.manageBalanceSuccess.set(`Successfully reset paper trading account to $${target.toLocaleString()}!`);
         this.loadPortfolio();
         setTimeout(() => {
           this.closeManageBalanceModal();

@@ -26,4 +26,9 @@ public interface AlgoTradeLogRepository extends JpaRepository<AlgoTradeLog, Long
     List<AlgoTradeLog> findTop50ByUserIdOrderByCreatedAtDesc(Long userId);
 
     List<AlgoTradeLog> findTop50ByUserIdAndStatusOrderByCreatedAtDesc(Long userId, String status);
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("DELETE FROM AlgoTradeLog a WHERE a.user.id = :userId")
+    void deleteByUserId(@org.springframework.data.repository.query.Param("userId") Long userId);
 }
+

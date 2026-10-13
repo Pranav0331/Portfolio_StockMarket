@@ -33,6 +33,8 @@ public class TradingService {
     private final PositionRepository positionRepository;
     private final MarketDataService marketDataService;
     private final UpstoxService upstoxService;
+    private final AlgoTradeLogRepository algoTradeLogRepository;
+    private final AlgoStrategyRepository algoStrategyRepository;
 
     // Per-user locks to prevent duplicate concurrent trade executions
     private final Map<Long, Object> userLocks = new ConcurrentHashMap<>();
@@ -45,7 +47,9 @@ public class TradingService {
             TransactionRepository transactionRepository,
             PositionRepository positionRepository,
             MarketDataService marketDataService,
-            UpstoxService upstoxService
+            UpstoxService upstoxService,
+            AlgoTradeLogRepository algoTradeLogRepository,
+            AlgoStrategyRepository algoStrategyRepository
     ) {
         this.userRepository = userRepository;
         this.stockRepository = stockRepository;
@@ -55,6 +59,8 @@ public class TradingService {
         this.positionRepository = positionRepository;
         this.marketDataService = marketDataService;
         this.upstoxService = upstoxService;
+        this.algoTradeLogRepository = algoTradeLogRepository;
+        this.algoStrategyRepository = algoStrategyRepository;
     }
 
     private Object getUserLock(Long userId) {
@@ -1127,9 +1133,43 @@ public class TradingService {
                     ? requestedTargetBalance.setScale(4, RoundingMode.HALF_UP)
                     : DEFAULT_INITIAL_BALANCE;
 
-            BigDecimal currentCash = calculateCashBalance(userId);
-            BigDecimal diff = targetBalance.subtract(currentCash).setScale(4, RoundingMode.HALF_UP);
+            // 1. Delete user's automated execution logs (safe deletion before orders/positions)
+            algoTradeLogRepository.deleteByUserId(userId);
 
+            // 2. Delete user's transactions (removes foreign-key references to orders)
+            transactionRepository.deleteByUserId(userId);
+
+            // 3. Delete user's orders
+            orderRepository.deleteByUserId(userId);
+
+            // 4. Delete user's open & closed margin positions
+            positionRepository.deleteByUserId(userId);
+
+            // 5. Delete user's spot holdings
+            holdingRepository.deleteByUserId(userId);
+
+            // 6. Reset performance metrics & stop running strategies for this user
+            List<AlgoStrategy> strategies = algoStrategyRepository.findByUserIdOrderByCreatedAtDesc(userId);
+            for (AlgoStrategy strategy : strategies) {
+                strategy.setStatus(StrategyStatus.STOPPED);
+                strategy.setTotalTrades(0);
+                strategy.setWinningTrades(0);
+                strategy.setLosingTrades(0);
+                strategy.setTotalPnl(BigDecimal.ZERO);
+                strategy.setMaxDrawdown(BigDecimal.ZERO);
+                strategy.setLastRunAt(null);
+                strategy.setLastSignal(null);
+                strategy.setLastSignalReasons(null);
+            }
+            algoStrategyRepository.saveAll(strategies);
+
+            // 7. Clear user's entity collections in memory so Hibernate doesn't re-save them
+            if (user.getHoldings() != null) user.getHoldings().clear();
+            if (user.getOrders() != null) user.getOrders().clear();
+            if (user.getTransactions() != null) user.getTransactions().clear();
+
+            // 8. Reconcile target balance against DEFAULT_INITIAL_BALANCE
+            BigDecimal diff = targetBalance.subtract(DEFAULT_INITIAL_BALANCE).setScale(4, RoundingMode.HALF_UP);
             if (diff.compareTo(BigDecimal.ZERO) > 0) {
                 Transaction tx = new Transaction();
                 tx.setUser(user);
@@ -1152,7 +1192,7 @@ public class TradingService {
                 transactionRepository.save(tx);
             }
 
-            log.info("Virtual cash balance reset to {} for user {}", targetBalance, userId);
+            log.info("Complete paper trading account reset executed for user {}. Target balance: {}", userId, targetBalance);
 
             return getWallet(userId);
         }
