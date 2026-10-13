@@ -13,9 +13,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
@@ -26,9 +28,15 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
+@AutoConfigureMockMvc
 class OAuth2AuthenticationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
 
     @Autowired
     private CustomOAuth2UserService customOAuth2UserService;
@@ -243,5 +251,38 @@ class OAuth2AuthenticationTest {
 
         User upgradedUser = userRepository.findByEmail("admin@example.com").orElseThrow();
         assertThat(upgradedUser.getRole()).isEqualTo(UserRole.ROLE_ADMIN);
+    }
+
+    @Test
+    @DisplayName("7. In production with reverse proxy headers, redirect_uri sent to Google is HTTPS on public host")
+    void testGoogleOAuthRedirectUriWithForwardedHeaders() throws Exception {
+        var result = mockMvc.perform(get("/oauth2/authorization/google")
+                        .header("X-Forwarded-Proto", "https")
+                        .header("X-Forwarded-Host", "portfoliostockmarket-production.up.railway.app")
+                        .header("X-Forwarded-Port", "443"))
+                .andExpect(status().is3xxRedirection())
+                .andReturn();
+
+        String redirectedUrl = result.getResponse().getRedirectedUrl();
+        assertThat(redirectedUrl).isNotNull();
+        assertThat(redirectedUrl).startsWith("https://accounts.google.com/o/oauth2/v2/auth");
+        // Verify that the redirect_uri parameter in the Google URL matches HTTPS and the Railway host
+        assertThat(redirectedUrl).contains("redirect_uri=https://portfoliostockmarket-production.up.railway.app/login/oauth2/code/google");
+        // Ensure port 8080 or http is NOT leaked into redirect_uri
+        assertThat(redirectedUrl).doesNotContain("http://portfoliostockmarket-production.up.railway.app");
+        assertThat(redirectedUrl).doesNotContain(":8080");
+    }
+
+    @Test
+    @DisplayName("8. In local development without proxy headers, redirect_uri sent to Google preserves standard host")
+    void testGoogleOAuthRedirectUriWithoutForwardedHeaders() throws Exception {
+        var result = mockMvc.perform(get("/oauth2/authorization/google"))
+                .andExpect(status().is3xxRedirection())
+                .andReturn();
+
+        String redirectedUrl = result.getResponse().getRedirectedUrl();
+        assertThat(redirectedUrl).isNotNull();
+        assertThat(redirectedUrl).startsWith("https://accounts.google.com/o/oauth2/v2/auth");
+        assertThat(redirectedUrl).contains("redirect_uri=http://localhost/login/oauth2/code/google");
     }
 }
