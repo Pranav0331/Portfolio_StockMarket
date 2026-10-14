@@ -24,7 +24,7 @@ export class TransactionsComponent implements OnInit {
   readonly error = signal<string | null>(null);
 
   // Filter signals - Financial ledger events only
-  readonly selectedType = signal<'ALL' | 'ACCOUNT_INIT' | 'DEPOSIT' | 'WITHDRAWAL' | 'ACCOUNT_RESET' | 'DIVIDEND' | 'BUY' | 'SELL' | string>('ALL');
+  readonly selectedType = signal<'ALL' | 'ACCOUNT_INIT' | 'DEPOSIT' | 'ACCOUNT_RESET' | 'DIVIDEND' | 'BUY' | 'SELL' | string>('ALL');
   readonly symbolSearch = signal<string>('');
   readonly startDate = signal<string>('');
   readonly endDate = signal<string>('');

@@ -9,7 +9,7 @@
         </span>
       </div>
       <p class="page-subtitle">
-        Audited chronological financial ledger of account funding events, virtual deposits, withdrawals, and balance resets.
+        Audited chronological financial ledger of account funding events, virtual deposits, and balance resets.
       </p>
     </div>
     <div class="header-actions">
@@ -105,19 +105,7 @@
         <span class="card-subtext">Virtual deposits & top-ups</span>
       </div>
 
-      <!-- 3. Total Cash Withdrawn -->
-      <div class="summary-card">
-        <div class="card-top">
-          <span class="card-label">Total Withdrawn</span>
-          <span class="card-status-pill pill-withdrawal">Debits</span>
-        </div>
-        <div class="card-val font-mono text-negative">
-          -${{ summary.totalWithdrawn | number:'1.2-2' }}
-        </div>
-        <span class="card-subtext">Virtual cash withdrawals</span>
-      </div>
-
-      <!-- 4. Available Cash Balance -->
+      <!-- 3. Available Cash Balance -->
       <div class="summary-card highlight-card">
         <div class="card-top">
           <span class="card-label">Available Cash</span>
@@ -186,13 +174,6 @@
             [class.active]="selectedType() === 'DEPOSIT'"
             (click)="setTypeFilter('DEPOSIT')">
             Deposits
-          </button>
-          <button 
-            type="button" 
-            class="pill-btn pill-withdrawal" 
-            [class.active]="selectedType() === 'WITHDRAWAL'"
-            (click)="setTypeFilter('WITHDRAWAL')">
-            Withdrawals
           </button>
           <button 
             type="button" 
@@ -314,7 +295,7 @@
       </div>
       <h3 class="empty-title">No financial ledger records found</h3>
       <p class="empty-desc">
-        {{ hasActiveFilters() ? 'No financial ledger entries match your filter criteria. Try resetting your search filters.' : 'No cash funding, deposit, withdrawal, or reset events have been recorded yet for your account.' }}
+        {{ hasActiveFilters() ? 'No financial ledger entries match your filter criteria. Try resetting your search filters.' : 'No cash funding, deposit, or reset events have been recorded yet for your account.' }}
       </p>
       <div class="empty-actions">
         <button *ngIf="hasActiveFilters()" type="button" class="btn-primary" (click)="resetFilters()">

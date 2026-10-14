@@ -432,11 +432,12 @@ describe('TransactionsComponent', () => {
       expect(compiled.querySelector('.equity-hero-chip')).not.toBeNull();
       expect(compiled.querySelector('.summary-grid')).not.toBeNull();
       const summaryCards = compiled.querySelectorAll('.summary-card');
-      expect(summaryCards.length).toBe(6);
+      expect(summaryCards.length).toBe(5);
+      expect(compiled.querySelector('.pill-withdrawal')).toBeNull();
 
-      // 4. Financial Filters Toolbar
+      // 4. Financial Filters Toolbar (All, Initial, Deposits, Reset, Adjustments)
       expect(compiled.querySelector('.filters-card')).not.toBeNull();
-      expect(compiled.querySelectorAll('.pill-btn').length).toBeGreaterThanOrEqual(5);
+      expect(compiled.querySelectorAll('.pill-btn').length).toBe(5);
       expect(compiled.querySelector('.search-input')).not.toBeNull();
       expect(compiled.querySelector('.date-inputs')).not.toBeNull();
       expect(compiled.querySelector('.filter-select')).not.toBeNull();

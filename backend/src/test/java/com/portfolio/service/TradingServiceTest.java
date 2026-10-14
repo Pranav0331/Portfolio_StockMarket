@@ -317,6 +317,17 @@ class TradingServiceTest {
     }
 
     @Test
+    @DisplayName("WITHDRAW - Rejected with 400 Bad Request because paper trading uses virtual currency only")
+    void testWithdrawCashDisabledForPaperTrading() {
+        assertThatThrownBy(() -> tradingService.withdrawCash(1L, new BigDecimal("500.00")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Withdrawals are disabled for paper trading accounts. Paper trading uses virtual currency only.");
+
+        verify(transactionRepository, never()).save(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("RESET BALANCE - Complete Paper Trading Account Reset with target amount")
     void testResetCashBalance() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
@@ -330,8 +341,11 @@ class TradingServiceTest {
         assertThat(wallet).isNotNull();
         assertThat(wallet.cashBalance()).isEqualByComparingTo(new BigDecimal("150000"));
         verify(algoTradeLogRepository).deleteByUserId(1L);
+        verify(transactionRepository).deleteTradeExecutionsByUserId(1L);
+        verify(transactionRepository).detachOrdersByUserId(1L);
+        verify(orderRepository).deleteByUserId(1L);
         verify(holdingRepository).deleteByUserId(1L);
-        verify(positionRepository, atLeastOnce()).findByUserIdAndStatus(1L, PositionStatus.OPEN);
+        verify(positionRepository).deleteByUserId(1L);
         verify(algoStrategyRepository).findByUserIdOrderByCreatedAtDesc(1L);
         // Must record genuine ACCOUNT_RESET and NEVER create synthetic deposits or withdrawals
         verify(transactionRepository).save(argThat(tx ->
@@ -386,10 +400,13 @@ class TradingServiceTest {
         assertThat(wallet).isNotNull();
         assertThat(wallet.cashBalance()).isEqualByComparingTo(new BigDecimal("100000.00"));
 
-        // Verify active positions and holdings cleared
+        // Verify active positions, orders, executions, and holdings cleared
         verify(algoTradeLogRepository).deleteByUserId(1L);
+        verify(transactionRepository).deleteTradeExecutionsByUserId(1L);
+        verify(transactionRepository).detachOrdersByUserId(1L);
+        verify(orderRepository).deleteByUserId(1L);
         verify(holdingRepository).deleteByUserId(1L);
-        verify(positionRepository, atLeastOnce()).findByUserIdAndStatus(1L, PositionStatus.OPEN);
+        verify(positionRepository).deleteByUserId(1L);
         verify(transactionRepository).save(argThat(tx -> tx.getTransactionType() == TransactionType.ACCOUNT_RESET));
 
         // Verify strategy metrics reset and status stopped
@@ -402,6 +419,28 @@ class TradingServiceTest {
         assertThat(testUser.getEmail()).isEqualTo("investor@example.com");
         assertThat(testUser.getFullName()).isEqualTo("John Doe");
         assertThat(testUser.getId()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("REPEATED RESET - Consecutive resets with same target balance do not create duplicate ACCOUNT_RESET ledger entries")
+    void testRepeatedResetAccountDoesNotCreateDuplicateAuditEntry() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(holdingRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
+        when(algoStrategyRepository.findByUserIdOrderByCreatedAtDesc(1L)).thenReturn(Collections.emptyList());
+
+        Transaction existingResetTx = new Transaction();
+        existingResetTx.setId(99L);
+        existingResetTx.setTransactionType(TransactionType.ACCOUNT_RESET);
+        existingResetTx.setTotalAmount(new BigDecimal("100000.0000"));
+
+        when(transactionRepository.findByUserIdOrderByCreatedAtDesc(1L))
+                .thenReturn(List.of(existingResetTx));
+
+        VirtualWalletDto wallet = tradingService.resetCashBalance(1L, new BigDecimal("100000.0000"));
+
+        assertThat(wallet).isNotNull();
+        // Since latest transaction was already an ACCOUNT_RESET of 100000.0000, no duplicate audit event should be saved
+        verify(transactionRepository, never()).save(any(Transaction.class));
     }
 
     @Test
@@ -436,14 +475,19 @@ class TradingServiceTest {
 
         assertThat(wallet).isNotNull();
 
-        // Must delete/clean for user A while preserving historical trade ledger
+        // Must delete/clean for user A
         verify(algoTradeLogRepository).deleteByUserId(userA);
+        verify(transactionRepository).deleteTradeExecutionsByUserId(userA);
+        verify(transactionRepository).detachOrdersByUserId(userA);
+        verify(orderRepository).deleteByUserId(userA);
         verify(holdingRepository).deleteByUserId(userA);
+        verify(positionRepository).deleteByUserId(userA);
         verify(transactionRepository).save(any(Transaction.class));
 
         // Must NEVER delete for user B
         verify(algoTradeLogRepository, never()).deleteByUserId(userB);
-        verify(transactionRepository, never()).deleteByUserId(userB);
+        verify(transactionRepository, never()).deleteTradeExecutionsByUserId(userB);
+        verify(transactionRepository, never()).detachOrdersByUserId(userB);
         verify(orderRepository, never()).deleteByUserId(userB);
         verify(positionRepository, never()).deleteByUserId(userB);
         verify(holdingRepository, never()).deleteByUserId(userB);

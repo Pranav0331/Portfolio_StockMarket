@@ -119,8 +119,7 @@ public class TradingController {
         if (userPrincipal == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User must be authenticated to withdraw funds");
         }
-        VirtualWalletDto wallet = tradingService.withdrawCash(userPrincipal.getId(), request.amount());
-        return ResponseEntity.ok(wallet);
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Withdrawals are disabled for paper trading accounts. Paper trading uses virtual currency only.");
     }
 
     @PostMapping("/wallet/reset")

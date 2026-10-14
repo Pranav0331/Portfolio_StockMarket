@@ -57,5 +57,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
     @org.springframework.data.jpa.repository.Query("DELETE FROM Transaction t WHERE t.user.id = :userId")
     void deleteByUserId(@Param("userId") Long userId);
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("DELETE FROM Transaction t WHERE t.user.id = :userId AND t.transactionType IN (com.portfolio.entity.enums.TransactionType.BUY, com.portfolio.entity.enums.TransactionType.SELL)")
+    void deleteTradeExecutionsByUserId(@Param("userId") Long userId);
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("UPDATE Transaction t SET t.order = null WHERE t.user.id = :userId")
+    void detachOrdersByUserId(@Param("userId") Long userId);
 }
 

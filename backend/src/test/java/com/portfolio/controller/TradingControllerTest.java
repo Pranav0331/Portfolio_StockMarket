@@ -255,4 +255,15 @@ class TradingControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @DisplayName("9. POST /api/trading/wallet/withdraw returns HTTP 400 Bad Request because paper trading withdrawals are disabled")
+    void testWithdrawEndpointReturnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/trading/wallet/withdraw")
+                        .header("Authorization", "Bearer " + jwtToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\": 500.00}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Withdrawals are disabled for paper trading accounts. Paper trading uses virtual currency only."));
+    }
 }
