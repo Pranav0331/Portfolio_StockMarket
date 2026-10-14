@@ -494,5 +494,25 @@ class OrderServiceTest {
         assertThat(response.content()).isEmpty();
         assertThat(response.totalElements()).isEqualTo(0);
     }
+
+    @Test
+    @DisplayName("12. User isolation - Only authenticated user's positions and orders are queried and returned")
+    void testUserIsolationConsolidatedTrades() {
+        Long authenticatedUserId = 10L;
+        Long otherUserId = 99L;
+
+        when(tradingService.getUserPositions(authenticatedUserId, null, null)).thenReturn(Collections.emptyList());
+        when(orderRepository.findByUserIdAndPositionIdIsNotNullOrderByCreatedAtAsc(authenticatedUserId))
+                .thenReturn(Collections.emptyList());
+
+        PageResponseDto<ConsolidatedTradeDto> response = orderService.getUserConsolidatedTrades(
+                authenticatedUserId, null, null, null, null, null, null, 0, 15, "desc"
+        );
+
+        assertThat(response.content()).isEmpty();
+        // Verify user 99's data was NEVER queried
+        org.mockito.Mockito.verify(tradingService, org.mockito.Mockito.never()).getUserPositions(eq(otherUserId), any(), any());
+        org.mockito.Mockito.verify(orderRepository, org.mockito.Mockito.never()).findByUserIdAndPositionIdIsNotNullOrderByCreatedAtAsc(eq(otherUserId));
+    }
 }
 

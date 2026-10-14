@@ -127,4 +127,53 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.content[0].realizedPnl").value(1.44))
                 .andExpect(jsonPath("$.content[0].status").value("CLOSED"));
     }
+
+    @Test
+    @DisplayName("GET /api/orders/trades without authentication returns 401 Unauthorized")
+    void testGetConsolidatedTradesUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/orders/trades"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("GET /api/orders/trades returns OPEN trade with null exit price and floating P&L")
+    void testGetConsolidatedTradesOpenTrade() throws Exception {
+        ConsolidatedTradeDto openTrade = new ConsolidatedTradeDto(
+                55L,
+                92L,
+                null,
+                "ETH/USD",
+                "Ethereum",
+                "CRYPTO",
+                "USD",
+                "LONG",
+                "INTRADAY",
+                1,
+                new BigDecimal("2.0000"),
+                new BigDecimal("2500.00"),
+                null,
+                new BigDecimal("2600.00"),
+                null,
+                new BigDecimal("200.00"),
+                new BigDecimal("4.00"),
+                new BigDecimal("5000.00"),
+                "OPEN",
+                Instant.parse("2026-10-14T21:00:00Z"),
+                null
+        );
+
+        when(orderService.getUserConsolidatedTrades(eq(testUser.getId()), any(), any(), any(), any(), any(), any(), eq(0), eq(15), eq("desc")))
+                .thenReturn(new PageResponseDto<>(List.of(openTrade), 0, 15, 1, 1, true, true));
+
+        mockMvc.perform(get("/api/orders/trades")
+                        .header("Authorization", "Bearer " + jwtToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].tradeId").value(55))
+                .andExpect(jsonPath("$.content[0].direction").value("LONG"))
+                .andExpect(jsonPath("$.content[0].entryPrice").value(2500.00))
+                .andExpect(jsonPath("$.content[0].exitPrice").doesNotExist())
+                .andExpect(jsonPath("$.content[0].currentPrice").value(2600.00))
+                .andExpect(jsonPath("$.content[0].unrealizedPnl").value(200.00))
+                .andExpect(jsonPath("$.content[0].status").value("OPEN"));
+    }
 }
