@@ -1,9 +1,13 @@
 package com.portfolio.service;
 
 import com.portfolio.dto.auth.*;
+import com.portfolio.entity.Transaction;
 import com.portfolio.entity.User;
+import com.portfolio.entity.enums.TransactionStatus;
+import com.portfolio.entity.enums.TransactionType;
 import com.portfolio.entity.enums.UserRole;
 import com.portfolio.entity.enums.UserStatus;
+import com.portfolio.repository.TransactionRepository;
 import com.portfolio.repository.UserRepository;
 import com.portfolio.security.UserPrincipal;
 import com.portfolio.security.jwt.JwtTokenProvider;
@@ -16,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+
 @Service
 public class AuthService {
 
@@ -27,18 +33,33 @@ public class AuthService {
     private final Environment environment;
     private final String configuredAdminEmail;
 
+    private final TransactionRepository transactionRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtTokenProvider jwtTokenProvider,
             Environment environment,
-            @org.springframework.beans.factory.annotation.Value("${app.admin.email:}") String adminEmail
+            @org.springframework.beans.factory.annotation.Value("${app.admin.email:}") String adminEmail,
+            TransactionRepository transactionRepository
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.environment = environment;
         this.configuredAdminEmail = adminEmail;
+        this.transactionRepository = transactionRepository;
+    }
+
+    public AuthService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtTokenProvider jwtTokenProvider,
+            Environment environment,
+            String adminEmail
+    ) {
+        this(userRepository, passwordEncoder, jwtTokenProvider, environment, adminEmail, null);
     }
 
     public boolean isAdminEmail(String email) {
@@ -92,6 +113,18 @@ public class AuthService {
         user.setStatus(UserStatus.ACTIVE);
 
         User savedUser = userRepository.saveAndFlush(user);
+
+        if (transactionRepository != null) {
+            Transaction initTx = new Transaction();
+            initTx.setUser(savedUser);
+            initTx.setTransactionType(TransactionType.ACCOUNT_INIT);
+            initTx.setStatus(TransactionStatus.SUCCESS);
+            initTx.setTotalAmount(savedUser.getVirtualBalance() != null ? savedUser.getVirtualBalance() : new BigDecimal("100000.0000"));
+            initTx.setFees(BigDecimal.ZERO);
+            initTx.setPnl(BigDecimal.ZERO);
+            initTx.setPnlPercent(BigDecimal.ZERO);
+            transactionRepository.save(initTx);
+        }
 
         log.info("Successfully registered new user with ID: {} and role: {}", savedUser.getId(), savedUser.getRole());
 

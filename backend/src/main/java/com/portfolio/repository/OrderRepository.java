@@ -27,7 +27,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
            "AND (:orderType IS NULL OR o.orderType = :orderType) " +
            "AND (:orderStatus IS NULL OR o.orderStatus = :orderStatus) " +
            "AND (:tradingMode IS NULL OR o.tradingMode = :tradingMode) " +
-           "AND (:symbol IS NULL OR LOWER(s.symbol) LIKE LOWER(CONCAT('%', :symbol, '%')) OR LOWER(s.companyName) LIKE LOWER(CONCAT('%', :symbol, '%'))) " +
+           "AND (:symbol IS NULL OR (s IS NOT NULL AND (LOWER(s.symbol) LIKE LOWER(CONCAT('%', :symbol, '%')) OR LOWER(s.companyName) LIKE LOWER(CONCAT('%', :symbol, '%'))))) " +
            "AND (:startDate IS NULL OR o.createdAt >= :startDate) " +
            "AND (:endDate IS NULL OR o.createdAt <= :endDate)")
     Page<Order> findUserOrders(

@@ -2,12 +2,21 @@ package com.portfolio.service;
 
 import com.portfolio.dto.common.PageResponseDto;
 import com.portfolio.dto.market.StockQuoteDto;
+import com.portfolio.dto.trading.PositionDto;
+import com.portfolio.dto.trading.UserHoldingDto;
+import com.portfolio.dto.trading.VirtualWalletDto;
+import com.portfolio.dto.transaction.AccountSummaryDto;
 import com.portfolio.dto.transaction.TransactionDto;
 import com.portfolio.entity.Stock;
 import com.portfolio.entity.Transaction;
+import com.portfolio.entity.User;
+import com.portfolio.entity.enums.PositionSide;
+import com.portfolio.entity.enums.PositionStatus;
 import com.portfolio.entity.enums.TradingMode;
+import com.portfolio.entity.enums.TransactionStatus;
 import com.portfolio.entity.enums.TransactionType;
 import com.portfolio.repository.TransactionRepository;
+import com.portfolio.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -32,26 +41,41 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final MarketDataService marketDataService;
     private final UpstoxService upstoxService;
+    private final TradingService tradingService;
+    private final UserRepository userRepository;
 
     @org.springframework.beans.factory.annotation.Autowired
     public TransactionService(
             TransactionRepository transactionRepository,
             MarketDataService marketDataService,
-            UpstoxService upstoxService
+            UpstoxService upstoxService,
+            @org.springframework.context.annotation.Lazy TradingService tradingService,
+            UserRepository userRepository
     ) {
         this.transactionRepository = transactionRepository;
         this.marketDataService = marketDataService;
         this.upstoxService = upstoxService;
+        this.tradingService = tradingService;
+        this.userRepository = userRepository;
     }
 
     // Convenience constructor for tests
     public TransactionService(TransactionRepository transactionRepository) {
-        this(transactionRepository, null, null);
+        this(transactionRepository, null, null, null, null);
+    }
+
+    public TransactionService(
+            TransactionRepository transactionRepository,
+            MarketDataService marketDataService,
+            UpstoxService upstoxService
+    ) {
+        this(transactionRepository, marketDataService, upstoxService, null, null);
     }
 
     @Transactional(readOnly = true)
     public PageResponseDto<TransactionDto> getUserTransactions(
             Long userId,
+            boolean financialOnly,
             String type,
             String tradingMode,
             String symbol,
@@ -100,23 +124,18 @@ public class TransactionService {
                 ? symbol.trim()
                 : null;
 
-        log.debug("Fetching transactions for user {}: type={}, mode={}, symbol={}, startDate={}, endDate={}, page={}, size={}",
-                userId, transactionType, mode, cleanSymbol, startDate, endDate, pageIndex, pageSize);
+        log.debug("Fetching transactions for user {}: financialOnly={}, type={}, mode={}, symbol={}, startDate={}, endDate={}, page={}, size={}",
+                userId, financialOnly, transactionType, mode, cleanSymbol, startDate, endDate, pageIndex, pageSize);
 
-        Page<Transaction> transactionPage = transactionRepository.findUserTransactions(
-                userId,
-                transactionType,
-                mode,
-                cleanSymbol,
-                startDate,
-                endDate,
-                pageable
-        );
+        Page<Transaction> transactionPage = financialOnly
+                ? transactionRepository.findUserTransactions(userId, true, transactionType, mode, cleanSymbol, startDate, endDate, pageable)
+                : transactionRepository.findUserTransactions(userId, transactionType, mode, cleanSymbol, startDate, endDate, pageable);
 
         Map<String, BigDecimal> currentPricesCache = new HashMap<>();
+        Map<Long, RunningTxInfo> runningInfoMap = computeRunningLedgerInfo(userId);
 
         List<TransactionDto> dtoList = transactionPage.getContent().stream()
-                .map(t -> mapToDto(t, currentPricesCache))
+                .map(t -> mapToDto(t, currentPricesCache, runningInfoMap))
                 .toList();
 
         return new PageResponseDto<>(
@@ -134,6 +153,7 @@ public class TransactionService {
     public PageResponseDto<TransactionDto> getUserTransactions(
             Long userId,
             String type,
+            String tradingMode,
             String symbol,
             Instant startDate,
             Instant endDate,
@@ -141,10 +161,213 @@ public class TransactionService {
             int size,
             String sortDirection
     ) {
-        return getUserTransactions(userId, type, null, symbol, startDate, endDate, page, size, sortDirection);
+        return getUserTransactions(userId, false, type, tradingMode, symbol, startDate, endDate, page, size, sortDirection);
     }
 
-    private TransactionDto mapToDto(Transaction t, Map<String, BigDecimal> currentPricesCache) {
+    @Transactional(readOnly = true)
+    public PageResponseDto<TransactionDto> getUserTransactions(
+            Long userId,
+            String type,
+            String symbol,
+            Instant startDate,
+            Instant endDate,
+            int page,
+            int size,
+            String sortDirection
+    ) {
+        return getUserTransactions(userId, false, type, null, symbol, startDate, endDate, page, size, sortDirection);
+    }
+
+    @Transactional(readOnly = true)
+    public AccountSummaryDto getAccountSummary(Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID must not be null");
+        }
+
+        User user = userRepository != null ? userRepository.findById(userId).orElse(null) : null;
+        List<Transaction> allTransactions = transactionRepository.findByUserIdOrderByCreatedAtAscIdAsc(userId);
+
+        Transaction initTx = null;
+        BigDecimal totalDeposited = BigDecimal.ZERO;
+        BigDecimal totalWithdrawn = BigDecimal.ZERO;
+        BigDecimal totalRealizedPnl = BigDecimal.ZERO;
+        int totalTradesCount = 0;
+
+        for (Transaction t : allTransactions) {
+            if (t.getStatus() != TransactionStatus.SUCCESS) continue;
+
+            if (t.getTransactionType() == TransactionType.ACCOUNT_INIT && initTx == null) {
+                initTx = t;
+            } else if (t.getTransactionType() == TransactionType.DEPOSIT) {
+                totalDeposited = totalDeposited.add(t.getTotalAmount() != null ? t.getTotalAmount() : BigDecimal.ZERO);
+            } else if (t.getTransactionType() == TransactionType.WITHDRAWAL) {
+                totalWithdrawn = totalWithdrawn.add(t.getTotalAmount() != null ? t.getTotalAmount() : BigDecimal.ZERO);
+            } else if (t.getTransactionType() == TransactionType.BUY || t.getTransactionType() == TransactionType.SELL) {
+                totalTradesCount++;
+                if (t.getPnl() != null) {
+                    totalRealizedPnl = totalRealizedPnl.add(t.getPnl());
+                }
+            }
+        }
+
+        BigDecimal initialFundingAmount = null;
+        boolean initialFundingRecorded = false;
+        Instant initialFundingTime = null;
+
+        if (initTx != null) {
+            initialFundingAmount = initTx.getTotalAmount() != null ? initTx.getTotalAmount().setScale(2, RoundingMode.HALF_UP) : null;
+            initialFundingRecorded = true;
+            initialFundingTime = initTx.getCreatedAt();
+        }
+
+        BigDecimal currentCashBalance = BigDecimal.ZERO;
+        BigDecimal accountEquity = BigDecimal.ZERO;
+        BigDecimal marginUsed = BigDecimal.ZERO;
+        BigDecimal floatingPnl = BigDecimal.ZERO;
+        BigDecimal spotHoldingsMarketValue = BigDecimal.ZERO;
+        BigDecimal spotHoldingsInvested = BigDecimal.ZERO;
+        int openPositionsCount = 0;
+
+        if (tradingService != null) {
+            VirtualWalletDto wallet = tradingService.getWallet(userId);
+            if (wallet != null) {
+                currentCashBalance = wallet.cashBalance() != null ? wallet.cashBalance() : BigDecimal.ZERO;
+                accountEquity = wallet.totalPortfolioValue() != null ? wallet.totalPortfolioValue() : BigDecimal.ZERO;
+                marginUsed = wallet.marginUsed() != null ? wallet.marginUsed() : BigDecimal.ZERO;
+                floatingPnl = wallet.floatingPnl() != null ? wallet.floatingPnl() : BigDecimal.ZERO;
+            }
+
+            List<UserHoldingDto> holdings = tradingService.getUserHoldings(userId);
+            if (holdings != null) {
+                for (UserHoldingDto h : holdings) {
+                    if (h.currentValue() != null) {
+                        spotHoldingsMarketValue = spotHoldingsMarketValue.add(h.currentValue());
+                    }
+                    if (h.totalInvested() != null) {
+                        spotHoldingsInvested = spotHoldingsInvested.add(h.totalInvested());
+                    }
+                }
+                openPositionsCount += holdings.size();
+            }
+
+            List<PositionDto> openPositions = tradingService.getUserPositions(userId, null, PositionStatus.OPEN);
+            if (openPositions != null) {
+                openPositionsCount += openPositions.size();
+            }
+        } else {
+            currentCashBalance = (user != null && user.getVirtualBalance() != null) ? user.getVirtualBalance() : BigDecimal.valueOf(100000);
+            accountEquity = currentCashBalance;
+        }
+
+        BigDecimal spotUnrealizedPnl = spotHoldingsMarketValue.subtract(spotHoldingsInvested);
+        BigDecimal totalUnrealizedPnl = spotUnrealizedPnl.add(floatingPnl).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal overallTradingPnl = totalRealizedPnl.add(totalUnrealizedPnl).setScale(2, RoundingMode.HALF_UP);
+
+        return new AccountSummaryDto(
+                initialFundingAmount,
+                initialFundingRecorded,
+                initialFundingTime,
+                totalDeposited.setScale(2, RoundingMode.HALF_UP),
+                totalWithdrawn.setScale(2, RoundingMode.HALF_UP),
+                currentCashBalance.setScale(2, RoundingMode.HALF_UP),
+                totalRealizedPnl.setScale(2, RoundingMode.HALF_UP),
+                totalUnrealizedPnl,
+                overallTradingPnl,
+                accountEquity.setScale(2, RoundingMode.HALF_UP),
+                marginUsed.setScale(2, RoundingMode.HALF_UP),
+                spotHoldingsMarketValue.setScale(2, RoundingMode.HALF_UP),
+                totalTradesCount,
+                openPositionsCount
+        );
+    }
+
+    private record RunningTxInfo(BigDecimal balance, String description) {}
+
+    private Map<Long, RunningTxInfo> computeRunningLedgerInfo(Long userId) {
+        Map<Long, RunningTxInfo> map = new HashMap<>();
+        User user = userRepository != null ? userRepository.findById(userId).orElse(null) : null;
+        BigDecimal runningBalance = (user != null && user.getVirtualBalance() != null)
+                ? user.getVirtualBalance()
+                : BigDecimal.valueOf(100000);
+
+        List<Transaction> chronList = transactionRepository.findByUserIdOrderByCreatedAtAscIdAsc(userId);
+
+        for (Transaction t : chronList) {
+            if (t.getStatus() != TransactionStatus.SUCCESS) {
+                map.put(t.getId(), new RunningTxInfo(runningBalance.setScale(2, RoundingMode.HALF_UP), "Transaction " + t.getStatus()));
+                continue;
+            }
+
+            BigDecimal amount = t.getTotalAmount() != null ? t.getTotalAmount() : BigDecimal.ZERO;
+            BigDecimal fees = t.getFees() != null ? t.getFees() : BigDecimal.ZERO;
+            String symbol = t.getStock() != null ? t.getStock().getSymbol() : "Cash";
+            String description;
+
+            if (t.getTransactionType() == TransactionType.ACCOUNT_INIT) {
+                runningBalance = amount;
+                description = "Initial virtual cash credited on account creation";
+            } else if (t.getTransactionType() == TransactionType.ACCOUNT_RESET) {
+                runningBalance = amount;
+                description = "Paper trading account balance reset to $" + formatNumber(amount);
+            } else if (t.getTransactionType() == TransactionType.DEPOSIT) {
+                runningBalance = runningBalance.add(amount).subtract(fees);
+                description = "Virtual cash deposit";
+            } else if (t.getTransactionType() == TransactionType.WITHDRAWAL) {
+                runningBalance = runningBalance.subtract(amount).subtract(fees);
+                description = "Virtual cash withdrawal";
+            } else if (t.getTransactionType() == TransactionType.DIVIDEND) {
+                runningBalance = runningBalance.add(amount).subtract(fees);
+                description = "Cash dividend payout for " + symbol;
+            } else if (t.getPositionId() != null) {
+                // Margined trade
+                boolean isClose = (t.getPositionSide() == PositionSide.LONG && t.getTransactionType() == TransactionType.SELL)
+                        || (t.getPositionSide() == PositionSide.SHORT && t.getTransactionType() == TransactionType.BUY);
+                if (isClose) {
+                    runningBalance = runningBalance.add(amount).subtract(fees);
+                    String pnlStr = (t.getPnl() != null && t.getPnl().compareTo(BigDecimal.ZERO) >= 0 ? "+$" : "-$")
+                            + formatNumber(t.getPnl() != null ? t.getPnl().abs() : BigDecimal.ZERO);
+                    description = "Closed " + (t.getPositionSide() != null ? t.getPositionSide().name() : "position")
+                            + " on " + symbol + " (P&L: " + pnlStr + ")";
+                } else {
+                    runningBalance = runningBalance.subtract(amount).subtract(fees);
+                    description = "Opened " + (t.getPositionSide() != null ? t.getPositionSide().name() : "position")
+                            + " (" + (t.getLeverage() != null ? t.getLeverage() : 1) + "x) on " + symbol;
+                }
+            } else {
+                // Spot holding trade
+                if (t.getTransactionType() == TransactionType.BUY) {
+                    runningBalance = runningBalance.subtract(amount).subtract(fees);
+                    description = "Bought " + formatQuantity(t.getQuantity()) + " " + symbol
+                            + " @ $" + formatNumber(t.getPricePerUnit() != null ? t.getPricePerUnit() : BigDecimal.ZERO);
+                } else if (t.getTransactionType() == TransactionType.SELL) {
+                    runningBalance = runningBalance.add(amount).subtract(fees);
+                    String pnlStr = (t.getPnl() != null && t.getPnl().compareTo(BigDecimal.ZERO) >= 0 ? "+$" : "-$")
+                            + formatNumber(t.getPnl() != null ? t.getPnl().abs() : BigDecimal.ZERO);
+                    description = "Sold " + formatQuantity(t.getQuantity()) + " " + symbol
+                            + " @ $" + formatNumber(t.getPricePerUnit() != null ? t.getPricePerUnit() : BigDecimal.ZERO)
+                            + " (Realized P&L: " + pnlStr + ")";
+                } else {
+                    description = t.getTransactionType() != null ? t.getTransactionType().name() : "Transaction";
+                }
+            }
+
+            map.put(t.getId(), new RunningTxInfo(runningBalance.setScale(2, RoundingMode.HALF_UP), description));
+        }
+
+        return map;
+    }
+
+    private String formatNumber(BigDecimal val) {
+        if (val == null) return "0.00";
+        return val.setScale(2, RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private String formatQuantity(BigDecimal val) {
+        if (val == null) return "0";
+        return val.stripTrailingZeros().toPlainString();
+    }
+
+    private TransactionDto mapToDto(Transaction t, Map<String, BigDecimal> currentPricesCache, Map<Long, RunningTxInfo> runningInfoMap) {
         Stock stock = t.getStock();
         String symbol;
         String companyName;
@@ -169,6 +392,12 @@ public class TransactionService {
             } else if (type == TransactionType.DIVIDEND) {
                 symbol = "DIVIDEND";
                 companyName = "Cash Dividend";
+            } else if (type == TransactionType.ACCOUNT_INIT) {
+                symbol = "INIT";
+                companyName = "Initial Virtual Cash";
+            } else if (type == TransactionType.ACCOUNT_RESET) {
+                symbol = "RESET";
+                companyName = "Account Balance Reset";
             } else if (type != null) {
                 symbol = type.name();
                 companyName = type.name().replace("_", " ");
@@ -258,6 +487,33 @@ public class TransactionService {
         BigDecimal marginUsed = t.getMarginUsed() != null ? t.getMarginUsed() : (t.getOrder() != null && t.getOrder().getMarginUsed() != null ? t.getOrder().getMarginUsed() : BigDecimal.ZERO);
         Long positionId = t.getPositionId() != null ? t.getPositionId() : (t.getOrder() != null ? t.getOrder().getPositionId() : null);
 
+        RunningTxInfo runningInfo = runningInfoMap != null ? runningInfoMap.get(t.getId()) : null;
+        BigDecimal balanceAfterEvent = runningInfo != null ? runningInfo.balance() : null;
+        String description = runningInfo != null ? runningInfo.description() : null;
+
+        String cashFlowImpact;
+        String cashFlowImpactLabel;
+        TransactionType tType = t.getTransactionType();
+        if (tType == TransactionType.DEPOSIT || tType == TransactionType.ACCOUNT_INIT || tType == TransactionType.DIVIDEND) {
+            cashFlowImpact = "CREDIT";
+            cashFlowImpactLabel = "+ Increases Cash";
+        } else if (tType == TransactionType.WITHDRAWAL) {
+            cashFlowImpact = "DEBIT";
+            cashFlowImpactLabel = "- Decreases Cash";
+        } else if (tType == TransactionType.ACCOUNT_RESET) {
+            cashFlowImpact = "RESET";
+            cashFlowImpactLabel = "= Resets Cash Balance";
+        } else if (tType == TransactionType.SELL) {
+            cashFlowImpact = "CREDIT";
+            cashFlowImpactLabel = "+ Realized Return";
+        } else if (tType == TransactionType.BUY) {
+            cashFlowImpact = "DEBIT";
+            cashFlowImpactLabel = "- Trade Outflow";
+        } else {
+            cashFlowImpact = "ADJUSTMENT";
+            cashFlowImpactLabel = "Account Adjustment";
+        }
+
         return new TransactionDto(
                 t.getId(),
                 orderId,
@@ -280,7 +536,11 @@ public class TransactionService {
                 pnl,
                 pnlPercent,
                 avgBuyPrice,
-                currentPrice
+                currentPrice,
+                balanceAfterEvent,
+                description,
+                cashFlowImpact,
+                cashFlowImpactLabel
         );
     }
 

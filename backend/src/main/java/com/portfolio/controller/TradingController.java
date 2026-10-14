@@ -111,6 +111,18 @@ public class TradingController {
         return ResponseEntity.ok(wallet);
     }
 
+    @PostMapping("/wallet/withdraw")
+    public ResponseEntity<VirtualWalletDto> withdrawCash(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @Valid @RequestBody com.portfolio.dto.trading.WithdrawRequestDto request
+    ) {
+        if (userPrincipal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User must be authenticated to withdraw funds");
+        }
+        VirtualWalletDto wallet = tradingService.withdrawCash(userPrincipal.getId(), request.amount());
+        return ResponseEntity.ok(wallet);
+    }
+
     @PostMapping("/wallet/reset")
     public ResponseEntity<VirtualWalletDto> resetBalance(
             @AuthenticationPrincipal UserPrincipal userPrincipal,

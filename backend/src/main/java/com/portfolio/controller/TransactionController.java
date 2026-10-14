@@ -32,9 +32,21 @@ public class TransactionController {
         this.transactionService = transactionService;
     }
 
+    @GetMapping("/summary")
+    public ResponseEntity<com.portfolio.dto.transaction.AccountSummaryDto> getAccountSummary(
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        if (userPrincipal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User is not authenticated");
+        }
+        com.portfolio.dto.transaction.AccountSummaryDto summary = transactionService.getAccountSummary(userPrincipal.getId());
+        return ResponseEntity.ok(summary);
+    }
+
     @GetMapping
     public ResponseEntity<PageResponseDto<TransactionDto>> getTransactions(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestParam(required = false, defaultValue = "false") boolean financialOnly,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String tradingMode,
             @RequestParam(required = false) String symbol,
@@ -53,6 +65,7 @@ public class TransactionController {
 
         PageResponseDto<TransactionDto> response = transactionService.getUserTransactions(
                 userPrincipal.getId(),
+                financialOnly,
                 type,
                 tradingMode,
                 symbol,

@@ -648,6 +648,9 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
   readonly userHolding = signal<UserHolding | null>(null);
   readonly userPositions = signal<PositionItem[]>([]);
   readonly closedPositions = signal<PositionItem[]>([]);
+  readonly selectedPositionId = signal<number | null>(null);
+  readonly showClosedTradesOnChart = signal<boolean>(true);
+  readonly closedHistoryFilter = signal<'ACTIVE_SYMBOL' | 'ALL'>('ACTIVE_SYMBOL');
 
   readonly leverageOptions = [1, 2, 5, 10, 20, 50, 100];
 
@@ -795,7 +798,13 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
 
   readonly activeSymbolPosition = computed(() => {
     const symPositions = this.activeSymbolPositions();
-    return symPositions.length > 0 ? symPositions[0] : null;
+    if (symPositions.length === 0) return null;
+    const selId = this.selectedPositionId();
+    if (selId != null) {
+      const found = symPositions.find(p => p.id === selId);
+      if (found) return found;
+    }
+    return symPositions[0];
   });
 
   readonly hasActivePosition = computed(() => {
@@ -943,12 +952,16 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Effect to sync price lines and markers on chart when open positions change
+    // Effect to sync price lines and markers on chart when positions, quote, or candles change
     effect(() => {
-      const positions = this.activeSymbolPositions();
+      const openPositions = this.activeSymbolPositions();
+      const closedPositions = this.activeSymbolClosedPositions();
+      const showClosed = this.showClosedTradesOnChart();
       const quote = this.currentQuote();
+      const candles = this.candleData();
+
       if (this.candlestickSeries || this.lineSeries || this.areaSeries) {
-        this.updateChartPriceLines(positions);
+        this.updateChartPriceLines(openPositions, showClosed ? closedPositions : []);
         this.updateLivePriceLine(quote?.price ?? 0);
       }
     });
@@ -1539,6 +1552,13 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     return this.closedPositions().filter(p => p.symbol === curSym);
   });
 
+  readonly displayedClosedPositions = computed(() => {
+    if (this.closedHistoryFilter() === 'ACTIVE_SYMBOL') {
+      return this.activeSymbolClosedPositions();
+    }
+    return this.closedPositions();
+  });
+
   private handleError(err: any, symbol: string): void {
     if (err.status === 429) {
       this.isRateLimited.set(true);
@@ -1713,6 +1733,9 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       }));
 
       // Clear existing series
+      this.seriesMarkersPlugin = null;
+      this.chartPriceLines = [];
+      this.livePriceLine = null;
       if (this.candlestickSeries) {
         this.chart.removeSeries(this.candlestickSeries);
         this.candlestickSeries = null;
@@ -1818,7 +1841,10 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       }
 
       this.chart.timeScale().fitContent();
-      this.updateChartPriceLines(this.activeSymbolPositions());
+      this.updateChartPriceLines(
+        this.activeSymbolPositions(),
+        this.showClosedTradesOnChart() ? this.activeSymbolClosedPositions() : []
+      );
       this.updateLivePriceLine(this.currentQuote()?.price ?? 0);
       setTimeout(() => this.syncDrawingCoordinates(), 50);
     } catch (e) {}
@@ -1856,11 +1882,52 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
     } catch {}
   }
 
-  private updateChartPriceLines(positions: any[]): void {
+  parseTimestampSeconds(dateVal?: string | number | null): number | null {
+    if (!dateVal) return null;
+    if (typeof dateVal === 'number') {
+      return dateVal > 1e11 ? Math.floor(dateVal / 1000) : Math.floor(dateVal);
+    }
+    const parsed = new Date(dateVal).getTime();
+    if (isNaN(parsed)) return null;
+    return Math.floor(parsed / 1000);
+  }
+
+  snapTimestampToCandle(tradeSec: number, candles: Candle[]): number | null {
+    if (!candles || candles.length === 0 || !tradeSec) return null;
+    const firstCandle = candles[0];
+    const lastCandle = candles[candles.length - 1];
+
+    let interval = 60;
+    if (candles.length > 1) {
+      interval = Math.max(30, candles[1].timestamp - candles[0].timestamp);
+    }
+
+    // If trade occurred before loaded historical chart range minus half-interval, do not pin to wrong candle
+    if (tradeSec < firstCandle.timestamp - interval / 2) {
+      return null;
+    }
+
+    // If trade occurred during or after newest candle, snap to newest candle
+    if (tradeSec >= lastCandle.timestamp) {
+      return lastCandle.timestamp;
+    }
+
+    // Find the exact candle encompassing this trade execution
+    for (let i = candles.length - 1; i >= 0; i--) {
+      if (candles[i].timestamp <= tradeSec) {
+        return candles[i].timestamp;
+      }
+    }
+
+    return firstCandle.timestamp;
+  }
+
+  private updateChartPriceLines(openPositions: PositionItem[], closedPositions: PositionItem[] = []): void {
     const activeSeries = this.candlestickSeries || this.lineSeries || this.areaSeries;
     if (!activeSeries) return;
 
     try {
+      // 1. Remove previous price lines safely
       for (const pl of this.chartPriceLines) {
         try {
           activeSeries.removePriceLine(pl);
@@ -1868,29 +1935,40 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
       }
       this.chartPriceLines = [];
 
+      const currentSym = this.symbol();
+      const currentPrice = this.currentQuote()?.price ?? 0;
+      const candles = this.candleData();
       const markers: SeriesMarker<Time>[] = [];
 
-      for (const pos of positions) {
-        if (!pos || pos.status !== 'OPEN') continue;
+      // 2. Open Positions: Entry Price Lines, SL Lines, TP Lines & Entry Markers
+      for (const pos of openPositions) {
+        if (!pos || pos.status !== 'OPEN' || pos.symbol !== currentSym) continue;
 
         const isLong = pos.side === 'LONG';
-        const pnl = pos.unrealizedPnl || 0;
-        const pnlSign = pnl >= 0 ? '+' : '-';
-        const pnlStr = `${pnlSign}$${Math.abs(pnl).toFixed(2)} (${pos.unrealizedPnlPercent >= 0 ? '+' : ''}${(pos.unrealizedPnlPercent || 0).toFixed(2)}%)`;
-        const label = `${pos.side} ${pos.quantity}L @ ${pos.entryPrice.toFixed(2)} | ${pnlStr}`;
+        const livePrice = currentPrice > 0 ? currentPrice : (pos.currentPrice || pos.entryPrice);
+        const pnl = isLong
+          ? (livePrice - pos.entryPrice) * pos.quantity
+          : (pos.entryPrice - livePrice) * pos.quantity;
+        const pnlPercent = (pos.entryPrice > 0 && pos.quantity > 0)
+          ? (pnl / (pos.entryPrice * pos.quantity)) * 100 * (pos.leverage || 1)
+          : 0;
 
-        // Entry Line
+        const pnlSign = pnl >= 0 ? '+' : '-';
+        const pnlStr = `${pnlSign}$${Math.abs(pnl).toFixed(2)} (${pnl >= 0 ? '+' : ''}${pnlPercent.toFixed(2)}%)`;
+        const entryTitle = `${isLong ? 'BUY' : 'SELL'} ${pos.quantity}L @ ${pos.entryPrice.toFixed(2)} | ${pnlStr}`;
+
+        // Horizontal Entry Price Line
         const entryLine = activeSeries.createPriceLine({
           price: pos.entryPrice,
           color: isLong ? '#10b981' : '#f43f5e',
           lineWidth: 2,
           lineStyle: LineStyle.Solid,
           axisLabelVisible: true,
-          title: label
+          title: entryTitle
         });
         this.chartPriceLines.push(entryLine);
 
-        // SL Line
+        // SL Line (Red Dashed)
         if (pos.stopLoss && pos.stopLoss > 0) {
           const slLine = activeSeries.createPriceLine({
             price: pos.stopLoss,
@@ -1898,12 +1976,12 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
             lineWidth: 1,
             lineStyle: LineStyle.Dashed,
             axisLabelVisible: true,
-            title: `SL @ ${pos.stopLoss.toFixed(2)}`
+            title: `SL #${pos.id} @ ${pos.stopLoss.toFixed(2)}`
           });
           this.chartPriceLines.push(slLine);
         }
 
-        // TP Line
+        // TP Line (Green Dashed)
         if (pos.takeProfit && pos.takeProfit > 0) {
           const tpLine = activeSeries.createPriceLine({
             price: pos.takeProfit,
@@ -1911,39 +1989,91 @@ export class StockDetailsComponent implements OnInit, OnDestroy {
             lineWidth: 1,
             lineStyle: LineStyle.Dashed,
             axisLabelVisible: true,
-            title: `TP @ ${pos.takeProfit.toFixed(2)}`
+            title: `TP #${pos.id} @ ${pos.takeProfit.toFixed(2)}`
           });
           this.chartPriceLines.push(tpLine);
         }
 
-        // Position Marker
-        if (pos.createdAt && this.candleData().length > 0) {
-          const tsSec = Math.floor(new Date(pos.createdAt).getTime() / 1000);
-          const candles = this.candleData();
-          // Find closest candle time
-          const matchCandle = candles.find(c => Math.abs(c.timestamp - tsSec) < 1800) || candles[candles.length - 1];
-          if (matchCandle) {
+        // Entry Marker on exact candle
+        const tradeSec = this.parseTimestampSeconds(pos.createdAt);
+        if (tradeSec != null && candles.length > 0) {
+          const snapped = this.snapTimestampToCandle(tradeSec, candles);
+          if (snapped != null) {
             markers.push({
-              time: (matchCandle.timestamp as unknown) as Time,
+              time: (snapped as unknown) as Time,
               position: isLong ? 'belowBar' : 'aboveBar',
               color: isLong ? '#10b981' : '#f43f5e',
               shape: isLong ? 'arrowUp' : 'arrowDown',
-              text: `${pos.side} ${pos.quantity}L @ ${pos.entryPrice.toFixed(2)}`
+              text: `${isLong ? 'BUY' : 'SELL'} ${pos.quantity}L @ ${pos.entryPrice.toFixed(2)}`,
+              id: `open_entry_${pos.id}`
             });
           }
         }
       }
 
-      if (this.candlestickSeries) {
-        try {
-          if (!this.seriesMarkersPlugin) {
-            this.seriesMarkersPlugin = createSeriesMarkers(this.candlestickSeries, markers);
-          } else {
-            this.seriesMarkersPlugin.setMarkers(markers);
+      // 3. Closed Positions: Entry Marker and Close Marker (with realized P&L)
+      if (this.showClosedTradesOnChart()) {
+        for (const pos of closedPositions) {
+          if (!pos || pos.symbol !== currentSym) continue;
+
+          const isLong = pos.side === 'LONG';
+          const pnl = pos.realizedPnl ?? 0;
+          const pnlSign = pnl >= 0 ? '+' : '';
+          const isProfit = pnl >= 0;
+
+          // Entry Marker for closed trade
+          const entrySec = this.parseTimestampSeconds(pos.createdAt);
+          if (entrySec != null && candles.length > 0) {
+            const snappedEntry = this.snapTimestampToCandle(entrySec, candles);
+            if (snappedEntry != null) {
+              markers.push({
+                time: (snappedEntry as unknown) as Time,
+                position: isLong ? 'belowBar' : 'aboveBar',
+                color: isLong ? '#10b981' : '#f43f5e',
+                shape: isLong ? 'arrowUp' : 'arrowDown',
+                text: `${isLong ? 'BUY' : 'SELL'} ${pos.quantity}L @ ${pos.entryPrice.toFixed(2)}`,
+                id: `closed_entry_${pos.id}`
+              });
+            }
           }
-        } catch {}
+
+          // Exit / Close Marker
+          const exitSec = this.parseTimestampSeconds(pos.closeTime || pos.createdAt);
+          if (exitSec != null && candles.length > 0) {
+            const snappedExit = this.snapTimestampToCandle(exitSec, candles);
+            if (snappedExit != null) {
+              const closeP = pos.closePrice || pos.entryPrice;
+              markers.push({
+                time: (snappedExit as unknown) as Time,
+                position: isLong ? 'aboveBar' : 'belowBar',
+                color: isProfit ? '#10b981' : '#f43f5e',
+                shape: 'circle',
+                text: `CLOSE ${isLong ? 'BUY' : 'SELL'} @ ${closeP.toFixed(2)} | ${pnlSign}$${pnl.toFixed(2)}`,
+                id: `closed_exit_${pos.id}`
+              });
+            }
+          }
+        }
       }
-    } catch {}
+
+      // 4. Strictly Sort Markers Chronologically for Lightweight Charts
+      markers.sort((a, b) => {
+        const timeDiff = Number(a.time) - Number(b.time);
+        if (timeDiff !== 0) return timeDiff;
+        const aIsExit = a.id?.includes('exit') ? 1 : 0;
+        const bIsExit = b.id?.includes('exit') ? 1 : 0;
+        return aIsExit - bIsExit;
+      });
+
+      // 5. Update or Create Series Markers Plugin
+      if (!this.seriesMarkersPlugin) {
+        this.seriesMarkersPlugin = createSeriesMarkers(activeSeries, markers);
+      } else {
+        this.seriesMarkersPlugin.setMarkers(markers);
+      }
+    } catch (err) {
+      console.warn('Error updating chart price lines and markers:', err);
+    }
   }
 
   // =========================================================================

@@ -5,5 +5,7 @@ public enum TransactionType {
     SELL,
     DEPOSIT,
     WITHDRAWAL,
-    DIVIDEND
+    DIVIDEND,
+    ACCOUNT_INIT,
+    ACCOUNT_RESET
 }

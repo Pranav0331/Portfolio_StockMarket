@@ -517,4 +517,231 @@ describe('StockDetailsComponent', () => {
     component.submitTrade();
     expect(component.tradeErrorMessage()).toBe('Live market data unavailable');
   });
+
+  describe('Exness Trade Execution Visualization', () => {
+    it('should correctly snap timestamps to candles and prevent wrong candle placement', () => {
+      paramMap$.next({ get: (k: string) => (k === 'symbol' ? 'RELIANCE' : null) });
+      vi.spyOn(marketService, 'getQuote').mockReturnValue(of(mockRelianceQuote));
+      vi.spyOn(marketService, 'getCandles').mockReturnValue(of(mockRelianceCandles));
+      vi.spyOn(authService, 'isAuthenticated').mockReturnValue(true);
+
+      const fixture = TestBed.createComponent(StockDetailsComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const candles = [
+        { timestamp: 1000, open: 100, high: 105, low: 95, close: 102 },
+        { timestamp: 1060, open: 102, high: 108, low: 101, close: 107 },
+        { timestamp: 1120, open: 107, high: 110, low: 106, close: 109 }
+      ];
+
+      // Exact match at candle start
+      expect(component.snapTimestampToCandle(1000, candles)).toBe(1000);
+      // Mid-candle trade timestamp snaps to the candle that contains it
+      expect(component.snapTimestampToCandle(1030, candles)).toBe(1000);
+      expect(component.snapTimestampToCandle(1085, candles)).toBe(1060);
+      // Recent trade after latest candle snaps to latest candle
+      expect(component.snapTimestampToCandle(1135, candles)).toBe(1120);
+      // Trade outside visible chart history (way before first candle) returns null to avoid wrong candle marker
+      expect(component.snapTimestampToCandle(500, candles)).toBeNull();
+      // Empty candles returns null
+      expect(component.snapTimestampToCandle(1000, [])).toBeNull();
+    });
+
+    it('should correctly visualize active open positions with entry, SL, and TP lines and entry markers', () => {
+      paramMap$.next({ get: (k: string) => (k === 'symbol' ? 'RELIANCE' : null) });
+      vi.spyOn(marketService, 'getQuote').mockReturnValue(of(mockRelianceQuote));
+      vi.spyOn(marketService, 'getCandles').mockReturnValue(of(mockRelianceCandles));
+      vi.spyOn(authService, 'isAuthenticated').mockReturnValue(true);
+
+      const fixture = TestBed.createComponent(StockDetailsComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      // Configure open position on RELIANCE with SL and TP
+      const openTrade: any = {
+        id: 101,
+        symbol: 'RELIANCE',
+        companyName: 'Reliance Industries Ltd',
+        side: 'LONG',
+        tradingMode: 'INTRADAY',
+        quantity: 5,
+        entryPrice: 2925.0,
+        currentPrice: 2950.5,
+        leverage: 10,
+        marginUsed: 1462.5,
+        positionValue: 14625.0,
+        unrealizedPnl: 127.5,
+        unrealizedPnlPercent: 8.72,
+        stopLoss: 2900.0,
+        takeProfit: 3000.0,
+        status: 'OPEN',
+        createdAt: new Date(1727690100 * 1000).toISOString()
+      };
+
+      component.userPositions.set([openTrade]);
+      fixture.detectChanges();
+
+      const activePositions = component.activeSymbolPositions();
+      expect(activePositions.length).toBe(1);
+      expect(activePositions[0].id).toBe(101);
+      expect(activePositions[0].stopLoss).toBe(2900.0);
+      expect(activePositions[0].takeProfit).toBe(3000.0);
+
+      const activePos = component.activeSymbolPosition();
+      expect(activePos?.id).toBe(101);
+      expect(component.hasActivePosition()).toBe(true);
+      expect(component.isShowingPositionCard()).toBe(true);
+    });
+
+    it('should support switching between multiple open positions on the same symbol', () => {
+      paramMap$.next({ get: (k: string) => (k === 'symbol' ? 'RELIANCE' : null) });
+      vi.spyOn(marketService, 'getQuote').mockReturnValue(of(mockRelianceQuote));
+      vi.spyOn(marketService, 'getCandles').mockReturnValue(of(mockRelianceCandles));
+      vi.spyOn(authService, 'isAuthenticated').mockReturnValue(true);
+
+      const fixture = TestBed.createComponent(StockDetailsComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const trade1: any = {
+        id: 201,
+        symbol: 'RELIANCE',
+        side: 'LONG',
+        quantity: 5,
+        entryPrice: 2920.0,
+        status: 'OPEN',
+        createdAt: new Date().toISOString()
+      };
+      const trade2: any = {
+        id: 202,
+        symbol: 'RELIANCE',
+        side: 'SHORT',
+        quantity: 3,
+        entryPrice: 2960.0,
+        status: 'OPEN',
+        createdAt: new Date().toISOString()
+      };
+
+      component.userPositions.set([trade1, trade2]);
+      fixture.detectChanges();
+
+      expect(component.activeSymbolPositions().length).toBe(2);
+      // Default selects first position
+      expect(component.activeSymbolPosition()?.id).toBe(201);
+
+      // Select trade 202
+      component.selectedPositionId.set(202);
+      expect(component.activeSymbolPosition()?.id).toBe(202);
+      expect(component.activeSymbolPosition()?.side).toBe('SHORT');
+    });
+
+    it('should filter and display closed positions history and sync close markers on chart', () => {
+      paramMap$.next({ get: (k: string) => (k === 'symbol' ? 'RELIANCE' : null) });
+      vi.spyOn(marketService, 'getQuote').mockReturnValue(of(mockRelianceQuote));
+      vi.spyOn(marketService, 'getCandles').mockReturnValue(of(mockRelianceCandles));
+      vi.spyOn(authService, 'isAuthenticated').mockReturnValue(true);
+
+      const fixture = TestBed.createComponent(StockDetailsComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const closedRel: any = {
+        id: 301,
+        symbol: 'RELIANCE',
+        companyName: 'Reliance Industries Ltd',
+        side: 'LONG',
+        quantity: 10,
+        entryPrice: 2900.0,
+        closePrice: 2950.0,
+        realizedPnl: 500.0,
+        status: 'CLOSED',
+        createdAt: new Date(1727690000 * 1000).toISOString(),
+        closeTime: new Date(1727690300 * 1000).toISOString()
+      };
+      const closedOther: any = {
+        id: 302,
+        symbol: 'TCS',
+        companyName: 'Tata Consultancy Services',
+        side: 'SHORT',
+        quantity: 2,
+        entryPrice: 4100.0,
+        closePrice: 4050.0,
+        realizedPnl: 100.0,
+        status: 'CLOSED',
+        createdAt: new Date().toISOString(),
+        closeTime: new Date().toISOString()
+      };
+
+      component.closedPositions.set([closedRel, closedOther]);
+      fixture.detectChanges();
+
+      // Only RELIANCE closed positions for active symbol
+      expect(component.activeSymbolClosedPositions().length).toBe(1);
+      expect(component.activeSymbolClosedPositions()[0].id).toBe(301);
+
+      // By default displayedClosedPositions respects ACTIVE_SYMBOL filter
+      expect(component.displayedClosedPositions().length).toBe(1);
+
+      // Switch filter to ALL
+      component.closedHistoryFilter.set('ALL');
+      expect(component.displayedClosedPositions().length).toBe(2);
+
+      // Verify toggle for chart closed markers
+      expect(component.showClosedTradesOnChart()).toBe(true);
+      component.showClosedTradesOnChart.set(false);
+      expect(component.showClosedTradesOnChart()).toBe(false);
+    });
+
+    it('should handle SL/TP modification and partial position close actions', () => {
+      paramMap$.next({ get: (k: string) => (k === 'symbol' ? 'RELIANCE' : null) });
+      vi.spyOn(marketService, 'getQuote').mockReturnValue(of(mockRelianceQuote));
+      vi.spyOn(marketService, 'getCandles').mockReturnValue(of(mockRelianceCandles));
+      vi.spyOn(authService, 'isAuthenticated').mockReturnValue(true);
+
+      const fixture = TestBed.createComponent(StockDetailsComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges();
+
+      const pos: any = {
+        id: 401,
+        symbol: 'RELIANCE',
+        side: 'LONG',
+        quantity: 10,
+        entryPrice: 2950.0,
+        stopLoss: null,
+        takeProfit: null,
+        status: 'OPEN'
+      };
+
+      // Test open modify modal
+      component.openModifyModal(pos);
+      expect(component.isModifyModalOpen()).toBe(true);
+      expect(component.modifyingPosition()?.id).toBe(401);
+
+      // Set SL to -2%
+      component.setModifySlPercent(2);
+      expect(component.modifyStopLoss()).toBeCloseTo(2950.5 * 0.98, 1);
+
+      // Set TP to +5%
+      component.setModifyTpPercent(5);
+      expect(component.modifyTakeProfit()).toBeCloseTo(2950.5 * 1.05, 1);
+
+      component.closeModifyModal();
+      expect(component.isModifyModalOpen()).toBe(false);
+
+      // Test partial close volume calculation
+      component.openCloseConfirmModal(pos);
+      expect(component.isCloseConfirmModalOpen()).toBe(true);
+      expect(component.closingPositionTarget()?.id).toBe(401);
+      expect(component.closeQuantity()).toBe(10);
+
+      // Set 50% partial close
+      component.setClosePercent(50);
+      expect(component.closeQuantity()).toBe(5);
+
+      component.closeCloseConfirmModal();
+      expect(component.isCloseConfirmModalOpen()).toBe(false);
+    });
+  });
 });

@@ -101,7 +101,13 @@
 [data-theme="light"] app-fundamental .loading-state,
 [data-theme="light"] app-algo-trading .algo-topbar,
 [data-theme="light"] app-algo-trading .algo-panel,
-[data-theme="light"] app-algo-trading .algo-bottom-tabs {
+[data-theme="light"] app-algo-trading .algo-bottom-tabs,
+[data-theme="light"] app-transactions .glass-card,
+[data-theme="light"] app-transactions .account-summary-section,
+[data-theme="light"] app-transactions .filters-card,
+[data-theme="light"] app-transactions .table-container,
+[data-theme="light"] app-transactions .empty-state,
+[data-theme="light"] app-transactions .trades-banner-chip {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
   box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04) !important;
@@ -146,7 +152,16 @@
 [data-theme="light"] app-algo-trading .m-value,
 [data-theme="light"] app-algo-trading .calc-val,
 [data-theme="light"] app-algo-trading .live-price-val,
-[data-theme="light"] app-algo-trading .algo-table td {
+[data-theme="light"] app-algo-trading .algo-table td,
+[data-theme="light"] app-transactions .page-title,
+[data-theme="light"] app-transactions .summary-title,
+[data-theme="light"] app-transactions .equity-value,
+[data-theme="light"] app-transactions .card-val,
+[data-theme="light"] app-transactions .date-main,
+[data-theme="light"] app-transactions .desc-text,
+[data-theme="light"] app-transactions .balance-after,
+[data-theme="light"] app-transactions .empty-title,
+[data-theme="light"] app-transactions .banner-headline {
   color: #0f172a !important;
 }
 
@@ -167,7 +182,10 @@
 [data-theme="light"] app-alerts .delete-msg,
 [data-theme="light"] app-alerts .cond-desc,
 [data-theme="light"] app-fundamental .company-title,
-[data-theme="light"] app-fundamental .desc-text {
+[data-theme="light"] app-fundamental .desc-text,
+[data-theme="light"] app-transactions .page-subtitle,
+[data-theme="light"] app-transactions .banner-sub,
+[data-theme="light"] app-transactions .empty-desc {
   color: #334155 !important;
 }
 
@@ -202,7 +220,16 @@
 [data-theme="light"] app-fundamental .metric-footnote,
 [data-theme="light"] app-fundamental .metrics-sub,
 [data-theme="light"] app-fundamental .search-icon,
-[data-theme="light"] app-fundamental .loading-state p {
+[data-theme="light"] app-fundamental .loading-state p,
+[data-theme="light"] app-transactions .card-label,
+[data-theme="light"] app-transactions .equity-label,
+[data-theme="light"] app-transactions .pnl-label,
+[data-theme="light"] app-transactions .filter-label,
+[data-theme="light"] app-transactions .active-label,
+[data-theme="light"] app-transactions .page-meta,
+[data-theme="light"] app-transactions .card-subtext,
+[data-theme="light"] app-transactions .date-time,
+[data-theme="light"] app-transactions .transactions-table th {
   color: #475569 !important;
 }
 
@@ -212,7 +239,9 @@
 [data-theme="light"] app-alerts .search-input,
 [data-theme="light"] app-alerts .form-input,
 [data-theme="light"] app-alerts .condition-select,
-[data-theme="light"] app-fundamental .symbol-search-box {
+[data-theme="light"] app-fundamental .symbol-search-box,
+[data-theme="light"] app-transactions .filter-input,
+[data-theme="light"] app-transactions .filter-select {
   background: #f8fafc !important;
   border: 1px solid #cbd5e1 !important;
   color: #0f172a !important;

@@ -511,6 +511,14 @@
             (click)="toggleIndicator('volume')">
             VOL
           </button>
+          <button
+            type="button"
+            class="ind-chip executions-chip"
+            [class.active]="showClosedTradesOnChart()"
+            (click)="showClosedTradesOnChart.set(!showClosedTradesOnChart())"
+            title="Toggle Historical Paper Trade Markers on Chart">
+            Trades
+          </button>
         </div>
 
         <!-- Live Price & Change -->
@@ -1631,7 +1639,12 @@
         @if (activeSymbolPositions().length > 0) {
           <div class="chart-floating-position-overlay">
             @for (pos of activeSymbolPositions(); track pos.id) {
-              <div class="position-badge-card" [class.long]="pos.side === 'LONG'" [class.short]="pos.side === 'SHORT'">
+              <div
+                class="position-badge-card"
+                [class.long]="pos.side === 'LONG'"
+                [class.short]="pos.side === 'SHORT'"
+                [class.selected-pos]="activeSymbolPosition()?.id === pos.id"
+                (click)="selectedPositionId.set(pos.id)">
                 <div class="pos-badge-header">
                   <span class="pos-side-pill">{{ pos.side }}</span>
                   <span class="pos-qty">{{ pos.quantity }} LOT</span>
@@ -1643,11 +1656,22 @@
                   <span class="pnl-pct">({{ (pos.unrealizedPnlPercent || 0) >= 0 ? '+' : '' }}{{ pos.unrealizedPnlPercent | number:'1.2-2' }}%)</span>
                 </div>
 
+                @if (pos.stopLoss || pos.takeProfit) {
+                  <div class="pos-badge-sltp-row">
+                    @if (pos.stopLoss) {
+                      <span class="badge-sltp sl" title="Stop Loss Level">SL: {{ formatCurrencySymbol(pos.symbol) }}{{ pos.stopLoss | number:'1.2-2' }}</span>
+                    }
+                    @if (pos.takeProfit) {
+                      <span class="badge-sltp tp" title="Take Profit Level">TP: {{ formatCurrencySymbol(pos.symbol) }}{{ pos.takeProfit | number:'1.2-2' }}</span>
+                    }
+                  </div>
+                }
+
                 <div class="pos-badge-actions">
-                  <button type="button" class="btn-quick-modify" (click)="openModifyModal(pos)" title="Modify SL/TP">
+                  <button type="button" class="btn-quick-modify" (click)="$event.stopPropagation(); openModifyModal(pos)" title="Modify SL/TP">
                     Modify
                   </button>
-                  <button type="button" class="btn-quick-close" (click)="openCloseConfirmModal(pos)" title="Close Position">
+                  <button type="button" class="btn-quick-close" (click)="$event.stopPropagation(); openCloseConfirmModal(pos)" title="Close Position">
                     Close
                   </button>
                 </div>
@@ -1689,9 +1713,37 @@
       @if (isShowingPositionCard() && activeSymbolPosition(); as pos) {
         <div class="open-position-panel">
           <div class="panel-header-badge-row">
-            <div class="pos-panel-title">OPEN POSITION</div>
-            <span class="pos-status-pill">LIVE</span>
+            <div class="pos-panel-title">OPEN POSITION ({{ activeSymbolPositions().length }})</div>
+            <div class="pos-header-right">
+              @if (activeSymbolPositions().length > 1) {
+                <span class="pos-total-pnl-chip" [class.positive]="totalSymbolFloatingPnl() >= 0" [class.negative]="totalSymbolFloatingPnl() < 0">
+                  Total: {{ totalSymbolFloatingPnl() >= 0 ? '+' : '' }}${{ totalSymbolFloatingPnl() | number:'1.2-2' }}
+                </span>
+              }
+              <span class="pos-status-pill">LIVE</span>
+            </div>
           </div>
+
+          <!-- Multi-Position Selector if multiple positions exist on this symbol -->
+          @if (activeSymbolPositions().length > 1) {
+            <div class="pos-multi-selector">
+              @for (p of activeSymbolPositions(); track p.id) {
+                <button
+                  type="button"
+                  class="pos-sel-pill"
+                  [class.active]="activeSymbolPosition()?.id === p.id"
+                  [class.pill-long]="p.side === 'LONG'"
+                  [class.pill-short]="p.side === 'SHORT'"
+                  (click)="selectedPositionId.set(p.id)">
+                  <span class="sel-pill-side">{{ p.side }}</span>
+                  <span class="sel-pill-qty">{{ p.quantity }}L</span>
+                  <span class="sel-pill-pnl" [class.pos]="(p.unrealizedPnl || 0) >= 0" [class.neg]="(p.unrealizedPnl || 0) < 0">
+                    {{ (p.unrealizedPnl || 0) >= 0 ? '+' : '' }}${{ p.unrealizedPnl | number:'1.2-2' }}
+                  </span>
+                </button>
+              }
+            </div>
+          }
 
           <!-- Position Hero Card -->
           <div class="pos-hero-card" [class.hero-long]="pos.side === 'LONG'" [class.hero-short]="pos.side === 'SHORT'">
@@ -2295,6 +2347,37 @@
 
         <!-- TAB 3: CLOSED HISTORY TABLE -->
         @if (activeBottomTab() === 'CLOSED') {
+          <div class="table-sub-filter-strip">
+            <div class="filter-pills">
+              <button
+                type="button"
+                class="btn-sub-filter"
+                [class.active]="closedHistoryFilter() === 'ACTIVE_SYMBOL'"
+                (click)="closedHistoryFilter.set('ACTIVE_SYMBOL')">
+                <span>{{ symbol() }} Closed History</span>
+                <span class="sub-filter-badge">{{ activeSymbolClosedPositions().length }}</span>
+              </button>
+              <button
+                type="button"
+                class="btn-sub-filter"
+                [class.active]="closedHistoryFilter() === 'ALL'"
+                (click)="closedHistoryFilter.set('ALL')">
+                <span>All Assets History</span>
+                <span class="sub-filter-badge">{{ closedPositions().length }}</span>
+              </button>
+            </div>
+
+            <div class="chart-markers-toggle-wrap">
+              <label class="chart-toggle-label">
+                <input
+                  type="checkbox"
+                  [checked]="showClosedTradesOnChart()"
+                  (change)="showClosedTradesOnChart.set(!showClosedTradesOnChart())" />
+                <span>Show Exit Markers on Chart</span>
+              </label>
+            </div>
+          </div>
+
           <div class="table-responsive">
             <table class="terminal-table">
               <thead>
@@ -2311,7 +2394,7 @@
                 </tr>
               </thead>
               <tbody>
-                @for (pos of closedPositions(); track pos.id) {
+                @for (pos of displayedClosedPositions(); track pos.id) {
                   <tr>
                     <td class="cell-symbol" (click)="selectSymbol(pos.symbol)">
                       <div class="sym-name-link">{{ pos.symbol }}</div>
@@ -2344,11 +2427,11 @@
                   </tr>
                 }
 
-                @if (closedPositions().length === 0) {
+                @if (displayedClosedPositions().length === 0) {
                   <tr>
                     <td colspan="9" class="empty-table-cell">
                       <div class="empty-state-box">
-                        <span>No closed trades in current session history.</span>
+                        <span>No closed trades found for {{ closedHistoryFilter() === 'ACTIVE_SYMBOL' ? symbol() : 'any instrument' }}.</span>
                       </div>
                     </td>
                   </tr>

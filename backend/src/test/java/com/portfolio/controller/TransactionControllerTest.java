@@ -85,7 +85,7 @@ class TransactionControllerTest {
         );
 
         when(transactionService.getUserTransactions(
-                eq(testUser.getId()), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(15), eq("desc")
+                eq(testUser.getId()), eq(false), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(15), eq("desc")
         )).thenReturn(pageResponse);
 
         mockMvc.perform(get("/api/transactions")
@@ -117,7 +117,7 @@ class TransactionControllerTest {
         );
 
         when(transactionService.getUserTransactions(
-                eq(testUser.getId()), eq("SELL"), eq("SWING"), eq("AAPL"), any(), any(), eq(0), eq(10), eq("asc")
+                eq(testUser.getId()), eq(false), eq("SELL"), eq("SWING"), eq("AAPL"), any(), any(), eq(0), eq(10), eq("asc")
         )).thenReturn(pageResponse);
 
         mockMvc.perform(get("/api/transactions")
@@ -134,5 +134,30 @@ class TransactionControllerTest {
                 .andExpect(jsonPath("$.content[0].symbol").value("AAPL"))
                 .andExpect(jsonPath("$.content[0].type").value("SELL"))
                 .andExpect(jsonPath("$.content[0].tradingMode").value("SWING"));
+    }
+
+    @Test
+    @DisplayName("4. GET /api/transactions with financialOnly=true forwards financialOnly parameter to service")
+    void testGetTransactionsFinancialOnly() throws Exception {
+        TransactionDto tx = new TransactionDto(
+                103L, null, "DEPOSIT", "Cash Deposit", "CASH", "USD",
+                "DEPOSIT", "EXECUTED", new BigDecimal("1"), new BigDecimal("10000.00"),
+                new BigDecimal("10000.00"), BigDecimal.ZERO, Instant.parse("2026-10-01T10:00:00Z")
+        );
+
+        PageResponseDto<TransactionDto> pageResponse = new PageResponseDto<>(
+                List.of(tx), 0, 15, 1, 1, true, true
+        );
+
+        when(transactionService.getUserTransactions(
+                eq(testUser.getId()), eq(true), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(15), eq("desc")
+        )).thenReturn(pageResponse);
+
+        mockMvc.perform(get("/api/transactions")
+                        .header("Authorization", "Bearer " + jwtToken)
+                        .param("financialOnly", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].type").value("DEPOSIT"))
+                .andExpect(jsonPath("$.content[0].totalAmount").value(10000.00));
     }
 }

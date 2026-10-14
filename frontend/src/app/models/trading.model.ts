@@ -108,6 +108,23 @@ export interface PortfolioSummary {
   totalPnLPercent?: number;
 }
 
+export interface AccountSummary {
+  initialFundingAmount: number | null;
+  initialFundingRecorded: boolean;
+  initialFundingTime: string | null;
+  totalDeposited: number;
+  totalWithdrawn: number;
+  currentCashBalance: number;
+  totalRealizedPnl: number;
+  totalUnrealizedPnl: number;
+  overallTradingPnl: number;
+  accountEquity: number;
+  marginUsed: number;
+  spotHoldingsMarketValue: number;
+  totalTradesCount: number;
+  openPositionsCount: number;
+}
+
 export interface TransactionItem {
   transactionId: number;
   orderId?: number;
@@ -116,7 +133,7 @@ export interface TransactionItem {
   companyName: string;
   exchange: string;
   currency: string;
-  type: 'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAWAL' | 'DIVIDEND' | string;
+  type: 'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAWAL' | 'DIVIDEND' | 'ACCOUNT_INIT' | 'ACCOUNT_RESET' | string;
   status: string;
   tradingMode?: TradingMode | string;
   positionSide?: PositionSide | string;
@@ -131,6 +148,10 @@ export interface TransactionItem {
   pnlPercent?: number;
   avgBuyPrice?: number;
   currentPrice?: number;
+  balanceAfterEvent?: number | null;
+  description?: string | null;
+  cashFlowImpact?: 'CREDIT' | 'DEBIT' | 'RESET' | string;
+  cashFlowImpactLabel?: string;
 }
 
 export interface TransactionPageResponse {
@@ -144,7 +165,8 @@ export interface TransactionPageResponse {
 }
 
 export interface TransactionFilterParams {
-  type?: 'BUY' | 'SELL' | 'ALL';
+  financialOnly?: boolean;
+  type?: 'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAWAL' | 'ACCOUNT_INIT' | 'ACCOUNT_RESET' | 'DIVIDEND' | 'ALL' | string;
   tradingMode?: TradingMode | 'ALL';
   symbol?: string;
   startDate?: string;

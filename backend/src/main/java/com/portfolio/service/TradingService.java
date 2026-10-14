@@ -1061,10 +1061,25 @@ public class TradingService {
         BigDecimal balance = (user != null && user.getVirtualBalance() != null)
                 ? user.getVirtualBalance()
                 : DEFAULT_INITIAL_BALANCE;
-        List<Transaction> transactions = transactionRepository.findByUserId(userId);
+        List<Transaction> rawTransactions = transactionRepository.findByUserId(userId);
+        if (rawTransactions == null || rawTransactions.isEmpty()) {
+            return balance.setScale(4, RoundingMode.HALF_UP);
+        }
+
+        List<Transaction> transactions = new java.util.ArrayList<>(rawTransactions);
+        transactions.sort(java.util.Comparator.comparing(Transaction::getCreatedAt, java.util.Comparator.nullsFirst(java.util.Comparator.naturalOrder())));
 
         for (Transaction t : transactions) {
             if (t.getStatus() != TransactionStatus.SUCCESS) continue;
+
+            if (t.getTransactionType() == TransactionType.ACCOUNT_RESET) {
+                balance = t.getTotalAmount() != null ? t.getTotalAmount() : DEFAULT_INITIAL_BALANCE;
+                continue;
+            }
+            if (t.getTransactionType() == TransactionType.ACCOUNT_INIT) {
+                // ACCOUNT_INIT records the initial virtual balance that user was created with
+                continue;
+            }
 
             BigDecimal amount = t.getTotalAmount() != null ? t.getTotalAmount() : BigDecimal.ZERO;
             BigDecimal fees = t.getFees() != null ? t.getFees() : BigDecimal.ZERO;
@@ -1127,6 +1142,39 @@ public class TradingService {
     }
 
     @Transactional
+    public VirtualWalletDto withdrawCash(Long userId, BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Withdrawal amount must be greater than zero");
+        }
+
+        synchronized (getUserLock(userId)) {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + userId));
+
+            BigDecimal currentCash = calculateCashBalance(userId);
+            BigDecimal withdrawAmount = amount.setScale(4, RoundingMode.HALF_UP);
+
+            if (withdrawAmount.compareTo(currentCash) > 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient available cash balance for withdrawal. Available: $" + currentCash.setScale(2, RoundingMode.HALF_UP));
+            }
+
+            Transaction transaction = new Transaction();
+            transaction.setUser(user);
+            transaction.setTransactionType(TransactionType.WITHDRAWAL);
+            transaction.setStatus(TransactionStatus.SUCCESS);
+            transaction.setTotalAmount(withdrawAmount);
+            transaction.setFees(BigDecimal.ZERO);
+            transaction.setPnl(BigDecimal.ZERO);
+            transaction.setPnlPercent(BigDecimal.ZERO);
+            transactionRepository.save(transaction);
+
+            log.info("Virtual cash withdrawal of {} for user {}", withdrawAmount, userId);
+
+            return getWallet(userId);
+        }
+    }
+
+    @Transactional
     public VirtualWalletDto resetCashBalance(Long userId, BigDecimal requestedTargetBalance) {
         synchronized (getUserLock(userId)) {
             User user = userRepository.findById(userId)
@@ -1136,22 +1184,19 @@ public class TradingService {
                     ? requestedTargetBalance.setScale(4, RoundingMode.HALF_UP)
                     : DEFAULT_INITIAL_BALANCE;
 
-            // 1. Delete user's automated execution logs (safe deletion before orders/positions)
+            // 1. Delete user's automated execution logs (safe deletion)
             algoTradeLogRepository.deleteByUserId(userId);
 
-            // 2. Delete user's transactions (removes foreign-key references to orders)
-            transactionRepository.deleteByUserId(userId);
-
-            // 3. Delete user's orders
-            orderRepository.deleteByUserId(userId);
-
-            // 4. Delete user's open & closed margin positions
-            positionRepository.deleteByUserId(userId);
-
-            // 5. Delete user's spot holdings
+            // 2. Clear active exposure: delete spot holdings and close open margin positions
             holdingRepository.deleteByUserId(userId);
+            List<Position> openPositions = positionRepository.findByUserIdAndStatus(userId, PositionStatus.OPEN);
+            for (Position p : openPositions) {
+                p.setStatus(PositionStatus.CLOSED);
+                p.setCloseTime(Instant.now());
+            }
+            positionRepository.saveAll(openPositions);
 
-            // 6. Reset performance metrics & stop running strategies for this user
+            // 3. Reset performance metrics & stop running strategies for this user
             List<AlgoStrategy> strategies = algoStrategyRepository.findByUserIdOrderByCreatedAtDesc(userId);
             for (AlgoStrategy strategy : strategies) {
                 strategy.setStatus(StrategyStatus.STOPPED);
@@ -1166,11 +1211,20 @@ public class TradingService {
             }
             algoStrategyRepository.saveAll(strategies);
 
-            // 7. Update user's baseline virtual cash balance directly on user entity — NO synthetic transactions!
-            User managedUser = userRepository.findById(userId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: " + userId));
-            managedUser.setVirtualBalance(targetBalance);
-            userRepository.save(managedUser);
+            // 4. Update user's baseline virtual cash balance
+            user.setVirtualBalance(targetBalance);
+            userRepository.save(user);
+
+            // 5. Record genuine ACCOUNT_RESET event in the ledger with timestamp
+            Transaction resetTx = new Transaction();
+            resetTx.setUser(user);
+            resetTx.setTransactionType(TransactionType.ACCOUNT_RESET);
+            resetTx.setStatus(TransactionStatus.SUCCESS);
+            resetTx.setTotalAmount(targetBalance);
+            resetTx.setFees(BigDecimal.ZERO);
+            resetTx.setPnl(BigDecimal.ZERO);
+            resetTx.setPnlPercent(BigDecimal.ZERO);
+            transactionRepository.save(resetTx);
 
             log.info("Complete paper trading account reset executed for user {}. Target balance: {}", userId, targetBalance);
 

@@ -330,13 +330,17 @@ class TradingServiceTest {
         assertThat(wallet).isNotNull();
         assertThat(wallet.cashBalance()).isEqualByComparingTo(new BigDecimal("150000"));
         verify(algoTradeLogRepository).deleteByUserId(1L);
-        verify(transactionRepository).deleteByUserId(1L);
-        verify(orderRepository).deleteByUserId(1L);
-        verify(positionRepository).deleteByUserId(1L);
         verify(holdingRepository).deleteByUserId(1L);
+        verify(positionRepository, atLeastOnce()).findByUserIdAndStatus(1L, PositionStatus.OPEN);
         verify(algoStrategyRepository).findByUserIdOrderByCreatedAtDesc(1L);
-        // Must NEVER create synthetic deposits or withdrawals
-        verify(transactionRepository, never()).save(any(Transaction.class));
+        // Must record genuine ACCOUNT_RESET and NEVER create synthetic deposits or withdrawals
+        verify(transactionRepository).save(argThat(tx ->
+                tx.getTransactionType() == TransactionType.ACCOUNT_RESET &&
+                tx.getTotalAmount().compareTo(new BigDecimal("150000")) == 0
+        ));
+        verify(transactionRepository, never()).save(argThat(tx ->
+                tx.getTransactionType() == TransactionType.DEPOSIT || tx.getTransactionType() == TransactionType.WITHDRAWAL
+        ));
         verify(userRepository).save(argThat(u -> u.getVirtualBalance().compareTo(new BigDecimal("150000")) == 0));
     }
 
@@ -353,12 +357,18 @@ class TradingServiceTest {
 
         assertThat(wallet).isNotNull();
         assertThat(wallet.cashBalance()).isEqualByComparingTo(new BigDecimal("1000"));
-        verify(transactionRepository, never()).save(any(Transaction.class));
+        verify(transactionRepository).save(argThat(tx ->
+                tx.getTransactionType() == TransactionType.ACCOUNT_RESET &&
+                tx.getTotalAmount().compareTo(new BigDecimal("1000")) == 0
+        ));
+        verify(transactionRepository, never()).save(argThat(tx ->
+                tx.getTransactionType() == TransactionType.DEPOSIT || tx.getTransactionType() == TransactionType.WITHDRAWAL
+        ));
         verify(userRepository).save(argThat(u -> u.getVirtualBalance().compareTo(new BigDecimal("1000")) == 0));
     }
 
     @Test
-    @DisplayName("FULL RESET - Permanently clears trading history and positions while keeping user profile intact")
+    @DisplayName("FULL RESET - Permanently clears active trading positions while keeping user profile intact")
     void testCompletePaperTradingAccountResetDeletesAllTradingDataAndPreservesUserAccount() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
         when(transactionRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
@@ -376,12 +386,11 @@ class TradingServiceTest {
         assertThat(wallet).isNotNull();
         assertThat(wallet.cashBalance()).isEqualByComparingTo(new BigDecimal("100000.00"));
 
-        // Verify trading data deleted
+        // Verify active positions and holdings cleared
         verify(algoTradeLogRepository).deleteByUserId(1L);
-        verify(transactionRepository).deleteByUserId(1L);
-        verify(orderRepository).deleteByUserId(1L);
-        verify(positionRepository).deleteByUserId(1L);
         verify(holdingRepository).deleteByUserId(1L);
+        verify(positionRepository, atLeastOnce()).findByUserIdAndStatus(1L, PositionStatus.OPEN);
+        verify(transactionRepository).save(argThat(tx -> tx.getTransactionType() == TransactionType.ACCOUNT_RESET));
 
         // Verify strategy metrics reset and status stopped
         assertThat(strategy.getStatus()).isEqualTo(StrategyStatus.STOPPED);
@@ -427,12 +436,10 @@ class TradingServiceTest {
 
         assertThat(wallet).isNotNull();
 
-        // Must delete for user A
+        // Must delete/clean for user A while preserving historical trade ledger
         verify(algoTradeLogRepository).deleteByUserId(userA);
-        verify(transactionRepository).deleteByUserId(userA);
-        verify(orderRepository).deleteByUserId(userA);
-        verify(positionRepository).deleteByUserId(userA);
         verify(holdingRepository).deleteByUserId(userA);
+        verify(transactionRepository).save(any(Transaction.class));
 
         // Must NEVER delete for user B
         verify(algoTradeLogRepository, never()).deleteByUserId(userB);
@@ -448,14 +455,14 @@ class TradingServiceTest {
         Long userA = 1L;
         when(userRepository.findById(userA)).thenReturn(Optional.of(testUser));
         doThrow(new RuntimeException("Database foreign key or deadlock error"))
-                .when(positionRepository).deleteByUserId(userA);
+                .when(holdingRepository).deleteByUserId(userA);
 
         assertThatThrownBy(() -> tradingService.resetCashBalance(userA, TradingService.DEFAULT_INITIAL_BALANCE))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Database foreign key or deadlock error");
 
         // Subsequent steps must never execute
-        verify(holdingRepository, never()).deleteByUserId(userA);
+        verify(positionRepository, never()).findByUserIdAndStatus(anyLong(), any());
         verify(algoStrategyRepository, never()).findByUserIdOrderByCreatedAtDesc(anyLong());
         verify(transactionRepository, never()).save(any());
     }
@@ -486,9 +493,7 @@ class TradingServiceTest {
         verify(lazyUser, never()).getOrders();
         verify(lazyUser, never()).getTransactions();
         verify(holdingRepository).deleteByUserId(1L);
-        verify(positionRepository).deleteByUserId(1L);
-        verify(orderRepository).deleteByUserId(1L);
-        verify(transactionRepository).deleteByUserId(1L);
+        verify(transactionRepository).save(any(Transaction.class));
         verify(algoTradeLogRepository).deleteByUserId(1L);
     }
 }

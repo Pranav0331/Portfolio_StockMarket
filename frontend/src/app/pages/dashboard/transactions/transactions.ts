@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { TransactionService } from '../../../services/transaction.service';
-import { TransactionItem, TransactionPageResponse, TransactionFilterParams, TradingMode } from '../../../models/trading.model';
+import { TransactionItem, TransactionPageResponse, TransactionFilterParams, AccountSummary } from '../../../models/trading.model';
 
 @Component({
   selector: 'app-transactions',
@@ -18,12 +18,13 @@ export class TransactionsComponent implements OnInit {
   // View state signals
   readonly transactions = signal<TransactionItem[]>([]);
   readonly pageResponse = signal<TransactionPageResponse | null>(null);
+  readonly accountSummary = signal<AccountSummary | null>(null);
   readonly isLoading = signal<boolean>(false);
+  readonly isSummaryLoading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
 
-  // Filter signals
-  readonly selectedType = signal<'ALL' | 'BUY' | 'SELL'>('ALL');
-  readonly selectedTradingMode = signal<'ALL' | TradingMode>('ALL');
+  // Filter signals - Financial ledger events only
+  readonly selectedType = signal<'ALL' | 'ACCOUNT_INIT' | 'DEPOSIT' | 'WITHDRAWAL' | 'ACCOUNT_RESET' | 'DIVIDEND' | 'BUY' | 'SELL' | string>('ALL');
   readonly symbolSearch = signal<string>('');
   readonly startDate = signal<string>('');
   readonly endDate = signal<string>('');
@@ -34,16 +35,32 @@ export class TransactionsComponent implements OnInit {
   private searchDebounceTimer?: any;
 
   ngOnInit(): void {
+    this.loadAccountSummary();
     this.loadTransactions();
+  }
+
+  loadAccountSummary(): void {
+    this.isSummaryLoading.set(true);
+    this.transactionService.getAccountSummary().subscribe({
+      next: (summary) => {
+        this.accountSummary.set(summary);
+        this.isSummaryLoading.set(false);
+      },
+      error: (err) => {
+        this.isSummaryLoading.set(false);
+        console.error('Could not load paper trading account summary:', err);
+      }
+    });
   }
 
   loadTransactions(): void {
     this.isLoading.set(true);
     this.error.set(null);
 
+    // Financial ledger only: excludes trade executions (BUY/SELL) which belong on Orders & closed trades
     const filterParams: TransactionFilterParams = {
+      financialOnly: true,
       type: this.selectedType(),
-      tradingMode: this.selectedTradingMode(),
       symbol: this.symbolSearch().trim() || undefined,
       startDate: this.startDate() || undefined,
       endDate: this.endDate() || undefined,
@@ -61,31 +78,25 @@ export class TransactionsComponent implements OnInit {
       },
       error: (err) => {
         this.isLoading.set(false);
-        const errorMsg = err?.error?.message || err?.message || 'Failed to load transaction history.';
+        const errorMsg = err?.error?.message || err?.message || 'Failed to load paper trading account ledger.';
         this.error.set(errorMsg);
       }
     });
   }
 
   refreshTransactions(): void {
+    this.loadAccountSummary();
     this.loadTransactions();
   }
 
-  setTypeFilter(type: 'ALL' | 'BUY' | 'SELL'): void {
+  setTypeFilter(type: any): void {
     if (this.selectedType() === type) return;
     this.selectedType.set(type);
     this.currentPage.set(0);
     this.loadTransactions();
   }
 
-  setTradingModeFilter(mode: 'ALL' | TradingMode): void {
-    if (this.selectedTradingMode() === mode) return;
-    this.selectedTradingMode.set(mode);
-    this.currentPage.set(0);
-    this.loadTransactions();
-  }
-
-  onSymbolInput(event: Event): void {
+  onSearchInput(event: Event): void {
     const input = event.target as HTMLInputElement;
     const value = input?.value || '';
     this.symbolSearch.set(value);
@@ -99,10 +110,42 @@ export class TransactionsComponent implements OnInit {
     }, 300);
   }
 
-  clearSymbolSearch(): void {
+  onSymbolInput(event: Event): void {
+    this.onSearchInput(event);
+  }
+
+  clearSearch(): void {
     this.symbolSearch.set('');
     this.currentPage.set(0);
     this.loadTransactions();
+  }
+
+  clearSymbolSearch(): void {
+    this.clearSearch();
+  }
+
+  navigateToStock(symbol: string): void {
+    if (!symbol || !this.isTradeableStock(symbol)) return;
+    this.router.navigate(['/dashboard/stock', symbol]);
+  }
+
+  isTradeableStock(symbol?: string): boolean {
+    if (!symbol) return false;
+    const s = symbol.trim().toUpperCase();
+    return s !== 'UNKNOWN' && s !== 'CASH' && s !== 'DEPOSIT' && s !== 'WITHDRAWAL' && s !== 'DIVIDEND' && s !== 'INIT' && s !== 'RESET';
+  }
+
+  isAmountOutflow(type?: string): boolean {
+    if (!type) return false;
+    const t = type.trim().toUpperCase();
+    return t === 'BUY' || t === 'WITHDRAWAL';
+  }
+
+  getTransactionBadgeClass(type?: string): string {
+    const t = (type || '').trim().toUpperCase();
+    if (t === 'BUY') return 'badge-buy';
+    if (t === 'SELL') return 'badge-sell';
+    return this.getEventTypeBadgeClass(type);
   }
 
   onStartDateChange(event: Event): void {
@@ -128,7 +171,6 @@ export class TransactionsComponent implements OnInit {
 
   resetFilters(): void {
     this.selectedType.set('ALL');
-    this.selectedTradingMode.set('ALL');
     this.symbolSearch.set('');
     this.startDate.set('');
     this.endDate.set('');
@@ -139,7 +181,6 @@ export class TransactionsComponent implements OnInit {
 
   hasActiveFilters(): boolean {
     return this.selectedType() !== 'ALL' ||
-      this.selectedTradingMode() !== 'ALL' ||
       this.symbolSearch().trim().length > 0 ||
       this.startDate().length > 0 ||
       this.endDate().length > 0;
@@ -154,49 +195,74 @@ export class TransactionsComponent implements OnInit {
     this.loadTransactions();
   }
 
-  navigateToStock(symbol: string): void {
-    if (!symbol || !this.isTradeableStock(symbol)) return;
-    this.router.navigate(['/dashboard/stock', symbol]);
-  }
-
-  isTradeableStock(symbol?: string): boolean {
-    if (!symbol) return false;
-    const s = symbol.trim().toUpperCase();
-    return s !== 'UNKNOWN' && s !== 'CASH' && s !== 'DEPOSIT' && s !== 'WITHDRAWAL' && s !== 'DIVIDEND';
-  }
-
-  isAmountOutflow(type?: string): boolean {
-    if (!type) return false;
+  // Cash Flow & Ledger Helpers
+  getEventTypeLabel(type?: string): string {
+    if (!type) return 'Financial Event';
     const t = type.trim().toUpperCase();
-    return t === 'BUY' || t === 'WITHDRAWAL';
+    switch (t) {
+      case 'ACCOUNT_INIT': return 'Initial Credit';
+      case 'DEPOSIT': return 'Deposit / Top-up';
+      case 'WITHDRAWAL': return 'Cash Withdrawal';
+      case 'ACCOUNT_RESET': return 'Reset Event';
+      case 'DIVIDEND': return 'Cash Adjustment';
+      default: return t.replace('_', ' ');
+    }
   }
 
-  getTransactionBadgeClass(type?: string): string {
-    if (!type) return 'badge-sell';
+  getEventTypeBadgeClass(type?: string): string {
+    if (!type) return 'badge-neutral';
     const t = type.trim().toUpperCase();
-    if (t === 'BUY') return 'badge-buy';
-    if (t === 'SELL') return 'badge-sell';
-    if (t === 'DEPOSIT') return 'badge-deposit';
-    if (t === 'WITHDRAWAL') return 'badge-withdrawal';
-    if (t === 'DIVIDEND') return 'badge-deposit';
-    return 'badge-sell';
+    switch (t) {
+      case 'ACCOUNT_INIT': return 'badge-init';
+      case 'DEPOSIT': return 'badge-deposit';
+      case 'WITHDRAWAL': return 'badge-withdrawal';
+      case 'ACCOUNT_RESET': return 'badge-reset';
+      case 'DIVIDEND': return 'badge-adjustment';
+      default: return 'badge-neutral';
+    }
   }
 
-  getTransactionDisplaySymbol(tx: TransactionItem): string {
-    if (tx.symbol && this.isTradeableStock(tx.symbol)) {
-      return tx.symbol;
+  getCashFlowImpactClass(tx: TransactionItem): string {
+    const impact = (tx.cashFlowImpact || '').toUpperCase();
+    if (impact === 'CREDIT' || tx.type === 'DEPOSIT' || tx.type === 'ACCOUNT_INIT' || tx.type === 'DIVIDEND') {
+      return 'impact-credit';
     }
-    if (tx.companyName && tx.companyName !== 'UNKNOWN') {
-      return tx.companyName;
+    if (impact === 'DEBIT' || tx.type === 'WITHDRAWAL') {
+      return 'impact-debit';
     }
-    if (tx.type) {
-      const t = tx.type.toUpperCase();
-      if (t === 'DEPOSIT') return 'Cash Deposit';
-      if (t === 'WITHDRAWAL') return 'Cash Withdrawal';
-      if (t === 'DIVIDEND') return 'Cash Dividend';
-      return t;
+    if (impact === 'RESET' || tx.type === 'ACCOUNT_RESET') {
+      return 'impact-reset';
     }
-    return 'Cash Transaction';
+    return 'impact-neutral';
+  }
+
+  getCashFlowSign(tx: TransactionItem): string {
+    const impact = (tx.cashFlowImpact || '').toUpperCase();
+    if (impact === 'CREDIT' || tx.type === 'DEPOSIT' || tx.type === 'ACCOUNT_INIT' || tx.type === 'DIVIDEND') {
+      return '+';
+    }
+    if (impact === 'DEBIT' || tx.type === 'WITHDRAWAL') {
+      return '-';
+    }
+    if (impact === 'RESET' || tx.type === 'ACCOUNT_RESET') {
+      return '=';
+    }
+    return '';
+  }
+
+  getCashFlowImpactExplanation(tx: TransactionItem): string {
+    if (tx.cashFlowImpactLabel) {
+      return tx.cashFlowImpactLabel;
+    }
+    const t = (tx.type || '').toUpperCase();
+    switch (t) {
+      case 'ACCOUNT_INIT': return '+ Increases Cash (Initial Credit)';
+      case 'DEPOSIT': return '+ Increases Cash (Deposit)';
+      case 'WITHDRAWAL': return '- Decreases Cash (Withdrawal)';
+      case 'ACCOUNT_RESET': return '= Replaces Cash Balance (Reset)';
+      case 'DIVIDEND': return '+ Increases Cash (Adjustment)';
+      default: return 'Account Cash Event';
+    }
   }
 
   getCurrencySymbol(currency?: string): string {
@@ -209,27 +275,9 @@ export class TransactionsComponent implements OnInit {
   getStatusBadgeClass(status?: string): string {
     if (!status) return 'status-executed';
     const s = status.toUpperCase();
-    if (s === 'EXECUTED' || s === 'SUCCESS') return 'status-executed';
+    if (s === 'EXECUTED' || s === 'SUCCESS' || s === 'COMPLETED') return 'status-executed';
     if (s === 'PENDING') return 'status-pending';
     return 'status-rejected';
-  }
-
-  getTradingModeLabel(mode?: string): string {
-    if (!mode) return 'Intraday';
-    const m = mode.toUpperCase();
-    if (m === 'SCALPING') return 'Scalping';
-    if (m === 'SWING') return 'Swing';
-    if (m === 'LONG_TERM' || m === 'LONG TERM') return 'Long Term';
-    return 'Intraday';
-  }
-
-  getTradingModeBadgeClass(mode?: string): string {
-    if (!mode) return 'mode-intraday';
-    const m = mode.toUpperCase();
-    if (m === 'SCALPING') return 'mode-scalping';
-    if (m === 'SWING') return 'mode-swing';
-    if (m === 'LONG_TERM' || m === 'LONG TERM') return 'mode-long-term';
-    return 'mode-intraday';
   }
 
   getPageNumbers(totalPages: number): number[] {

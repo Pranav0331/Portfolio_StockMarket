@@ -85,6 +85,20 @@
             (click)="setStatusFilter('PENDING')">
             Pending
           </button>
+          <button 
+            type="button" 
+            class="pill-btn pill-cancelled" 
+            [class.active]="selectedStatus() === 'CANCELLED'"
+            (click)="setStatusFilter('CANCELLED')">
+            Cancelled
+          </button>
+          <button 
+            type="button" 
+            class="pill-btn pill-rejected" 
+            [class.active]="selectedStatus() === 'REJECTED'"
+            (click)="setStatusFilter('REJECTED')">
+            Rejected
+          </button>
         </div>
       </div>
 

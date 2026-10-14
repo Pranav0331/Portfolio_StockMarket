@@ -27,8 +27,68 @@ public record TransactionDto(
         BigDecimal pnl,
         BigDecimal pnlPercent,
         BigDecimal avgBuyPrice,
-        BigDecimal currentPrice
+        BigDecimal currentPrice,
+        BigDecimal balanceAfterEvent,
+        String description,
+        String cashFlowImpact,
+        String cashFlowImpactLabel
 ) {
+    public TransactionDto(
+            Long transactionId,
+            Long orderId,
+            Long positionId,
+            String symbol,
+            String companyName,
+            String exchange,
+            String currency,
+            String type,
+            String status,
+            String tradingMode,
+            String positionSide,
+            Integer leverage,
+            BigDecimal marginUsed,
+            BigDecimal quantity,
+            BigDecimal executionPrice,
+            BigDecimal totalAmount,
+            BigDecimal fees,
+            Instant executedAt,
+            BigDecimal pnl,
+            BigDecimal pnlPercent,
+            BigDecimal avgBuyPrice,
+            BigDecimal currentPrice,
+            BigDecimal balanceAfterEvent,
+            String description
+    ) {
+        this(transactionId, orderId, positionId, symbol, companyName, exchange, currency, type, status, tradingMode, positionSide, leverage, marginUsed, quantity, executionPrice, totalAmount, fees, executedAt, pnl, pnlPercent, avgBuyPrice, currentPrice, balanceAfterEvent, description, null, null);
+    }
+
+    public TransactionDto(
+            Long transactionId,
+            Long orderId,
+            Long positionId,
+            String symbol,
+            String companyName,
+            String exchange,
+            String currency,
+            String type,
+            String status,
+            String tradingMode,
+            String positionSide,
+            Integer leverage,
+            BigDecimal marginUsed,
+            BigDecimal quantity,
+            BigDecimal executionPrice,
+            BigDecimal totalAmount,
+            BigDecimal fees,
+            Instant executedAt,
+            BigDecimal pnl,
+            BigDecimal pnlPercent,
+            BigDecimal avgBuyPrice,
+            BigDecimal currentPrice
+    ) {
+        this(transactionId, orderId, positionId, symbol, companyName, exchange, currency, type, status, tradingMode, positionSide, leverage, marginUsed, quantity, executionPrice, totalAmount, fees, executedAt, pnl, pnlPercent, avgBuyPrice, currentPrice, null, null, null, null);
+    }
+
     public TransactionDto(
             Long transactionId,
             Long orderId,
@@ -44,7 +104,7 @@ public record TransactionDto(
             BigDecimal fees,
             Instant executedAt
     ) {
-        this(transactionId, orderId, null, symbol, companyName, exchange, currency, type, status, "INTRADAY", null, 1, BigDecimal.ZERO, quantity, executionPrice, totalAmount, fees, executedAt, BigDecimal.ZERO, BigDecimal.ZERO, executionPrice, executionPrice);
+        this(transactionId, orderId, null, symbol, companyName, exchange, currency, type, status, "INTRADAY", null, 1, BigDecimal.ZERO, quantity, executionPrice, totalAmount, fees, executedAt, BigDecimal.ZERO, BigDecimal.ZERO, executionPrice, executionPrice, null, null, null, null);
     }
 
     public TransactionDto(
@@ -66,7 +126,7 @@ public record TransactionDto(
             BigDecimal avgBuyPrice,
             BigDecimal currentPrice
     ) {
-        this(transactionId, orderId, null, symbol, companyName, exchange, currency, type, status, "INTRADAY", null, 1, BigDecimal.ZERO, quantity, executionPrice, totalAmount, fees, executedAt, pnl, pnlPercent, avgBuyPrice, currentPrice);
+        this(transactionId, orderId, null, symbol, companyName, exchange, currency, type, status, "INTRADAY", null, 1, BigDecimal.ZERO, quantity, executionPrice, totalAmount, fees, executedAt, pnl, pnlPercent, avgBuyPrice, currentPrice, null, null, null, null);
     }
 
     public TransactionDto(
@@ -89,6 +149,6 @@ public record TransactionDto(
             BigDecimal avgBuyPrice,
             BigDecimal currentPrice
     ) {
-        this(transactionId, orderId, null, symbol, companyName, exchange, currency, type, status, tradingMode != null ? tradingMode : "INTRADAY", null, 1, BigDecimal.ZERO, quantity, executionPrice, totalAmount, fees, executedAt, pnl, pnlPercent, avgBuyPrice, currentPrice);
+        this(transactionId, orderId, null, symbol, companyName, exchange, currency, type, status, tradingMode != null ? tradingMode : "INTRADAY", null, 1, BigDecimal.ZERO, quantity, executionPrice, totalAmount, fees, executedAt, pnl, pnlPercent, avgBuyPrice, currentPrice, null, null, null, null);
     }
 }

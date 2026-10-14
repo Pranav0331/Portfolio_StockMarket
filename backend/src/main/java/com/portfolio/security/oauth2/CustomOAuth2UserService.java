@@ -28,15 +28,18 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private final UserRepository userRepository;
     private final Environment environment;
     private final String configuredAdminEmail;
+    private final com.portfolio.repository.TransactionRepository transactionRepository;
 
     public CustomOAuth2UserService(
             UserRepository userRepository,
             Environment environment,
-            @org.springframework.beans.factory.annotation.Value("${app.admin.email:}") String adminEmail
+            @org.springframework.beans.factory.annotation.Value("${app.admin.email:}") String adminEmail,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.portfolio.repository.TransactionRepository transactionRepository
     ) {
         this.userRepository = userRepository;
         this.environment = environment;
         this.configuredAdminEmail = adminEmail;
+        this.transactionRepository = transactionRepository;
     }
 
     public boolean isAdminEmail(String email) {
@@ -126,6 +129,19 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             user.setPasswordHash(null); // No password for Google OAuth users
 
             user = userRepository.saveAndFlush(user);
+
+            if (transactionRepository != null) {
+                com.portfolio.entity.Transaction initTx = new com.portfolio.entity.Transaction();
+                initTx.setUser(user);
+                initTx.setTransactionType(com.portfolio.entity.enums.TransactionType.ACCOUNT_INIT);
+                initTx.setStatus(com.portfolio.entity.enums.TransactionStatus.SUCCESS);
+                initTx.setTotalAmount(user.getVirtualBalance() != null ? user.getVirtualBalance() : new java.math.BigDecimal("100000.0000"));
+                initTx.setFees(java.math.BigDecimal.ZERO);
+                initTx.setPnl(java.math.BigDecimal.ZERO);
+                initTx.setPnlPercent(java.math.BigDecimal.ZERO);
+                transactionRepository.save(initTx);
+            }
+
             log.info("Registered new user {} via Google OAuth with role {}", user.getEmail(), assignedRole);
         }
 
