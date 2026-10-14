@@ -807,6 +807,84 @@
   padding: 0 0.75rem;
 }
 
+/* View Switcher */
+.view-switcher-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-top: -0.25rem;
+}
+
+.view-tabs-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-sm);
+}
+
+.view-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 1.15rem;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-tab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.view-tab-btn.active {
+  color: #ffffff;
+  background: var(--primary);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.35);
+}
+
+.tab-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.2);
+  color: currentColor;
+}
+
+.view-tab-btn.active .tab-badge {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Matched Executions Badge */
+.matched-orders-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-family: var(--font-mono, monospace);
+  padding: 0.25rem 0.55rem;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.matched-tag {
+  color: var(--primary);
+  font-weight: 600;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .page-header {
@@ -817,6 +895,16 @@
     grid-template-columns: 1fr;
   }
   
+  .view-tabs-card {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .view-tab-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
   .pagination-footer {
     flex-direction: column;
     align-items: stretch;
@@ -827,3 +915,4 @@
     justify-content: center;
   }
 }
+

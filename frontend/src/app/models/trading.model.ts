@@ -222,3 +222,50 @@ export interface OrderFilterParams {
   size?: number;
   sort?: 'desc' | 'asc';
 }
+
+export interface ConsolidatedTradeItem {
+  tradeId: number;
+  entryOrderId?: number;
+  exitOrderId?: number;
+  symbol: string;
+  companyName: string;
+  exchange: string;
+  currency: string;
+  direction: 'LONG' | 'SHORT' | string;
+  tradingMode: TradingMode | string;
+  leverage: number;
+  quantity: number;
+  entryPrice: number;
+  exitPrice?: number | null;
+  currentPrice?: number | null;
+  realizedPnl?: number | null;
+  unrealizedPnl?: number | null;
+  unrealizedPnlPercent?: number | null;
+  marginUsed?: number;
+  status: 'OPEN' | 'CLOSED' | string;
+  openTime: string;
+  closeTime?: string | null;
+}
+
+export interface ConsolidatedTradePageResponse {
+  content: ConsolidatedTradeItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface ConsolidatedTradeFilterParams {
+  symbol?: string;
+  status?: 'ALL' | 'OPEN' | 'CLOSED';
+  direction?: 'ALL' | 'LONG' | 'SHORT';
+  tradingMode?: TradingMode | 'ALL';
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  size?: number;
+  sort?: 'desc' | 'asc';
+}
+

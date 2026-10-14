@@ -2,7 +2,15 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { OrderService } from '../../../services/order.service';
-import { OrderItem, OrderPageResponse, OrderFilterParams, TradingMode } from '../../../models/trading.model';
+import {
+  OrderItem,
+  OrderPageResponse,
+  OrderFilterParams,
+  ConsolidatedTradeItem,
+  ConsolidatedTradePageResponse,
+  ConsolidatedTradeFilterParams,
+  TradingMode
+} from '../../../models/trading.model';
 
 @Component({
   selector: 'app-orders',
@@ -16,14 +24,23 @@ export class OrdersComponent implements OnInit {
   private readonly router = inject(Router);
 
   // View state signals
-  readonly orders = signal<OrderItem[]>([]);
-  readonly pageResponse = signal<OrderPageResponse | null>(null);
+  readonly activeView = signal<'trades' | 'rawOrders'>('trades');
   readonly isLoading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
 
-  // Filter signals
+  // Consolidated Trades state signals
+  readonly trades = signal<ConsolidatedTradeItem[]>([]);
+  readonly tradesPageResponse = signal<ConsolidatedTradePageResponse | null>(null);
+  readonly selectedTradeStatus = signal<'ALL' | 'OPEN' | 'CLOSED'>('ALL');
+  readonly selectedTradeDirection = signal<'ALL' | 'LONG' | 'SHORT'>('ALL');
+
+  // Raw Orders state signals
+  readonly orders = signal<OrderItem[]>([]);
+  readonly pageResponse = signal<OrderPageResponse | null>(null);
   readonly selectedType = signal<'ALL' | 'BUY' | 'SELL'>('ALL');
   readonly selectedStatus = signal<'ALL' | 'EXECUTED' | 'PENDING' | 'CANCELLED' | 'REJECTED'>('ALL');
+
+  // Shared filter signals
   readonly selectedTradingMode = signal<'ALL' | TradingMode>('ALL');
   readonly symbolSearch = signal<string>('');
   readonly startDate = signal<string>('');
@@ -35,7 +52,54 @@ export class OrdersComponent implements OnInit {
   private searchDebounceTimer?: any;
 
   ngOnInit(): void {
-    this.loadOrders();
+    this.loadCurrentView();
+  }
+
+  loadCurrentView(): void {
+    if (this.activeView() === 'trades') {
+      this.loadTrades();
+    } else {
+      this.loadOrders();
+    }
+  }
+
+  setActiveView(view: 'trades' | 'rawOrders'): void {
+    if (this.activeView() === view) return;
+    this.activeView.set(view);
+    this.currentPage.set(0);
+    this.error.set(null);
+    this.loadCurrentView();
+  }
+
+  loadTrades(): void {
+    this.isLoading.set(true);
+    this.error.set(null);
+
+    const filterParams: ConsolidatedTradeFilterParams = {
+      status: this.selectedTradeStatus(),
+      direction: this.selectedTradeDirection(),
+      tradingMode: this.selectedTradingMode(),
+      symbol: this.symbolSearch().trim() || undefined,
+      startDate: this.startDate() || undefined,
+      endDate: this.endDate() || undefined,
+      page: this.currentPage(),
+      size: this.pageSize(),
+      sort: this.sortDirection()
+    };
+
+    this.orderService.getConsolidatedTrades(filterParams).subscribe({
+      next: (res) => {
+        this.tradesPageResponse.set(res);
+        this.trades.set(res?.content || []);
+        this.isLoading.set(false);
+        this.error.set(null);
+      },
+      error: (err) => {
+        this.isLoading.set(false);
+        const errorMsg = err?.error?.message || err?.message || 'Failed to load consolidated trades.';
+        this.error.set(errorMsg);
+      }
+    });
   }
 
   loadOrders(): void {
@@ -57,7 +121,7 @@ export class OrdersComponent implements OnInit {
     this.orderService.getOrders(filterParams).subscribe({
       next: (res) => {
         this.pageResponse.set(res);
-        this.orders.set(res.content || []);
+        this.orders.set(res?.content || []);
         this.isLoading.set(false);
         this.error.set(null);
       },
@@ -70,9 +134,25 @@ export class OrdersComponent implements OnInit {
   }
 
   refreshOrders(): void {
-    this.loadOrders();
+    this.loadCurrentView();
   }
 
+  // Trades filters
+  setTradeStatusFilter(status: 'ALL' | 'OPEN' | 'CLOSED'): void {
+    if (this.selectedTradeStatus() === status) return;
+    this.selectedTradeStatus.set(status);
+    this.currentPage.set(0);
+    this.loadTrades();
+  }
+
+  setTradeDirectionFilter(direction: 'ALL' | 'LONG' | 'SHORT'): void {
+    if (this.selectedTradeDirection() === direction) return;
+    this.selectedTradeDirection.set(direction);
+    this.currentPage.set(0);
+    this.loadTrades();
+  }
+
+  // Raw orders filters
   setTypeFilter(type: 'ALL' | 'BUY' | 'SELL'): void {
     if (this.selectedType() === type) return;
     this.selectedType.set(type);
@@ -91,7 +171,7 @@ export class OrdersComponent implements OnInit {
     if (this.selectedTradingMode() === mode) return;
     this.selectedTradingMode.set(mode);
     this.currentPage.set(0);
-    this.loadOrders();
+    this.loadCurrentView();
   }
 
   onSymbolInput(event: Event): void {
@@ -104,38 +184,40 @@ export class OrdersComponent implements OnInit {
     }
     this.searchDebounceTimer = setTimeout(() => {
       this.currentPage.set(0);
-      this.loadOrders();
+      this.loadCurrentView();
     }, 300);
   }
 
   clearSymbolSearch(): void {
     this.symbolSearch.set('');
     this.currentPage.set(0);
-    this.loadOrders();
+    this.loadCurrentView();
   }
 
   onStartDateChange(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.startDate.set(input?.value || '');
     this.currentPage.set(0);
-    this.loadOrders();
+    this.loadCurrentView();
   }
 
   onEndDateChange(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.endDate.set(input?.value || '');
     this.currentPage.set(0);
-    this.loadOrders();
+    this.loadCurrentView();
   }
 
   onSortChange(event: Event): void {
     const select = event.target as HTMLSelectElement;
     this.sortDirection.set((select?.value as 'desc' | 'asc') || 'desc');
     this.currentPage.set(0);
-    this.loadOrders();
+    this.loadCurrentView();
   }
 
   resetFilters(): void {
+    this.selectedTradeStatus.set('ALL');
+    this.selectedTradeDirection.set('ALL');
     this.selectedType.set('ALL');
     this.selectedStatus.set('ALL');
     this.selectedTradingMode.set('ALL');
@@ -144,10 +226,18 @@ export class OrdersComponent implements OnInit {
     this.endDate.set('');
     this.sortDirection.set('desc');
     this.currentPage.set(0);
-    this.loadOrders();
+    this.loadCurrentView();
   }
 
   hasActiveFilters(): boolean {
+    if (this.activeView() === 'trades') {
+      return this.selectedTradeStatus() !== 'ALL' ||
+        this.selectedTradeDirection() !== 'ALL' ||
+        this.selectedTradingMode() !== 'ALL' ||
+        this.symbolSearch().trim().length > 0 ||
+        this.startDate().length > 0 ||
+        this.endDate().length > 0;
+    }
     return this.selectedType() !== 'ALL' ||
       this.selectedStatus() !== 'ALL' ||
       this.selectedTradingMode() !== 'ALL' ||
@@ -158,11 +248,11 @@ export class OrdersComponent implements OnInit {
 
   goToPage(page: number): void {
     if (page < 0) return;
-    const current = this.pageResponse();
+    const current = this.activeView() === 'trades' ? this.tradesPageResponse() : this.pageResponse();
     if (current && page >= current.totalPages) return;
 
     this.currentPage.set(page);
-    this.loadOrders();
+    this.loadCurrentView();
   }
 
   navigateToStock(symbol: string): void {
@@ -180,8 +270,8 @@ export class OrdersComponent implements OnInit {
   getStatusBadgeClass(status?: string): string {
     if (!status) return 'status-executed';
     const s = status.toUpperCase();
-    if (s === 'EXECUTED' || s === 'FILLED' || s === 'SUCCESS') return 'status-executed';
-    if (s === 'PENDING') return 'status-pending';
+    if (s === 'EXECUTED' || s === 'FILLED' || s === 'SUCCESS' || s === 'CLOSED') return 'status-executed';
+    if (s === 'PENDING' || s === 'OPEN') return 'status-pending';
     if (s === 'CANCELLED') return 'status-cancelled';
     return 'status-rejected';
   }

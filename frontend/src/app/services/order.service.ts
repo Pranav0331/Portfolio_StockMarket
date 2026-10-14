@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { OrderFilterParams, OrderPageResponse, OrderItem } from '../models/trading.model';
+import { OrderFilterParams, OrderPageResponse, OrderItem, ConsolidatedTradeItem, ConsolidatedTradePageResponse, ConsolidatedTradeFilterParams } from '../models/trading.model';
 
 @Injectable({
   providedIn: 'root'
@@ -13,6 +13,8 @@ export class OrderService {
 
   readonly orders = signal<OrderItem[]>([]);
   readonly pageResponse = signal<OrderPageResponse | null>(null);
+  readonly trades = signal<ConsolidatedTradeItem[]>([]);
+  readonly tradesPageResponse = signal<ConsolidatedTradePageResponse | null>(null);
   readonly isLoading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
 
@@ -67,4 +69,57 @@ export class OrderService {
       })
     );
   }
+
+  getConsolidatedTrades(filterParams?: ConsolidatedTradeFilterParams): Observable<ConsolidatedTradePageResponse> {
+    this.isLoading.set(true);
+    this.error.set(null);
+
+    let params = new HttpParams();
+    if (filterParams) {
+      if (filterParams.status && filterParams.status !== 'ALL') {
+        params = params.set('status', filterParams.status);
+      }
+      if (filterParams.direction && filterParams.direction !== 'ALL') {
+        params = params.set('direction', filterParams.direction);
+      }
+      if (filterParams.tradingMode && filterParams.tradingMode !== 'ALL') {
+        params = params.set('tradingMode', filterParams.tradingMode);
+      }
+      if (filterParams.symbol && filterParams.symbol.trim()) {
+        params = params.set('symbol', filterParams.symbol.trim());
+      }
+      if (filterParams.startDate) {
+        params = params.set('startDate', filterParams.startDate);
+      }
+      if (filterParams.endDate) {
+        params = params.set('endDate', filterParams.endDate);
+      }
+      if (filterParams.page !== undefined && filterParams.page !== null) {
+        params = params.set('page', filterParams.page.toString());
+      }
+      if (filterParams.size !== undefined && filterParams.size !== null) {
+        params = params.set('size', filterParams.size.toString());
+      }
+      if (filterParams.sort) {
+        params = params.set('sort', filterParams.sort);
+      }
+    }
+
+    return this.http.get<ConsolidatedTradePageResponse>(`${this.baseUrl}/orders/trades`, { params }).pipe(
+      tap({
+        next: (res) => {
+          this.tradesPageResponse.set(res);
+          this.trades.set(res.content || []);
+          this.isLoading.set(false);
+          this.error.set(null);
+        },
+        error: (err) => {
+          this.isLoading.set(false);
+          const errorMsg = err?.error?.message || err?.message || 'Failed to load consolidated trades.';
+          this.error.set(errorMsg);
+        }
+      })
+    );
+  }
 }
+

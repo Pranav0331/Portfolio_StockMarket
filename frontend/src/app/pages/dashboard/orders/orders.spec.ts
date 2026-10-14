@@ -5,44 +5,54 @@ import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { OrdersComponent } from './orders';
 import { OrderService } from '../../../services/order.service';
-import { OrderPageResponse } from '../../../models/trading.model';
+import { OrderPageResponse, ConsolidatedTradePageResponse } from '../../../models/trading.model';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 describe('OrdersComponent', () => {
   let orderService: OrderService;
   let router: Router;
 
-  const mockOrderResponse: OrderPageResponse = {
+  const mockTradeResponse: ConsolidatedTradePageResponse = {
     content: [
       {
-        id: 501,
-        symbol: 'RELIANCE',
-        companyName: 'Reliance Industries Ltd',
-        exchange: 'NSE',
-        currency: 'INR',
-        orderType: 'BUY',
-        orderStatus: 'EXECUTED',
-        quantity: 10,
-        price: 2950.0,
-        executedPrice: 2950.0,
-        totalAmount: 29500.0,
-        executedAt: '2026-09-30T10:00:00Z',
-        createdAt: '2026-09-30T10:00:00Z'
+        tradeId: 45,
+        entryOrderId: 88,
+        exitOrderId: 89,
+        symbol: 'BTC/USD',
+        companyName: 'Bitcoin',
+        exchange: 'CRYPTO',
+        currency: 'USD',
+        direction: 'SHORT',
+        tradingMode: 'INTRADAY',
+        leverage: 1,
+        quantity: 0.1,
+        entryPrice: 81790.35,
+        exitPrice: 81776.0,
+        realizedPnl: 1.44,
+        marginUsed: 8179.04,
+        status: 'CLOSED',
+        openTime: '2026-10-14T20:00:00Z',
+        closeTime: '2026-10-14T20:05:00Z'
       },
       {
-        id: 502,
+        tradeId: 46,
+        entryOrderId: 90,
         symbol: 'AAPL',
         companyName: 'Apple Inc.',
         exchange: 'NASDAQ',
         currency: 'USD',
-        orderType: 'SELL',
-        orderStatus: 'EXECUTED',
-        quantity: 5,
-        price: 230.0,
-        executedPrice: 230.0,
-        totalAmount: 1150.0,
-        executedAt: '2026-09-30T14:30:00Z',
-        createdAt: '2026-09-30T14:30:00Z'
+        direction: 'LONG',
+        tradingMode: 'INTRADAY',
+        leverage: 1,
+        quantity: 10,
+        entryPrice: 150.0,
+        exitPrice: null,
+        currentPrice: 152.0,
+        unrealizedPnl: 20.0,
+        unrealizedPnlPercent: 1.33,
+        marginUsed: 1500.0,
+        status: 'OPEN',
+        openTime: '2026-10-14T20:10:00Z'
       }
     ],
     page: 0,
@@ -53,12 +63,62 @@ describe('OrdersComponent', () => {
     last: true
   };
 
-  const mockEmptyResponse: OrderPageResponse = {
-    content: [],
+  const mockOrderResponse: OrderPageResponse = {
+    content: [
+      {
+        id: 88,
+        positionId: 45,
+        symbol: 'BTC/USD',
+        companyName: 'Bitcoin',
+        exchange: 'CRYPTO',
+        currency: 'USD',
+        orderType: 'SELL',
+        orderStatus: 'EXECUTED',
+        positionSide: 'SHORT',
+        quantity: 0.1,
+        price: 81790.35,
+        executedPrice: 81790.35,
+        totalAmount: 8179.04,
+        executedAt: '2026-10-14T20:00:00Z',
+        createdAt: '2026-10-14T20:00:00Z'
+      },
+      {
+        id: 89,
+        positionId: 45,
+        symbol: 'BTC/USD',
+        companyName: 'Bitcoin',
+        exchange: 'CRYPTO',
+        currency: 'USD',
+        orderType: 'BUY',
+        orderStatus: 'EXECUTED',
+        positionSide: 'SHORT',
+        quantity: 0.1,
+        price: 81776.0,
+        executedPrice: 81776.0,
+        realizedPnl: 1.44,
+        totalAmount: 8177.6,
+        executedAt: '2026-10-14T20:05:00Z',
+        createdAt: '2026-10-14T20:05:00Z'
+      },
+      {
+        id: 99,
+        symbol: 'BTC/USD',
+        companyName: 'Bitcoin',
+        exchange: 'CRYPTO',
+        currency: 'USD',
+        orderType: 'BUY',
+        orderStatus: 'PENDING',
+        quantity: 0.2,
+        price: 75000.0,
+        executedPrice: 75000.0,
+        totalAmount: 15000.0,
+        createdAt: '2026-10-14T20:30:00Z'
+      }
+    ],
     page: 0,
     size: 15,
-    totalElements: 0,
-    totalPages: 0,
+    totalElements: 3,
+    totalPages: 1,
     first: true,
     last: true
   };
@@ -77,110 +137,148 @@ describe('OrdersComponent', () => {
     router = TestBed.inject(Router);
   });
 
-  it('should create OrdersComponent and load order book on init', () => {
-    const getOrdersSpy = vi.spyOn(orderService, 'getOrders').mockReturnValue(of(mockOrderResponse));
+  it('should create OrdersComponent and load consolidated trades on init by default', () => {
+    const getTradesSpy = vi.spyOn(orderService, 'getConsolidatedTrades').mockReturnValue(of(mockTradeResponse));
 
     const fixture = TestBed.createComponent(OrdersComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
 
     expect(component).toBeTruthy();
-    expect(getOrdersSpy).toHaveBeenCalled();
-    expect(component.orders().length).toBe(2);
-    expect(component.pageResponse()?.totalElements).toBe(2);
+    expect(component.activeView()).toBe('trades');
+    expect(getTradesSpy).toHaveBeenCalled();
+    expect(component.trades().length).toBe(2);
+    expect(component.tradesPageResponse()?.totalElements).toBe(2);
     expect(component.isLoading()).toBe(false);
     expect(component.error()).toBeNull();
   });
 
-  it('should filter by order type (BUY / SELL / ALL)', () => {
+  it('should switch between Trades view and Raw Orders view', () => {
+    const getTradesSpy = vi.spyOn(orderService, 'getConsolidatedTrades').mockReturnValue(of(mockTradeResponse));
     const getOrdersSpy = vi.spyOn(orderService, 'getOrders').mockReturnValue(of(mockOrderResponse));
 
     const fixture = TestBed.createComponent(OrdersComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
+
+    expect(component.activeView()).toBe('trades');
+    expect(getTradesSpy).toHaveBeenCalledTimes(1);
+
+    component.setActiveView('rawOrders');
+    expect(component.activeView()).toBe('rawOrders');
+    expect(getOrdersSpy).toHaveBeenCalledTimes(1);
+    expect(component.orders().length).toBe(3);
+
+    component.setActiveView('trades');
+    expect(component.activeView()).toBe('trades');
+    expect(getTradesSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('should filter trades by status (ALL / OPEN / CLOSED)', () => {
+    const getTradesSpy = vi.spyOn(orderService, 'getConsolidatedTrades').mockReturnValue(of(mockTradeResponse));
+
+    const fixture = TestBed.createComponent(OrdersComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    component.setTradeStatusFilter('CLOSED');
+    expect(component.selectedTradeStatus()).toBe('CLOSED');
+    expect(getTradesSpy).toHaveBeenCalledWith(expect.objectContaining({ status: 'CLOSED' }));
+
+    component.setTradeStatusFilter('OPEN');
+    expect(component.selectedTradeStatus()).toBe('OPEN');
+    expect(getTradesSpy).toHaveBeenCalledWith(expect.objectContaining({ status: 'OPEN' }));
+
+    component.setTradeStatusFilter('ALL');
+    expect(component.selectedTradeStatus()).toBe('ALL');
+  });
+
+  it('should filter trades by direction (ALL / LONG / SHORT)', () => {
+    const getTradesSpy = vi.spyOn(orderService, 'getConsolidatedTrades').mockReturnValue(of(mockTradeResponse));
+
+    const fixture = TestBed.createComponent(OrdersComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    component.setTradeDirectionFilter('SHORT');
+    expect(component.selectedTradeDirection()).toBe('SHORT');
+    expect(getTradesSpy).toHaveBeenCalledWith(expect.objectContaining({ direction: 'SHORT' }));
+
+    component.setTradeDirectionFilter('LONG');
+    expect(component.selectedTradeDirection()).toBe('LONG');
+    expect(getTradesSpy).toHaveBeenCalledWith(expect.objectContaining({ direction: 'LONG' }));
+  });
+
+  it('should filter raw orders by type and status in rawOrders view', () => {
+    vi.spyOn(orderService, 'getConsolidatedTrades').mockReturnValue(of(mockTradeResponse));
+    const getOrdersSpy = vi.spyOn(orderService, 'getOrders').mockReturnValue(of(mockOrderResponse));
+
+    const fixture = TestBed.createComponent(OrdersComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    component.setActiveView('rawOrders');
 
     component.setTypeFilter('BUY');
     expect(component.selectedType()).toBe('BUY');
-    expect(component.currentPage()).toBe(0);
     expect(getOrdersSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'BUY' }));
-
-    component.setTypeFilter('SELL');
-    expect(component.selectedType()).toBe('SELL');
-    expect(getOrdersSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'SELL' }));
-
-    component.setTypeFilter('ALL');
-    expect(component.selectedType()).toBe('ALL');
-  });
-
-  it('should filter by order status (EXECUTED / PENDING / ALL)', () => {
-    const getOrdersSpy = vi.spyOn(orderService, 'getOrders').mockReturnValue(of(mockOrderResponse));
-
-    const fixture = TestBed.createComponent(OrdersComponent);
-    const component = fixture.componentInstance;
-    fixture.detectChanges();
-
-    component.setStatusFilter('EXECUTED');
-    expect(component.selectedStatus()).toBe('EXECUTED');
-    expect(getOrdersSpy).toHaveBeenCalledWith(expect.objectContaining({ status: 'EXECUTED' }));
 
     component.setStatusFilter('PENDING');
     expect(component.selectedStatus()).toBe('PENDING');
     expect(getOrdersSpy).toHaveBeenCalledWith(expect.objectContaining({ status: 'PENDING' }));
   });
 
-  it('should filter by symbol and clear search', () => {
+  it('should filter by symbol and clear search in trades view', () => {
     vi.useFakeTimers();
-    const getOrdersSpy = vi.spyOn(orderService, 'getOrders').mockReturnValue(of(mockOrderResponse));
+    const getTradesSpy = vi.spyOn(orderService, 'getConsolidatedTrades').mockReturnValue(of(mockTradeResponse));
 
     const fixture = TestBed.createComponent(OrdersComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
 
-    const mockEvent = { target: { value: 'AAPL' } } as any;
+    const mockEvent = { target: { value: 'BTC/USD' } } as any;
     component.onSymbolInput(mockEvent);
-    expect(component.symbolSearch()).toBe('AAPL');
+    expect(component.symbolSearch()).toBe('BTC/USD');
 
     vi.advanceTimersByTime(350);
-    expect(getOrdersSpy).toHaveBeenCalledWith(expect.objectContaining({ symbol: 'AAPL' }));
+    expect(getTradesSpy).toHaveBeenCalledWith(expect.objectContaining({ symbol: 'BTC/USD' }));
 
     component.clearSymbolSearch();
     expect(component.symbolSearch()).toBe('');
-    expect(getOrdersSpy).toHaveBeenCalledWith(expect.objectContaining({ symbol: undefined }));
+    expect(getTradesSpy).toHaveBeenCalledWith(expect.objectContaining({ symbol: undefined }));
 
     vi.useRealTimers();
   });
 
   it('should reset filters on resetFilters call', () => {
-    vi.spyOn(orderService, 'getOrders').mockReturnValue(of(mockOrderResponse));
+    vi.spyOn(orderService, 'getConsolidatedTrades').mockReturnValue(of(mockTradeResponse));
 
     const fixture = TestBed.createComponent(OrdersComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
 
-    component.selectedType.set('SELL');
-    component.selectedStatus.set('EXECUTED');
-    component.symbolSearch.set('AAPL');
-    component.startDate.set('2026-09-01');
-    component.endDate.set('2026-09-30');
-    component.sortDirection.set('asc');
+    component.selectedTradeStatus.set('CLOSED');
+    component.selectedTradeDirection.set('SHORT');
+    component.symbolSearch.set('BTC/USD');
+    component.startDate.set('2026-10-01');
+    component.endDate.set('2026-10-31');
     component.currentPage.set(2);
 
     expect(component.hasActiveFilters()).toBe(true);
 
     component.resetFilters();
 
-    expect(component.selectedType()).toBe('ALL');
-    expect(component.selectedStatus()).toBe('ALL');
+    expect(component.selectedTradeStatus()).toBe('ALL');
+    expect(component.selectedTradeDirection()).toBe('ALL');
     expect(component.symbolSearch()).toBe('');
     expect(component.startDate()).toBe('');
     expect(component.endDate()).toBe('');
-    expect(component.sortDirection()).toBe('desc');
     expect(component.currentPage()).toBe(0);
     expect(component.hasActiveFilters()).toBe(false);
   });
 
-  it('should navigate to stock details when clicking an order row', () => {
-    vi.spyOn(orderService, 'getOrders').mockReturnValue(of(mockOrderResponse));
+  it('should navigate to stock details when clicking an order or trade row', () => {
+    vi.spyOn(orderService, 'getConsolidatedTrades').mockReturnValue(of(mockTradeResponse));
     const navigateSpy = vi.spyOn(router, 'navigate');
 
     const fixture = TestBed.createComponent(OrdersComponent);
@@ -191,10 +289,10 @@ describe('OrdersComponent', () => {
     expect(navigateSpy).toHaveBeenCalledWith(['/dashboard/stock', 'BTC/USD']);
   });
 
-  it('should handle error when loading fails and allow refresh', () => {
-    const getOrdersSpy = vi.spyOn(orderService, 'getOrders')
+  it('should handle error when loading fails and allow retry/refresh', () => {
+    const getTradesSpy = vi.spyOn(orderService, 'getConsolidatedTrades')
       .mockReturnValueOnce(throwError(() => ({ error: { message: 'Network error' } })))
-      .mockReturnValueOnce(of(mockOrderResponse));
+      .mockReturnValueOnce(of(mockTradeResponse));
 
     const fixture = TestBed.createComponent(OrdersComponent);
     const component = fixture.componentInstance;
@@ -204,8 +302,8 @@ describe('OrdersComponent', () => {
     expect(component.isLoading()).toBe(false);
 
     component.refreshOrders();
-    expect(getOrdersSpy).toHaveBeenCalledTimes(2);
+    expect(getTradesSpy).toHaveBeenCalledTimes(2);
     expect(component.error()).toBeNull();
-    expect(component.orders().length).toBe(2);
+    expect(component.trades().length).toBe(2);
   });
 });

@@ -16,7 +16,9 @@ import java.time.Instant;
     indexes = {
         @Index(name = "idx_orders_user_id", columnList = "user_id"),
         @Index(name = "idx_orders_stock_id", columnList = "stock_id"),
-        @Index(name = "idx_orders_status", columnList = "order_status")
+        @Index(name = "idx_orders_status", columnList = "order_status"),
+        @Index(name = "idx_orders_position_id", columnList = "position_id"),
+        @Index(name = "idx_orders_user_pos", columnList = "user_id, position_id")
     }
 )
 public class Order {

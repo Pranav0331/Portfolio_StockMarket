@@ -411,6 +411,7 @@ public class TradingService {
                 order.setPositionSide(PositionSide.LONG);
                 order.setLeverage(1);
                 order.setMarginUsed(BigDecimal.ZERO);
+                order.setPositionId(holding.getId());
                 order.setRealizedPnl(realizedPnL);
                 order.setQuantity(sellQuantity);
                 order.setPrice(executionPrice);
@@ -442,6 +443,7 @@ public class TradingService {
                 transaction.setPositionSide(PositionSide.LONG);
                 transaction.setLeverage(1);
                 transaction.setMarginUsed(BigDecimal.ZERO);
+                transaction.setPositionId(holding.getId());
                 transaction.setQuantity(sellQuantity);
                 transaction.setPricePerUnit(executionPrice);
                 transaction.setTotalAmount(totalAmount);
@@ -585,6 +587,7 @@ public class TradingService {
             order.setPositionSide(PositionSide.LONG);
             order.setLeverage(1);
             order.setMarginUsed(BigDecimal.ZERO);
+            order.setPositionId(holding.getId());
             order.setRealizedPnl(realizedPnL);
             order.setQuantity(closeQty);
             order.setPrice(closePrice);
@@ -603,6 +606,7 @@ public class TradingService {
             transaction.setPositionSide(PositionSide.LONG);
             transaction.setLeverage(1);
             transaction.setMarginUsed(BigDecimal.ZERO);
+            transaction.setPositionId(holding.getId());
             transaction.setQuantity(closeQty);
             transaction.setPricePerUnit(closePrice);
             transaction.setTotalAmount(totalAmount);

@@ -20,6 +20,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByUserIdAndOrderStatus(Long userId, OrderStatus orderStatus);
     List<Order> findByStockId(Long stockId);
     List<Order> findAllByOrderByCreatedAtDesc();
+    List<Order> findByUserIdAndPositionId(Long userId, Long positionId);
+    List<Order> findByUserIdAndPositionIdIsNotNullOrderByCreatedAtAsc(Long userId);
 
     @Query("SELECT o FROM Order o " +
            "LEFT JOIN o.stock s " +

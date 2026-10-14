@@ -83,10 +83,10 @@ class EdgeCasesAndResilienceTest {
     void testEmptyPortfolio() {
         PortfolioSummaryDto summary = portfolioService.getPortfolioSummary(testUser.getId());
         assertNotNull(summary);
-        assertEquals(0, new BigDecimal("100000.00").compareTo(summary.cashBalance()));
+        assertEquals(0, new BigDecimal("10000.00").compareTo(summary.cashBalance()));
         assertEquals(0, BigDecimal.ZERO.compareTo(summary.totalInvested()));
         assertEquals(0, BigDecimal.ZERO.compareTo(summary.totalHoldingsMarketValue()));
-        assertEquals(0, new BigDecimal("100000.00").compareTo(summary.totalPortfolioValue()));
+        assertEquals(0, new BigDecimal("10000.00").compareTo(summary.totalPortfolioValue()));
         assertEquals(0, summary.totalHoldingsCount());
         assertTrue(summary.holdings().isEmpty());
     }

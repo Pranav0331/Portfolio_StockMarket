@@ -68,6 +68,42 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/trades")
+    public ResponseEntity<PageResponseDto<com.portfolio.dto.order.ConsolidatedTradeDto>> getConsolidatedTrades(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestParam(required = false) String symbol,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String direction,
+            @RequestParam(required = false) String tradingMode,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size,
+            @RequestParam(defaultValue = "desc") String sort
+    ) {
+        if (userPrincipal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User is not authenticated");
+        }
+
+        Instant startInstant = parseDateOrInstant(startDate, false);
+        Instant endInstant = parseDateOrInstant(endDate, true);
+
+        PageResponseDto<com.portfolio.dto.order.ConsolidatedTradeDto> response = orderService.getUserConsolidatedTrades(
+                userPrincipal.getId(),
+                symbol,
+                status,
+                direction,
+                tradingMode,
+                startInstant,
+                endInstant,
+                page,
+                size,
+                sort
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
     private Instant parseDateOrInstant(String dateStr, boolean isEndOfDay) {
         if (dateStr == null || dateStr.trim().isEmpty()) {
             return null;
