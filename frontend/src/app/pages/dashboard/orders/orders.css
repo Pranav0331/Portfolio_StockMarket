@@ -329,10 +329,30 @@
 /* Table */
 .table-container {
   overflow: hidden;
+  border-radius: var(--radius-lg);
 }
 
 .table-responsive {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.table-responsive::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: var(--radius-full);
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .orders-table {
@@ -342,7 +362,7 @@
 }
 
 .orders-table th {
-  padding: 0.9rem 1rem;
+  padding: 0.85rem 0.95rem;
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -351,12 +371,15 @@
   background: var(--bg-surface-elevated);
   border-bottom: 1px solid var(--border-glass);
   text-align: left;
+  white-space: nowrap;
 }
 
 .orders-table th.th-num {
   text-align: right;
 }
 
+.orders-table th.th-direction,
+.orders-table th.th-status,
 .orders-table th.th-action {
   text-align: center;
 }
@@ -368,21 +391,105 @@
 }
 
 .order-row:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+[data-theme='light'] .order-row:hover {
+  background: rgba(0, 0, 0, 0.025);
 }
 
 .orders-table td {
-  padding: 0.85rem 1rem;
+  padding: 0.85rem 0.95rem;
   vertical-align: middle;
 }
 
 .td-num {
   text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.td-direction,
+.td-status,
+.td-action {
+  text-align: center;
+}
+
+/* Dedicated Balanced Column Widths for Consolidated Trades Table */
+.trades-table {
+  min-width: 1020px;
+}
+
+.trades-table .th-time,
+.trades-table .td-time {
+  width: 140px;
+  min-width: 130px;
+}
+
+.trades-table .th-instrument,
+.trades-table .td-instrument {
+  width: 175px;
+  min-width: 155px;
+}
+
+.trades-table .th-direction,
+.trades-table .td-direction {
+  width: 95px;
+  min-width: 85px;
+  text-align: center;
+}
+
+.trades-table .th-mode,
+.trades-table .td-mode {
+  width: 130px;
+  min-width: 120px;
+}
+
+.trades-table .th-qty,
+.trades-table .td-qty {
+  width: 95px;
+  min-width: 85px;
+  text-align: right;
+}
+
+.trades-table .th-entry,
+.trades-table .td-entry {
+  width: 115px;
+  min-width: 105px;
+  text-align: right;
+}
+
+.trades-table .th-exit,
+.trades-table .td-exit {
+  width: 115px;
+  min-width: 105px;
+  text-align: right;
+}
+
+.trades-table .th-pnl,
+.trades-table .td-pnl {
+  width: 130px;
+  min-width: 120px;
+  text-align: right;
+}
+
+.trades-table .th-status,
+.trades-table .td-status {
+  width: 100px;
+  min-width: 90px;
+  text-align: center;
+}
+
+.trades-table .th-action,
+.trades-table .td-action {
+  width: 115px;
+  min-width: 105px;
+  text-align: center;
 }
 
 .font-mono {
   font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
   font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Date cell */
@@ -481,16 +588,38 @@
   color: var(--text-muted);
 }
 
+.qty-highlight {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-placeholder {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
 .pnl-stack {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  gap: 0.1rem;
+  line-height: 1.25;
+}
+
+.pnl-amount {
+  font-size: 0.92rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 .sub-total-lbl {
-  font-size: 0.65rem;
-  font-weight: 700;
-  opacity: 0.7;
+  font-size: 0.68rem;
+  font-weight: 600;
+  opacity: 0.8;
+  text-transform: capitalize;
 }
 
 .text-emerald {
@@ -499,6 +628,14 @@
 
 .text-rose {
   color: #f43f5e;
+}
+
+[data-theme='light'] .text-emerald {
+  color: #059669;
+}
+
+[data-theme='light'] .text-rose {
+  color: #e11d48;
 }
 
 /* Trading Mode badge */
@@ -863,26 +1000,6 @@
 
 .view-tab-btn.active .tab-badge {
   background: rgba(255, 255, 255, 0.22);
-}
-
-/* Matched Executions Badge */
-.matched-orders-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.75rem;
-  font-family: var(--font-mono, monospace);
-  padding: 0.25rem 0.55rem;
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.matched-tag {
-  color: var(--primary);
-  font-weight: 600;
 }
 
 /* Responsive */

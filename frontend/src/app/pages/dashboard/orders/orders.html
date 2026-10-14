@@ -482,26 +482,25 @@
 
     <!-- Trades Data Table -->
     <div class="table-responsive" *ngIf="trades().length > 0">
-      <table class="orders-table">
+      <table class="orders-table trades-table">
         <thead>
           <tr>
-            <th class="th-date">Open Time</th>
-            <th class="th-symbol">Instrument</th>
-            <th class="th-type">Direction</th>
+            <th class="th-time">Open Time</th>
+            <th class="th-instrument">Instrument</th>
+            <th class="th-direction">Direction</th>
             <th class="th-mode">Trading Mode</th>
-            <th class="th-num">Qty / Lot</th>
-            <th class="th-num">Entry Price</th>
-            <th class="th-num">Exit Price</th>
-            <th class="th-num">P&L</th>
+            <th class="th-num th-qty">Qty / Lot</th>
+            <th class="th-num th-entry">Entry Price</th>
+            <th class="th-num th-exit">Exit Price</th>
+            <th class="th-num th-pnl">P&L</th>
             <th class="th-status">Status</th>
-            <th class="th-id">Matched Executions</th>
             <th class="th-action">Action</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let trade of trades()" class="order-row" (click)="navigateToStock(trade.symbol)">
             <!-- Open Time -->
-            <td class="td-date">
+            <td class="td-time">
               <div class="date-wrap">
                 <span class="date-main">{{ trade.openTime | date:'MMM d, y' }}</span>
                 <span class="date-time">{{ trade.openTime | date:'hh:mm:ss a' }}</span>
@@ -509,7 +508,7 @@
             </td>
 
             <!-- Instrument Symbol & Name -->
-            <td class="td-symbol">
+            <td class="td-instrument">
               <div class="symbol-info">
                 <div class="symbol-line">
                   <span class="symbol-code">{{ trade.symbol }}</span>
@@ -520,7 +519,7 @@
             </td>
 
             <!-- Direction (LONG / SHORT) -->
-            <td class="td-type">
+            <td class="td-direction">
               <span class="type-badge" [ngClass]="trade.direction === 'LONG' ? 'badge-buy' : 'badge-sell'">
                 {{ trade.direction }}
               </span>
@@ -539,38 +538,38 @@
             </td>
 
             <!-- Quantity / Lot -->
-            <td class="td-num font-mono">
-              <strong>{{ trade.quantity | number:'1.0-4' }}</strong>
+            <td class="td-num td-qty font-mono">
+              <span class="qty-highlight">{{ trade.quantity | number:'1.0-4' }}</span>
             </td>
 
             <!-- Entry Price -->
-            <td class="td-num font-mono">
+            <td class="td-num td-entry font-mono">
               <span class="exec-price-highlight">
                 {{ getCurrencySymbol(trade.currency) }}{{ trade.entryPrice | number:'1.2-4' }}
               </span>
             </td>
 
             <!-- Exit Price -->
-            <td class="td-num font-mono">
-              <span *ngIf="trade.status === 'CLOSED' && trade.exitPrice != null; else openExitPrice">
+            <td class="td-num td-exit font-mono">
+              <span *ngIf="trade.status === 'CLOSED' && trade.exitPrice != null; else openExitPrice" class="exec-price-highlight">
                 {{ getCurrencySymbol(trade.currency) }}{{ trade.exitPrice | number:'1.2-4' }}
               </span>
               <ng-template #openExitPrice>
-                <span class="text-dim" title="Trade is currently open">—</span>
+                <span class="text-dim dash-placeholder" title="Trade is currently open">—</span>
               </ng-template>
             </td>
 
             <!-- Realized / Floating P&L -->
-            <td class="td-num font-mono">
+            <td class="td-num td-pnl font-mono">
               <!-- Closed Trade: Realized P&L -->
               <div *ngIf="trade.status === 'CLOSED'; else openPnl" class="pnl-stack" [ngClass]="(trade.realizedPnl || 0) >= 0 ? 'text-emerald' : 'text-rose'">
-                <strong>{{ (trade.realizedPnl || 0) >= 0 ? '+' : '' }}${{ (trade.realizedPnl || 0) | number:'1.2-2' }}</strong>
+                <strong class="pnl-amount">{{ (trade.realizedPnl || 0) >= 0 ? '+' : '' }}${{ (trade.realizedPnl || 0) | number:'1.2-2' }}</strong>
                 <span class="sub-total-lbl">Realized</span>
               </div>
               <!-- Open Trade: Floating P&L -->
               <ng-template #openPnl>
                 <div class="pnl-stack" [ngClass]="(trade.unrealizedPnl || 0) >= 0 ? 'text-emerald' : 'text-rose'">
-                  <strong>{{ (trade.unrealizedPnl || 0) >= 0 ? '+' : '' }}${{ (trade.unrealizedPnl || 0) | number:'1.2-2' }}</strong>
+                  <strong class="pnl-amount">{{ (trade.unrealizedPnl || 0) >= 0 ? '+' : '' }}${{ (trade.unrealizedPnl || 0) | number:'1.2-2' }}</strong>
                   <span class="sub-total-lbl" *ngIf="trade.unrealizedPnlPercent != null">
                     {{ (trade.unrealizedPnlPercent || 0) >= 0 ? '+' : '' }}{{ trade.unrealizedPnlPercent | number:'1.2-2' }}%
                   </span>
@@ -583,15 +582,6 @@
               <span class="status-badge" [ngClass]="trade.status === 'CLOSED' ? 'status-executed' : 'status-pending'">
                 {{ trade.status }}
               </span>
-            </td>
-
-            <!-- Matched Executions Reference -->
-            <td class="td-id">
-              <div class="matched-orders-badge" [title]="'Position ID: #' + trade.tradeId">
-                <span *ngIf="trade.entryOrderId" class="matched-tag">ORD #{{ trade.entryOrderId }}</span>
-                <span *ngIf="trade.exitOrderId" class="matched-tag"> &rarr; #{{ trade.exitOrderId }}</span>
-                <span *ngIf="!trade.exitOrderId" class="text-dim"> (Active)</span>
-              </div>
             </td>
 
             <!-- View Chart Action -->

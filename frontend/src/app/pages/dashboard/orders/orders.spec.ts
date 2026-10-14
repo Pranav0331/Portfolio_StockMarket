@@ -306,4 +306,29 @@ describe('OrdersComponent', () => {
     expect(component.error()).toBeNull();
     expect(component.trades().length).toBe(2);
   });
+
+  it('should render exactly the 10 specified headers without Matched Executions in trades view', () => {
+    vi.spyOn(orderService, 'getConsolidatedTrades').mockReturnValue(of(mockTradeResponse));
+
+    const fixture = TestBed.createComponent(OrdersComponent);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const ths = Array.from(compiled.querySelectorAll('.trades-table th')).map(th => th.textContent?.trim());
+
+    expect(ths).toEqual([
+      'Open Time',
+      'Instrument',
+      'Direction',
+      'Trading Mode',
+      'Qty / Lot',
+      'Entry Price',
+      'Exit Price',
+      'P&L',
+      'Status',
+      'Action'
+    ]);
+    expect(ths).not.toContain('Matched Executions');
+    expect(compiled.querySelector('.matched-orders-badge')).toBeNull();
+  });
 });
