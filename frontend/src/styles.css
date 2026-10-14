@@ -22,6 +22,8 @@
 
   --accent-primary: #6366f1;
   --accent-primary-hover: #4f46e5;
+  --primary: var(--accent-primary);
+  --primary-hover: var(--accent-primary-hover);
   --accent-glow: rgba(99, 102, 241, 0.3);
   --accent-secondary: #06b6d4;
   --accent-emerald: #10b981;
@@ -74,6 +76,8 @@
 
   --accent-primary: #4f46e5;
   --accent-primary-hover: #4338ca;
+  --primary: var(--accent-primary);
+  --primary-hover: var(--accent-primary-hover);
   --accent-glow: rgba(79, 70, 229, 0.2);
   --accent-secondary: #0284c7;
   --accent-emerald: #059669;

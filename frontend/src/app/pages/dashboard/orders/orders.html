@@ -36,27 +36,33 @@
 
   <!-- View Mode Switcher -->
   <div class="view-switcher-bar">
-    <div class="view-tabs-card">
+    <div class="view-tabs-card" role="tablist">
       <button 
         type="button" 
+        id="tab-btn-trades"
         class="view-tab-btn" 
         [class.active]="activeView() === 'trades'"
         (click)="setActiveView('trades')"
+        role="tab"
+        [attr.aria-selected]="activeView() === 'trades'"
         title="Consolidated Trades: 1 row per completed trade">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
         </svg>
-        <span>Consolidated Trades</span>
+        <span class="tab-label">Consolidated Trades</span>
         <span class="tab-badge" *ngIf="tradesPageResponse() as tp">{{ tp.totalElements }}</span>
       </button>
 
       <button 
         type="button" 
+        id="tab-btn-raw-orders"
         class="view-tab-btn" 
         [class.active]="activeView() === 'rawOrders'"
         (click)="setActiveView('rawOrders')"
+        role="tab"
+        [attr.aria-selected]="activeView() === 'rawOrders'"
         title="Raw Orders & Executions: original audit book">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="8" y1="6" x2="21" y2="6"></line>
           <line x1="8" y1="12" x2="21" y2="12"></line>
           <line x1="8" y1="18" x2="21" y2="18"></line>
@@ -64,7 +70,7 @@
           <line x1="3" y1="12" x2="3.01" y2="12"></line>
           <line x1="3" y1="18" x2="3.01" y2="18"></line>
         </svg>
-        <span>Raw Orders / Executions</span>
+        <span class="tab-label">Raw Orders / Executions</span>
         <span class="tab-badge" *ngIf="pageResponse() as p">{{ p.totalElements }}</span>
       </button>
     </div>
@@ -72,9 +78,10 @@
 
   <!-- Filter & Search Toolbar (Trades View) -->
   <div class="filters-card glass-card" *ngIf="activeView() === 'trades'">
-    <div class="filters-grid">
+    <!-- Top Row: Categorical Filters (Status, Direction, Mode) -->
+    <div class="filters-pills-row">
       <!-- Trade Status Filter (ALL / OPEN / CLOSED) -->
-      <div class="filter-group">
+      <div class="filter-group fg-status">
         <label class="filter-label">Trade Status</label>
         <div class="pill-group">
           <button 
@@ -102,7 +109,7 @@
       </div>
 
       <!-- Trade Direction Filter (ALL / LONG / SHORT) -->
-      <div class="filter-group">
+      <div class="filter-group fg-direction">
         <label class="filter-label">Direction</label>
         <div class="pill-group">
           <button 
@@ -130,9 +137,9 @@
       </div>
 
       <!-- Trading Mode Filter (ALL / SCALPING / INTRADAY / SWING / LONG_TERM) -->
-      <div class="filter-group">
+      <div class="filter-group fg-trading-mode">
         <label class="filter-label">Trading Mode</label>
-        <div class="pill-group">
+        <div class="pill-group pill-group-mode">
           <button 
             type="button" 
             class="pill-btn" 
@@ -170,9 +177,12 @@
           </button>
         </div>
       </div>
+    </div>
 
+    <!-- Middle Row: Inputs (Symbol, From Date, To Date) -->
+    <div class="filters-inputs-row">
       <!-- Symbol Search Input -->
-      <div class="filter-group">
+      <div class="filter-group fg-symbol">
         <label class="filter-label" for="trade-symbol-search">Symbol / Instrument</label>
         <div class="search-input-wrapper">
           <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -198,7 +208,7 @@
       </div>
 
       <!-- Start Date Picker -->
-      <div class="filter-group">
+      <div class="filter-group fg-date">
         <label class="filter-label" for="trade-start-date">From Date</label>
         <input 
           id="trade-start-date"
@@ -209,7 +219,7 @@
       </div>
 
       <!-- End Date Picker -->
-      <div class="filter-group">
+      <div class="filter-group fg-date">
         <label class="filter-label" for="trade-end-date">To Date</label>
         <input 
           id="trade-end-date"
@@ -218,9 +228,12 @@
           [value]="endDate()" 
           (change)="onEndDateChange($event)">
       </div>
+    </div>
 
+    <!-- Bottom Row: Sort By & Reset Filters neatly aligned -->
+    <div class="filters-bottom-row">
       <!-- Sort Direction -->
-      <div class="filter-group">
+      <div class="filter-group fg-sort">
         <label class="filter-label" for="trade-sort-select">Sort By</label>
         <select 
           id="trade-sort-select"
@@ -233,13 +246,16 @@
       </div>
 
       <!-- Reset Filters Button -->
-      <div class="filter-group filter-actions">
-        <label class="filter-label">&nbsp;</label>
+      <div class="filter-group fg-reset">
         <button 
           type="button" 
           class="btn-reset" 
           (click)="resetFilters()"
           title="Reset all search filters">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          </svg>
           Reset Filters
         </button>
       </div>
@@ -248,9 +264,10 @@
 
   <!-- Filter & Search Toolbar (Raw Orders View) -->
   <div class="filters-card glass-card" *ngIf="activeView() === 'rawOrders'">
-    <div class="filters-grid">
+    <!-- Top Row: Categorical Filters (Type, Status, Mode) -->
+    <div class="filters-pills-row">
       <!-- Type Filter Buttons (ALL / BUY / SELL) -->
-      <div class="filter-group">
+      <div class="filter-group fg-type">
         <label class="filter-label">Order Type</label>
         <div class="pill-group">
           <button 
@@ -278,9 +295,9 @@
       </div>
 
       <!-- Status Filter Buttons (ALL / EXECUTED / PENDING / REJECTED) -->
-      <div class="filter-group">
+      <div class="filter-group fg-raw-status">
         <label class="filter-label">Status</label>
-        <div class="pill-group">
+        <div class="pill-group pill-group-status">
           <button 
             type="button" 
             class="pill-btn" 
@@ -320,9 +337,9 @@
       </div>
 
       <!-- Trading Mode Filter (ALL / SCALPING / INTRADAY / SWING / LONG_TERM) -->
-      <div class="filter-group">
+      <div class="filter-group fg-trading-mode">
         <label class="filter-label">Trading Mode</label>
-        <div class="pill-group">
+        <div class="pill-group pill-group-mode">
           <button 
             type="button" 
             class="pill-btn" 
@@ -360,9 +377,12 @@
           </button>
         </div>
       </div>
+    </div>
 
+    <!-- Middle Row: Inputs (Symbol, From Date, To Date) -->
+    <div class="filters-inputs-row">
       <!-- Symbol Search Input -->
-      <div class="filter-group">
+      <div class="filter-group fg-symbol">
         <label class="filter-label" for="order-symbol-search">Symbol / Instrument</label>
         <div class="search-input-wrapper">
           <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -388,7 +408,7 @@
       </div>
 
       <!-- Start Date Picker -->
-      <div class="filter-group">
+      <div class="filter-group fg-date">
         <label class="filter-label" for="order-start-date">From Date</label>
         <input 
           id="order-start-date"
@@ -399,7 +419,7 @@
       </div>
 
       <!-- End Date Picker -->
-      <div class="filter-group">
+      <div class="filter-group fg-date">
         <label class="filter-label" for="order-end-date">To Date</label>
         <input 
           id="order-end-date"
@@ -408,9 +428,12 @@
           [value]="endDate()" 
           (change)="onEndDateChange($event)">
       </div>
+    </div>
 
+    <!-- Bottom Row: Sort By & Reset Filters neatly aligned -->
+    <div class="filters-bottom-row">
       <!-- Sort Direction -->
-      <div class="filter-group">
+      <div class="filter-group fg-sort">
         <label class="filter-label" for="order-sort-select">Sort By</label>
         <select 
           id="order-sort-select"
@@ -423,13 +446,16 @@
       </div>
 
       <!-- Reset Filters Button -->
-      <div class="filter-group filter-actions">
-        <label class="filter-label">&nbsp;</label>
+      <div class="filter-group fg-reset">
         <button 
           type="button" 
           class="btn-reset" 
           (click)="resetFilters()"
           title="Reset all search filters">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          </svg>
           Reset Filters
         </button>
       </div>

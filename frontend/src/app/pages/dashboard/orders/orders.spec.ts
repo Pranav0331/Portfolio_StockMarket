@@ -331,4 +331,63 @@ describe('OrdersComponent', () => {
     expect(ths).not.toContain('Matched Executions');
     expect(compiled.querySelector('.matched-orders-badge')).toBeNull();
   });
+
+  it('should render both visible clickable tab buttons with active styling and switch tables upon click', () => {
+    vi.spyOn(orderService, 'getConsolidatedTrades').mockReturnValue(of(mockTradeResponse));
+    vi.spyOn(orderService, 'getOrders').mockReturnValue(of(mockOrderResponse));
+
+    const fixture = TestBed.createComponent(OrdersComponent);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const tradesTab = compiled.querySelector('#tab-btn-trades') as HTMLButtonElement;
+    const rawOrdersTab = compiled.querySelector('#tab-btn-raw-orders') as HTMLButtonElement;
+
+    expect(tradesTab).toBeTruthy();
+    expect(rawOrdersTab).toBeTruthy();
+    expect(tradesTab.textContent).toContain('Consolidated Trades');
+    expect(rawOrdersTab.textContent).toContain('Raw Orders / Executions');
+    expect(tradesTab.classList).toContain('active');
+    expect(rawOrdersTab.classList).not.toContain('active');
+
+    // Consolidated trades table visible, raw orders table not present
+    expect(compiled.querySelector('.trades-table')).toBeTruthy();
+
+    // Click Raw Orders tab
+    rawOrdersTab.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.activeView()).toBe('rawOrders');
+    expect(rawOrdersTab.classList).toContain('active');
+    expect(tradesTab.classList).not.toContain('active');
+
+    // Click Consolidated Trades tab back
+    tradesTab.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.activeView()).toBe('trades');
+    expect(tradesTab.classList).toContain('active');
+  });
+
+  it('should structure filters into 3 distinct rows preventing Trading Mode clipping and isolating Sort/Reset', () => {
+    vi.spyOn(orderService, 'getConsolidatedTrades').mockReturnValue(of(mockTradeResponse));
+
+    const fixture = TestBed.createComponent(OrdersComponent);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    // Check 3 distinct rows
+    expect(compiled.querySelector('.filters-pills-row')).toBeTruthy();
+    expect(compiled.querySelector('.filters-inputs-row')).toBeTruthy();
+    expect(compiled.querySelector('.filters-bottom-row')).toBeTruthy();
+
+    // Check all 5 Trading Mode options exist in .fg-trading-mode
+    const modePills = Array.from(compiled.querySelectorAll('.fg-trading-mode .pill-btn')).map(b => b.textContent?.trim());
+    expect(modePills).toEqual(['All', 'Scalping', 'Intraday', 'Swing', 'Long Term']);
+
+    // Check Sort By and Reset Filters are in the bottom row
+    expect(compiled.querySelector('.filters-bottom-row #trade-sort-select')).toBeTruthy();
+    expect(compiled.querySelector('.filters-bottom-row .btn-reset')).toBeTruthy();
+  });
 });
