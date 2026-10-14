@@ -42,7 +42,7 @@ export class DashboardHomeComponent implements OnInit {
   readonly showManageBalanceModal = signal<boolean>(false);
   readonly balanceActionTab = signal<'deposit' | 'reset'>('deposit');
   readonly depositAmount = signal<number>(10000);
-  readonly resetTargetAmount = signal<number>(100000);
+  readonly resetTargetAmount = signal<number>(10000);
   readonly showResetConfirmation = signal<boolean>(false);
   readonly isManagingBalance = signal<boolean>(false);
   readonly manageBalanceSuccess = signal<string | null>(null);
@@ -72,8 +72,8 @@ export class DashboardHomeComponent implements OnInit {
     // 2. Load Virtual Wallet
     this.tradingService.getWallet().subscribe({ error: () => {} });
 
-    // 3. Load Recent Transactions (Top 5)
-    this.transactionService.getTransactions({ page: 0, size: 5, sort: 'desc' }).subscribe({
+    // 3. Load Recent Executions (Top 5 trade executions)
+    this.transactionService.getTransactions({ page: 0, size: 5, sort: 'desc', tradesOnly: true }).subscribe({
       next: (res) => {
         this.recentTransactions.set(res?.content || []);
       },

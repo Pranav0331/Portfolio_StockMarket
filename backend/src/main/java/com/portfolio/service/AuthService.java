@@ -119,7 +119,7 @@ public class AuthService {
             initTx.setUser(savedUser);
             initTx.setTransactionType(TransactionType.ACCOUNT_INIT);
             initTx.setStatus(TransactionStatus.SUCCESS);
-            initTx.setTotalAmount(savedUser.getVirtualBalance() != null ? savedUser.getVirtualBalance() : new BigDecimal("100000.0000"));
+            initTx.setTotalAmount(savedUser.getVirtualBalance() != null ? savedUser.getVirtualBalance() : TradingService.DEFAULT_INITIAL_BALANCE);
             initTx.setFees(BigDecimal.ZERO);
             initTx.setPnl(BigDecimal.ZERO);
             initTx.setPnlPercent(BigDecimal.ZERO);

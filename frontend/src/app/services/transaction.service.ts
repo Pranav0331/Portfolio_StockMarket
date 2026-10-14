@@ -35,6 +35,9 @@ export class TransactionService {
       if (filterParams.financialOnly !== undefined && filterParams.financialOnly !== null) {
         params = params.set('financialOnly', filterParams.financialOnly.toString());
       }
+      if (filterParams.tradesOnly !== undefined && filterParams.tradesOnly !== null) {
+        params = params.set('tradesOnly', filterParams.tradesOnly.toString());
+      }
       if (filterParams.type && filterParams.type !== 'ALL') {
         params = params.set('type', filterParams.type);
       }

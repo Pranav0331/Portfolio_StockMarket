@@ -166,6 +166,7 @@ export interface TransactionPageResponse {
 
 export interface TransactionFilterParams {
   financialOnly?: boolean;
+  tradesOnly?: boolean;
   type?: 'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAWAL' | 'ACCOUNT_INIT' | 'ACCOUNT_RESET' | 'DIVIDEND' | 'ALL' | string;
   tradingMode?: TradingMode | 'ALL';
   symbol?: string;

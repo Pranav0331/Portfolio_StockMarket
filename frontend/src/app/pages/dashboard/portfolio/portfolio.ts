@@ -29,7 +29,7 @@ export class PortfolioComponent implements OnInit {
   readonly showManageBalanceModal = signal<boolean>(false);
   readonly balanceActionTab = signal<'deposit' | 'reset'>('deposit');
   readonly depositAmount = signal<number>(10000);
-  readonly resetTargetAmount = signal<number>(100000);
+  readonly resetTargetAmount = signal<number>(10000);
   readonly showResetConfirmation = signal<boolean>(false);
   readonly isManagingBalance = signal<boolean>(false);
   readonly manageBalanceSuccess = signal<string | null>(null);

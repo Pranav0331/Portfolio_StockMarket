@@ -135,7 +135,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 initTx.setUser(user);
                 initTx.setTransactionType(com.portfolio.entity.enums.TransactionType.ACCOUNT_INIT);
                 initTx.setStatus(com.portfolio.entity.enums.TransactionStatus.SUCCESS);
-                initTx.setTotalAmount(user.getVirtualBalance() != null ? user.getVirtualBalance() : new java.math.BigDecimal("100000.0000"));
+                initTx.setTotalAmount(user.getVirtualBalance() != null ? user.getVirtualBalance() : com.portfolio.service.TradingService.DEFAULT_INITIAL_BALANCE);
                 initTx.setFees(java.math.BigDecimal.ZERO);
                 initTx.setPnl(java.math.BigDecimal.ZERO);
                 initTx.setPnlPercent(java.math.BigDecimal.ZERO);

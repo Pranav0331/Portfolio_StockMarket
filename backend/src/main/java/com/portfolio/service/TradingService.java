@@ -23,7 +23,7 @@ public class TradingService {
 
     private static final Logger log = LoggerFactory.getLogger(TradingService.class);
 
-    public static final BigDecimal DEFAULT_INITIAL_BALANCE = new BigDecimal("100000.0000");
+    public static final BigDecimal DEFAULT_INITIAL_BALANCE = new BigDecimal("10000.0000");
 
     private final UserRepository userRepository;
     private final StockRepository stockRepository;
@@ -1189,24 +1189,18 @@ public class TradingService {
             user.setVirtualBalance(targetBalance);
             userRepository.save(user);
 
-            // 7. Record genuine ACCOUNT_RESET event in the ledger (prevent duplicate consecutive entries)
-            List<Transaction> latestTxs = transactionRepository.findByUserIdOrderByCreatedAtDesc(userId);
-            boolean isDuplicateReset = !latestTxs.isEmpty()
-                    && latestTxs.get(0).getTransactionType() == TransactionType.ACCOUNT_RESET
-                    && latestTxs.get(0).getTotalAmount() != null
-                    && latestTxs.get(0).getTotalAmount().compareTo(targetBalance) == 0;
+            // 7. Remove previous/duplicate ACCOUNT_RESET entries for this user and record exactly one accurate reset event
+            transactionRepository.deleteAccountResetsByUserId(userId);
 
-            if (!isDuplicateReset) {
-                Transaction resetTx = new Transaction();
-                resetTx.setUser(user);
-                resetTx.setTransactionType(TransactionType.ACCOUNT_RESET);
-                resetTx.setStatus(TransactionStatus.SUCCESS);
-                resetTx.setTotalAmount(targetBalance);
-                resetTx.setFees(BigDecimal.ZERO);
-                resetTx.setPnl(BigDecimal.ZERO);
-                resetTx.setPnlPercent(BigDecimal.ZERO);
-                transactionRepository.save(resetTx);
-            }
+            Transaction resetTx = new Transaction();
+            resetTx.setUser(user);
+            resetTx.setTransactionType(TransactionType.ACCOUNT_RESET);
+            resetTx.setStatus(TransactionStatus.SUCCESS);
+            resetTx.setTotalAmount(targetBalance);
+            resetTx.setFees(BigDecimal.ZERO);
+            resetTx.setPnl(BigDecimal.ZERO);
+            resetTx.setPnlPercent(BigDecimal.ZERO);
+            transactionRepository.save(resetTx);
 
             log.info("Complete paper trading account reset executed for user {}. Target balance: {}", userId, targetBalance);
 

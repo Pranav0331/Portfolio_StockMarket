@@ -449,4 +449,81 @@ class PaperTradingLedgerAndAccountSummaryTest {
         assertThat(dReset.cashFlowImpact()).isEqualTo("RESET");
         assertThat(dReset.cashFlowImpactLabel()).contains("Resets Cash Balance");
     }
+
+    @Test
+    @DisplayName("9. Reset Account Summary: Pre-reset trades and losses (-$33.80) are excluded from post-reset summary metrics")
+    void testResetAccountCalculatesSummaryCleanlyWithoutOldTradesOrOldLosses() {
+        // Pre-reset history
+        Transaction initTx = new Transaction();
+        initTx.setId(401L);
+        initTx.setUser(testUser);
+        initTx.setTransactionType(TransactionType.ACCOUNT_INIT);
+        initTx.setStatus(TransactionStatus.SUCCESS);
+        initTx.setTotalAmount(new BigDecimal("10000.00"));
+        initTx.setCreatedAt(Instant.parse("2026-10-01T08:00:00Z"));
+
+        Transaction oldTradeLoss = new Transaction();
+        oldTradeLoss.setId(402L);
+        oldTradeLoss.setUser(testUser);
+        oldTradeLoss.setStock(stockApple);
+        oldTradeLoss.setTransactionType(TransactionType.SELL);
+        oldTradeLoss.setStatus(TransactionStatus.SUCCESS);
+        oldTradeLoss.setPnl(new BigDecimal("-33.80"));
+        oldTradeLoss.setTotalAmount(new BigDecimal("966.20"));
+        oldTradeLoss.setCreatedAt(Instant.parse("2026-10-02T10:00:00Z"));
+
+        // Account reset at 2026-10-03
+        Transaction resetTx = new Transaction();
+        resetTx.setId(403L);
+        resetTx.setUser(testUser);
+        resetTx.setTransactionType(TransactionType.ACCOUNT_RESET);
+        resetTx.setStatus(TransactionStatus.SUCCESS);
+        resetTx.setTotalAmount(new BigDecimal("10000.00"));
+        resetTx.setCreatedAt(Instant.parse("2026-10-03T12:00:00Z"));
+
+        when(userRepository.findById(42L)).thenReturn(Optional.of(testUser));
+        when(transactionRepository.findByUserIdOrderByCreatedAtAscIdAsc(42L))
+                .thenReturn(List.of(initTx, oldTradeLoss, resetTx));
+
+        VirtualWalletDto postResetWallet = new VirtualWalletDto(
+                new BigDecimal("10000.00"),
+                BigDecimal.ZERO,
+                new BigDecimal("10000.00"),
+                "USD"
+        );
+        when(tradingService.getWallet(42L)).thenReturn(postResetWallet);
+        when(tradingService.getUserHoldings(42L)).thenReturn(List.of());
+        when(tradingService.getUserPositions(42L, null, com.portfolio.entity.enums.PositionStatus.OPEN)).thenReturn(List.of());
+
+        AccountSummaryDto summary = transactionService.getAccountSummary(42L);
+
+        assertThat(summary).isNotNull();
+        // Initial funding reflects the post-reset starting balance ($10,000.00)
+        assertThat(summary.initialFundingAmount()).isEqualByComparingTo("10000.00");
+        assertThat(summary.currentCashBalance()).isEqualByComparingTo("10000.00");
+        assertThat(summary.accountEquity()).isEqualByComparingTo("10000.00");
+        // Old trade loss (-$33.80) is NOT counted after reset
+        assertThat(summary.totalRealizedPnl()).isEqualByComparingTo("0.00");
+        assertThat(summary.totalUnrealizedPnl()).isEqualByComparingTo("0.00");
+        assertThat(summary.overallTradingPnl()).isEqualByComparingTo("0.00");
+        assertThat(summary.totalTradesCount()).isEqualTo(0);
+        assertThat(summary.openPositionsCount()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("10. Recent Executions filtering: tradesOnly=true queries only BUY/SELL transactions")
+    void testTradesOnlyFilterExcludesFinancialEvents() {
+        when(transactionRepository.findUserTransactions(
+                eq(42L), eq(false), eq(true), any(), any(), any(), any(), any(), any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of()));
+
+        PageResponseDto<TransactionDto> result = transactionService.getUserTransactions(
+                42L, false, true, "ALL", null, null, null, null, 0, 5, "desc"
+        );
+
+        assertThat(result.content()).isEmpty();
+        verify(transactionRepository).findUserTransactions(
+                eq(42L), eq(false), eq(true), any(), any(), any(), any(), any(), any(Pageable.class)
+        );
+    }
 }

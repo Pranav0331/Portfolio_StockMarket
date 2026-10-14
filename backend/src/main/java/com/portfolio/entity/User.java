@@ -52,7 +52,7 @@ public class User {
     private String providerId;
 
     @Column(name = "virtual_balance", nullable = false, precision = 19, scale = 4)
-    private BigDecimal virtualBalance = new BigDecimal("100000.0000");
+    private BigDecimal virtualBalance = new BigDecimal("10000.0000");
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

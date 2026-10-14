@@ -47,6 +47,7 @@ public class TransactionController {
     public ResponseEntity<PageResponseDto<TransactionDto>> getTransactions(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestParam(required = false, defaultValue = "false") boolean financialOnly,
+            @RequestParam(required = false, defaultValue = "false") boolean tradesOnly,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String tradingMode,
             @RequestParam(required = false) String symbol,
@@ -66,6 +67,7 @@ public class TransactionController {
         PageResponseDto<TransactionDto> response = transactionService.getUserTransactions(
                 userPrincipal.getId(),
                 financialOnly,
+                tradesOnly,
                 type,
                 tradingMode,
                 symbol,

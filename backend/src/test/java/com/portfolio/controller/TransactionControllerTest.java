@@ -85,7 +85,7 @@ class TransactionControllerTest {
         );
 
         when(transactionService.getUserTransactions(
-                eq(testUser.getId()), eq(false), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(15), eq("desc")
+                eq(testUser.getId()), eq(false), eq(false), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(15), eq("desc")
         )).thenReturn(pageResponse);
 
         mockMvc.perform(get("/api/transactions")
@@ -117,7 +117,7 @@ class TransactionControllerTest {
         );
 
         when(transactionService.getUserTransactions(
-                eq(testUser.getId()), eq(false), eq("SELL"), eq("SWING"), eq("AAPL"), any(), any(), eq(0), eq(10), eq("asc")
+                eq(testUser.getId()), eq(false), eq(false), eq("SELL"), eq("SWING"), eq("AAPL"), any(), any(), eq(0), eq(10), eq("asc")
         )).thenReturn(pageResponse);
 
         mockMvc.perform(get("/api/transactions")
@@ -150,7 +150,7 @@ class TransactionControllerTest {
         );
 
         when(transactionService.getUserTransactions(
-                eq(testUser.getId()), eq(true), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(15), eq("desc")
+                eq(testUser.getId()), eq(true), eq(false), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(15), eq("desc")
         )).thenReturn(pageResponse);
 
         mockMvc.perform(get("/api/transactions")
@@ -159,5 +159,25 @@ class TransactionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].type").value("DEPOSIT"))
                 .andExpect(jsonPath("$.content[0].totalAmount").value(10000.00));
+    }
+
+    @Test
+    @DisplayName("5. GET /api/transactions with tradesOnly=true forwards tradesOnly parameter to service")
+    void testGetTransactionsTradesOnly() throws Exception {
+        PageResponseDto<TransactionDto> emptyResponse = new PageResponseDto<>(
+                List.of(), 0, 5, 0, 0, true, true
+        );
+
+        when(transactionService.getUserTransactions(
+                eq(testUser.getId()), eq(false), eq(true), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(5), eq("desc")
+        )).thenReturn(emptyResponse);
+
+        mockMvc.perform(get("/api/transactions")
+                        .header("Authorization", "Bearer " + jwtToken)
+                        .param("tradesOnly", "true")
+                        .param("size", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content").isEmpty());
     }
 }

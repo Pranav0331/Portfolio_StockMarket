@@ -68,6 +68,7 @@ class TradingServiceTest {
     void setUp() {
         testUser = new User("investor@example.com", "John Doe");
         testUser.setId(1L);
+        testUser.setVirtualBalance(new BigDecimal("100000.0000"));
 
         testStock = new Stock("RELIANCE", "Reliance Industries Ltd", "NSE", "INR");
         testStock.setId(10L);
@@ -287,6 +288,7 @@ class TradingServiceTest {
 
         Holding holding = new Holding(testUser, testStock, new BigDecimal("10"), new BigDecimal("2000.0000"), new BigDecimal("20000.0000"));
 
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
         when(transactionRepository.findByUserId(1L)).thenReturn(List.of(t1));
         when(holdingRepository.findByUserId(1L)).thenReturn(List.of(holding));
         when(positionRepository.findByUserIdAndStatus(1L, PositionStatus.OPEN)).thenReturn(Collections.emptyList());
@@ -398,7 +400,7 @@ class TradingServiceTest {
         VirtualWalletDto wallet = tradingService.resetCashBalance(1L, TradingService.DEFAULT_INITIAL_BALANCE);
 
         assertThat(wallet).isNotNull();
-        assertThat(wallet.cashBalance()).isEqualByComparingTo(new BigDecimal("100000.00"));
+        assertThat(wallet.cashBalance()).isEqualByComparingTo(new BigDecimal("10000.00"));
 
         // Verify active positions, orders, executions, and holdings cleared
         verify(algoTradeLogRepository).deleteByUserId(1L);
@@ -407,7 +409,8 @@ class TradingServiceTest {
         verify(orderRepository).deleteByUserId(1L);
         verify(holdingRepository).deleteByUserId(1L);
         verify(positionRepository).deleteByUserId(1L);
-        verify(transactionRepository).save(argThat(tx -> tx.getTransactionType() == TransactionType.ACCOUNT_RESET));
+        verify(transactionRepository).deleteAccountResetsByUserId(1L);
+        verify(transactionRepository).save(argThat(tx -> tx.getTransactionType() == TransactionType.ACCOUNT_RESET && tx.getTotalAmount().compareTo(new BigDecimal("10000.0000")) == 0));
 
         // Verify strategy metrics reset and status stopped
         assertThat(strategy.getStatus()).isEqualTo(StrategyStatus.STOPPED);
@@ -422,25 +425,19 @@ class TradingServiceTest {
     }
 
     @Test
-    @DisplayName("REPEATED RESET - Consecutive resets with same target balance do not create duplicate ACCOUNT_RESET ledger entries")
+    @DisplayName("REPEATED RESET - Consecutive resets with same target balance cleanly replace previous reset entries idempotently")
     void testRepeatedResetAccountDoesNotCreateDuplicateAuditEntry() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
         when(holdingRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
         when(algoStrategyRepository.findByUserIdOrderByCreatedAtDesc(1L)).thenReturn(Collections.emptyList());
 
-        Transaction existingResetTx = new Transaction();
-        existingResetTx.setId(99L);
-        existingResetTx.setTransactionType(TransactionType.ACCOUNT_RESET);
-        existingResetTx.setTotalAmount(new BigDecimal("100000.0000"));
-
-        when(transactionRepository.findByUserIdOrderByCreatedAtDesc(1L))
-                .thenReturn(List.of(existingResetTx));
-
-        VirtualWalletDto wallet = tradingService.resetCashBalance(1L, new BigDecimal("100000.0000"));
+        VirtualWalletDto wallet = tradingService.resetCashBalance(1L, new BigDecimal("10000.0000"));
 
         assertThat(wallet).isNotNull();
-        // Since latest transaction was already an ACCOUNT_RESET of 100000.0000, no duplicate audit event should be saved
-        verify(transactionRepository, never()).save(any(Transaction.class));
+        assertThat(wallet.cashBalance()).isEqualByComparingTo(new BigDecimal("10000.0000"));
+        // Verifies previous reset records are purged and exactly one current audit record is saved
+        verify(transactionRepository).deleteAccountResetsByUserId(1L);
+        verify(transactionRepository, times(1)).save(argThat(tx -> tx.getTransactionType() == TransactionType.ACCOUNT_RESET));
     }
 
     @Test
@@ -479,6 +476,7 @@ class TradingServiceTest {
         verify(algoTradeLogRepository).deleteByUserId(userA);
         verify(transactionRepository).deleteTradeExecutionsByUserId(userA);
         verify(transactionRepository).detachOrdersByUserId(userA);
+        verify(transactionRepository).deleteAccountResetsByUserId(userA);
         verify(orderRepository).deleteByUserId(userA);
         verify(holdingRepository).deleteByUserId(userA);
         verify(positionRepository).deleteByUserId(userA);
@@ -488,6 +486,7 @@ class TradingServiceTest {
         verify(algoTradeLogRepository, never()).deleteByUserId(userB);
         verify(transactionRepository, never()).deleteTradeExecutionsByUserId(userB);
         verify(transactionRepository, never()).detachOrdersByUserId(userB);
+        verify(transactionRepository, never()).deleteAccountResetsByUserId(userB);
         verify(orderRepository, never()).deleteByUserId(userB);
         verify(positionRepository, never()).deleteByUserId(userB);
         verify(holdingRepository, never()).deleteByUserId(userB);
@@ -532,7 +531,7 @@ class TradingServiceTest {
         VirtualWalletDto wallet = tradingService.resetCashBalance(1L, TradingService.DEFAULT_INITIAL_BALANCE);
 
         assertThat(wallet).isNotNull();
-        assertThat(wallet.cashBalance()).isEqualByComparingTo(new BigDecimal("100000.00"));
+        assertThat(wallet.cashBalance()).isEqualByComparingTo(new BigDecimal("10000.00"));
         verify(lazyUser, never()).getHoldings();
         verify(lazyUser, never()).getOrders();
         verify(lazyUser, never()).getTransactions();

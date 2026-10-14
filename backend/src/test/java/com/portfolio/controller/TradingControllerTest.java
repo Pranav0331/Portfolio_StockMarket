@@ -217,9 +217,9 @@ class TradingControllerTest {
     @DisplayName("7. POST /api/trading/wallet/reset resets paper trading account with default balance when body is empty")
     void testResetBalanceEndpointDefaultBalance() throws Exception {
         VirtualWalletDto resetWallet = new VirtualWalletDto(
-                new BigDecimal("100000.00"),
+                new BigDecimal("10000.00"),
                 BigDecimal.ZERO,
-                new BigDecimal("100000.00"),
+                new BigDecimal("10000.00"),
                 "USD"
         );
 
@@ -230,9 +230,9 @@ class TradingControllerTest {
                         .header("Authorization", "Bearer " + jwtToken)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.cashBalance").value(100000.00))
+                .andExpect(jsonPath("$.cashBalance").value(10000.00))
                 .andExpect(jsonPath("$.totalInvested").value(0))
-                .andExpect(jsonPath("$.totalPortfolioValue").value(100000.00));
+                .andExpect(jsonPath("$.totalPortfolioValue").value(10000.00));
     }
 
     @Test

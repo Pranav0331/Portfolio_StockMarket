@@ -76,6 +76,7 @@ public class TransactionService {
     public PageResponseDto<TransactionDto> getUserTransactions(
             Long userId,
             boolean financialOnly,
+            boolean tradesOnly,
             String type,
             String tradingMode,
             String symbol,
@@ -124,12 +125,14 @@ public class TransactionService {
                 ? symbol.trim()
                 : null;
 
-        log.debug("Fetching transactions for user {}: financialOnly={}, type={}, mode={}, symbol={}, startDate={}, endDate={}, page={}, size={}",
-                userId, financialOnly, transactionType, mode, cleanSymbol, startDate, endDate, pageIndex, pageSize);
+        log.debug("Fetching transactions for user {}: financialOnly={}, tradesOnly={}, type={}, mode={}, symbol={}, startDate={}, endDate={}, page={}, size={}",
+                userId, financialOnly, tradesOnly, transactionType, mode, cleanSymbol, startDate, endDate, pageIndex, pageSize);
 
-        Page<Transaction> transactionPage = financialOnly
-                ? transactionRepository.findUserTransactions(userId, true, transactionType, mode, cleanSymbol, startDate, endDate, pageable)
-                : transactionRepository.findUserTransactions(userId, transactionType, mode, cleanSymbol, startDate, endDate, pageable);
+        Page<Transaction> transactionPage = tradesOnly
+                ? transactionRepository.findUserTransactions(userId, false, true, transactionType, mode, cleanSymbol, startDate, endDate, pageable)
+                : (financialOnly
+                    ? transactionRepository.findUserTransactions(userId, true, transactionType, mode, cleanSymbol, startDate, endDate, pageable)
+                    : transactionRepository.findUserTransactions(userId, transactionType, mode, cleanSymbol, startDate, endDate, pageable));
 
         Map<String, BigDecimal> currentPricesCache = new HashMap<>();
         Map<Long, RunningTxInfo> runningInfoMap = computeRunningLedgerInfo(userId);
@@ -147,6 +150,22 @@ public class TransactionService {
                 transactionPage.isFirst(),
                 transactionPage.isLast()
         );
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponseDto<TransactionDto> getUserTransactions(
+            Long userId,
+            boolean financialOnly,
+            String type,
+            String tradingMode,
+            String symbol,
+            Instant startDate,
+            Instant endDate,
+            int page,
+            int size,
+            String sortDirection
+    ) {
+        return getUserTransactions(userId, financialOnly, false, type, tradingMode, symbol, startDate, endDate, page, size, sortDirection);
     }
 
     @Transactional(readOnly = true)
@@ -188,6 +207,7 @@ public class TransactionService {
         List<Transaction> allTransactions = transactionRepository.findByUserIdOrderByCreatedAtAscIdAsc(userId);
 
         Transaction initTx = null;
+        Transaction latestResetTx = null;
         BigDecimal totalDeposited = BigDecimal.ZERO;
         BigDecimal totalWithdrawn = BigDecimal.ZERO;
         BigDecimal totalRealizedPnl = BigDecimal.ZERO;
@@ -195,10 +215,26 @@ public class TransactionService {
 
         for (Transaction t : allTransactions) {
             if (t.getStatus() != TransactionStatus.SUCCESS) continue;
+            if (t.getTransactionType() == TransactionType.ACCOUNT_RESET) {
+                latestResetTx = t;
+            }
+        }
+
+        Instant cutoff = latestResetTx != null ? latestResetTx.getCreatedAt() : null;
+
+        for (Transaction t : allTransactions) {
+            if (t.getStatus() != TransactionStatus.SUCCESS) continue;
 
             if (t.getTransactionType() == TransactionType.ACCOUNT_INIT && initTx == null) {
                 initTx = t;
-            } else if (t.getTransactionType() == TransactionType.DEPOSIT) {
+            }
+
+            // If account was reset, only aggregate financial events from the current active cycle
+            if (cutoff != null && t.getCreatedAt() != null && t.getCreatedAt().isBefore(cutoff)) {
+                continue;
+            }
+
+            if (t.getTransactionType() == TransactionType.DEPOSIT) {
                 totalDeposited = totalDeposited.add(t.getTotalAmount() != null ? t.getTotalAmount() : BigDecimal.ZERO);
             } else if (t.getTransactionType() == TransactionType.WITHDRAWAL) {
                 totalWithdrawn = totalWithdrawn.add(t.getTotalAmount() != null ? t.getTotalAmount() : BigDecimal.ZERO);
@@ -214,7 +250,11 @@ public class TransactionService {
         boolean initialFundingRecorded = false;
         Instant initialFundingTime = null;
 
-        if (initTx != null) {
+        if (latestResetTx != null) {
+            initialFundingAmount = latestResetTx.getTotalAmount() != null ? latestResetTx.getTotalAmount().setScale(2, RoundingMode.HALF_UP) : TradingService.DEFAULT_INITIAL_BALANCE.setScale(2, RoundingMode.HALF_UP);
+            initialFundingRecorded = true;
+            initialFundingTime = latestResetTx.getCreatedAt();
+        } else if (initTx != null) {
             initialFundingAmount = initTx.getTotalAmount() != null ? initTx.getTotalAmount().setScale(2, RoundingMode.HALF_UP) : null;
             initialFundingRecorded = true;
             initialFundingTime = initTx.getCreatedAt();
@@ -255,7 +295,7 @@ public class TransactionService {
                 openPositionsCount += openPositions.size();
             }
         } else {
-            currentCashBalance = (user != null && user.getVirtualBalance() != null) ? user.getVirtualBalance() : BigDecimal.valueOf(100000);
+            currentCashBalance = (user != null && user.getVirtualBalance() != null) ? user.getVirtualBalance() : TradingService.DEFAULT_INITIAL_BALANCE;
             accountEquity = currentCashBalance;
         }
 
@@ -288,7 +328,7 @@ public class TransactionService {
         User user = userRepository != null ? userRepository.findById(userId).orElse(null) : null;
         BigDecimal runningBalance = (user != null && user.getVirtualBalance() != null)
                 ? user.getVirtualBalance()
-                : BigDecimal.valueOf(100000);
+                : TradingService.DEFAULT_INITIAL_BALANCE;
 
         List<Transaction> chronList = transactionRepository.findByUserIdOrderByCreatedAtAscIdAsc(userId);
 

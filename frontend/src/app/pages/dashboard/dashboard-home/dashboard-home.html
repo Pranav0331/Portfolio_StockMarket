@@ -537,18 +537,18 @@
                     type="number" 
                     class="modal-input" 
                     min="1" 
-                    step="10000"
+                    step="1000"
+                    placeholder="10000"
                     [ngModel]="resetTargetAmount()" 
                     (ngModelChange)="resetTargetAmount.set($event)">
                 </div>
 
                 <!-- Reset Presets -->
                 <div class="preset-chips">
-                  <button type="button" class="preset-chip" (click)="setResetPreset(10000)">$10,000</button>
+                  <button type="button" class="preset-chip highlight" (click)="setResetPreset(10000)">$10,000 (Default)</button>
+                  <button type="button" class="preset-chip" (click)="setResetPreset(25000)">$25,000</button>
                   <button type="button" class="preset-chip" (click)="setResetPreset(50000)">$50,000</button>
-                  <button type="button" class="preset-chip highlight" (click)="setResetPreset(100000)">$100,000 (Default)</button>
-                  <button type="button" class="preset-chip" (click)="setResetPreset(250000)">$250,000</button>
-                  <button type="button" class="preset-chip" (click)="setResetPreset(500000)">$500,000</button>
+                  <button type="button" class="preset-chip" (click)="setResetPreset(100000)">$100,000</button>
                 </div>
 
                 <p class="modal-note warning-text">
