@@ -22,41 +22,93 @@ export class AuthService {
     this.loadStoredUser();
   }
 
-  isTokenExpired(token?: string | null): boolean {
-    if (!token) return true;
+  decodeTokenPayload(token?: string | null): any {
+    if (!token) return null;
     try {
       const parts = token.split('.');
-      if (parts.length !== 3) return true;
-      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
-      );
-      const payload = JSON.parse(jsonPayload);
-      if (!payload.exp) return false;
-      return payload.exp * 1000 < Date.now();
+      if (parts.length !== 3) return null;
+      let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const pad = base64.length % 4;
+      if (pad) {
+        base64 += '='.repeat(4 - pad);
+      }
+      const decoded = atob(base64);
+      try {
+        const bytes = Uint8Array.from(decoded, (c) => c.charCodeAt(0));
+        return JSON.parse(new TextDecoder().decode(bytes));
+      } catch {
+        return JSON.parse(decoded);
+      }
     } catch {
-      return true;
+      return null;
     }
+  }
+
+  isTokenExpired(token?: string | null): boolean {
+    if (!token) return true;
+    const payload = this.decodeTokenPayload(token);
+    if (!payload) return true;
+    if (typeof payload.exp !== 'number') return false;
+    return payload.exp * 1000 <= Date.now();
+  }
+
+  getToken(): string | null {
+    const current = this.currentUser();
+    if (current?.token && !this.isTokenExpired(current.token)) {
+      return current.token;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (token && !this.isTokenExpired(token)) {
+        return token;
+      }
+    }
+    return null;
   }
 
   loadStoredUser(): void {
     if (typeof localStorage === 'undefined') return;
     const token = localStorage.getItem('token');
+    if (!token) {
+      this.currentUser.set(null);
+      return;
+    }
+
+    if (this.isTokenExpired(token)) {
+      this.clearSession();
+      return;
+    }
+
     const userStr = localStorage.getItem('user');
-    if (token && userStr) {
-      if (this.isTokenExpired(token)) {
-        this.clearSession();
-        return;
-      }
+    let user: AuthUser | null = null;
+    if (userStr) {
       try {
-        const user = JSON.parse(userStr);
-        this.currentUser.set({ ...user, token });
+        user = JSON.parse(userStr);
       } catch {
-        this.clearSession();
+        // Corrupted user string, reconstruct from valid token claims
       }
+    }
+
+    if (!user) {
+      const payload = this.decodeTokenPayload(token);
+      if (payload) {
+        user = {
+          id: payload.userId || payload.id ? Number(payload.userId || payload.id) : undefined,
+          email: payload.sub || payload.email || '',
+          name: payload.name || payload.sub || 'User',
+          role: payload.role || 'ROLE_USER',
+          token
+        };
+        try {
+          localStorage.setItem('user', JSON.stringify(user));
+        } catch {}
+      }
+    }
+
+    if (user) {
+      this.currentUser.set({ ...user, token });
+    } else {
+      this.clearSession();
     }
   }
 
@@ -67,19 +119,10 @@ export class AuthService {
     }
     if (typeof localStorage !== 'undefined') {
       const token = localStorage.getItem('token');
-      const userStr = localStorage.getItem('user');
-      if (token && userStr) {
-        if (this.isTokenExpired(token)) {
-          this.clearSession();
-          return false;
-        }
-        try {
-          const user = JSON.parse(userStr);
-          this.currentUser.set({ ...user, token });
-          return true;
-        } catch {
-          this.clearSession();
-        }
+      if (token && !this.isTokenExpired(token)) {
+        this.loadStoredUser();
+        const reloaded = this.currentUser();
+        return reloaded !== null && !this.isTokenExpired(reloaded.token);
       }
     }
     return false;

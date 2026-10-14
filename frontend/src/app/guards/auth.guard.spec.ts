@@ -6,11 +6,24 @@ import { authGuard, rootGuard, guestGuard } from './auth.guard';
 import { AuthService } from '../services/auth.service';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+function createMockJwt(expSecs = Math.floor(Date.now() / 1000) + 3600, role = 'ROLE_USER', email = 'investor@example.com'): string {
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const payload = btoa(JSON.stringify({
+    sub: email,
+    userId: 1,
+    name: 'Investor',
+    role,
+    exp: expSecs
+  }));
+  return `${header}.${payload}.signature`;
+}
+
 describe('Route Guards', () => {
   let authService: AuthService;
   let router: Router;
 
   beforeEach(() => {
+    TestBed.resetTestingModule();
     localStorage.clear();
     TestBed.configureTestingModule({
       providers: [
@@ -35,11 +48,12 @@ describe('Route Guards', () => {
 
   describe('authGuard', () => {
     it('should allow navigation when user is authenticated', () => {
+      const validToken = createMockJwt();
       authService.currentUser.set({
         id: 1,
         email: 'investor@example.com',
         name: 'Investor',
-        token: 'valid-token'
+        token: validToken
       });
 
       const route = {} as ActivatedRouteSnapshot;
@@ -72,11 +86,12 @@ describe('Route Guards', () => {
     });
 
     it('should redirect authenticated user from root to /dashboard', () => {
+      const validToken = createMockJwt();
       authService.currentUser.set({
         id: 1,
         email: 'user@example.com',
         name: 'User',
-        token: 'valid-token'
+        token: validToken
       });
       const route = { queryParams: {} } as unknown as ActivatedRouteSnapshot;
       const state = { url: '/' } as RouterStateSnapshot;
@@ -87,15 +102,16 @@ describe('Route Guards', () => {
     });
 
     it('should handle OAuth callback query parameters and redirect to /dashboard', () => {
+      const validToken = createMockJwt(Math.floor(Date.now() / 1000) + 3600, 'ROLE_USER', 'googleuser@gmail.com');
       const route = {
         queryParams: {
-          token: 'google-oauth-token',
+          token: validToken,
           email: 'googleuser@gmail.com',
           name: 'Google User',
           role: 'ROLE_USER'
         }
       } as unknown as ActivatedRouteSnapshot;
-      const state = { url: '/?token=google-oauth-token&email=googleuser@gmail.com' } as RouterStateSnapshot;
+      const state = { url: `/?token=${validToken}&email=googleuser@gmail.com` } as RouterStateSnapshot;
 
       const result = TestBed.runInInjectionContext(() => rootGuard(route, state)) as UrlTree;
       expect(result).toBeTruthy();
@@ -115,11 +131,12 @@ describe('Route Guards', () => {
     });
 
     it('should redirect authenticated user from login to /dashboard', () => {
+      const validToken = createMockJwt();
       authService.currentUser.set({
         id: 1,
         email: 'user@example.com',
         name: 'User',
-        token: 'valid-token'
+        token: validToken
       });
       const route = {} as ActivatedRouteSnapshot;
       const state = { url: '/login' } as RouterStateSnapshot;

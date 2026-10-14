@@ -41,7 +41,6 @@ export class App implements OnInit {
   ngOnInit(): void {
     this.initTheme();
     this.checkInitialRoute();
-    this.checkOAuthCallback();
   }
 
   private checkInitialRoute(): void {
@@ -106,36 +105,6 @@ export class App implements OnInit {
           }
         }, 150);
       });
-    }
-  }
-
-  private checkOAuthCallback(): void {
-    if (typeof window !== 'undefined' && window.location.search) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('token');
-      const email = urlParams.get('email');
-      const name = urlParams.get('name');
-      const role = urlParams.get('role');
-      const id = urlParams.get('id');
-      const error = urlParams.get('error');
-
-      if (error) {
-        this.errorMessage.set(`Google Authentication Failed: ${error}`);
-      } else if (token && email) {
-        const success = this.authService.handleOAuthCallback({
-          token,
-          id: id || undefined,
-          email,
-          name: name || undefined,
-          role: role || undefined
-        });
-        if (success) {
-          this.oauthMessage.set(`Successfully authenticated as ${email} via Google OAuth 2.0`);
-          // Clean URL query params
-          window.history.replaceState({}, document.title, window.location.pathname);
-          this.router.navigate(['/dashboard']);
-        }
-      }
     }
   }
 

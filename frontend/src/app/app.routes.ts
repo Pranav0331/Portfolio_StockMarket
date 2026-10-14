@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { HomeComponent } from './pages/home/home';
 import { LoginComponent } from './pages/login/login';
 import { SignupComponent } from './pages/signup/signup';
+import { OAuthRedirectComponent } from './pages/oauth/oauth-redirect';
 import { DashboardLayoutComponent } from './pages/dashboard/dashboard-layout';
 import { DashboardHomeComponent } from './pages/dashboard/dashboard-home/dashboard-home';
 import { MarketComponent } from './pages/dashboard/market/market';
@@ -25,6 +26,10 @@ export const routes: Routes = [
     path: '', 
     component: HomeComponent, 
     canActivate: [rootGuard] 
+  },
+  { 
+    path: 'oauth2/redirect', 
+    component: OAuthRedirectComponent 
   },
   { 
     path: 'login', 
